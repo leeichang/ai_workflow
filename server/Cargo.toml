@@ -1,0 +1,55 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/domain",
+    "crates/persistence",
+    "crates/http-public",
+    "bin/api",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+license = "UNLICENSED"
+
+[workspace.dependencies]
+# 內部
+domain = { path = "crates/domain" }
+persistence = { path = "crates/persistence" }
+http-public = { path = "crates/http-public" }
+
+# Web
+axum = { version = "0.8", features = ["macros"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace", "cors", "request-id"] }
+hyper = "1"
+
+# 非同步
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal"] }
+
+# 資料庫
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json", "macros", "migrate",
+] }
+
+# 序列化
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# 認證
+jsonwebtoken = "9"
+argon2 = "0.5"
+
+# 工具
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+jsonschema = "0.26"
+rust_decimal = { version = "1", features = ["serde-with-float"] }
+
+# 測試
+rstest = "0.23"

@@ -1,0 +1,104 @@
+# 開發與 On-premise 交付共用同一份設定（決議：彙整 5.7）
+#
+# 啟動：docker compose -f deploy/docker-compose.yml up -d
+# 停止：docker compose -f deploy/docker-compose.yml down
+# 清空：docker compose -f deploy/docker-compose.yml down -v
+#
+# 業務資料庫與 Temporal 資料庫刻意分開。Temporal 存執行歷史，
+# 業務真相在 app 資料庫，兩者職責不同，混在一起會讓備份與遷移困難。
+
+name: workflow-platform
+
+services:
+  # ── 業務資料庫 ──────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app_dev_only}
+      POSTGRES_DB: workflow
+    # 預設 5433 避開本機既有的 PostgreSQL（常佔用 5432）
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - app-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d workflow"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # ── Temporal 的資料庫 ───────────────────────────────────
+  temporal-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: ${TEMPORAL_DB_PASSWORD:-temporal_dev_only}
+      POSTGRES_DB: temporal
+    volumes:
+      - temporal-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  temporal:
+    image: temporalio/auto-setup:1.25.2
+    depends_on:
+      temporal-postgres:
+        condition: service_healthy
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: ${TEMPORAL_DB_PASSWORD:-temporal_dev_only}
+      POSTGRES_SEEDS: temporal-postgres
+    ports:
+      - "${TEMPORAL_PORT:-7233}:7233"
+    healthcheck:
+      test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "temporal:7233"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  temporal-ui:
+    image: temporalio/ui:2.31.2
+    depends_on: [temporal]
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:3000
+    ports:
+      - "${TEMPORAL_UI_PORT:-8080}:8080"
+
+  # ── 物件儲存（PDF、附件）────────────────────────────────
+  minio:
+    # Docker Hub 的 minio/minio 已不再發布，改用官方 quay.io
+    image: quay.io/minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-minioadmin_dev_only}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # ── 郵件攔截（開發用，正式環境移除）──────────────────────
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "${MAILHOG_SMTP_PORT:-1025}:1025"
+      - "${MAILHOG_UI_PORT:-8025}:8025"
+    profiles: [dev]
+
+volumes:
+  app-db:
+  temporal-db:
+  minio-data:

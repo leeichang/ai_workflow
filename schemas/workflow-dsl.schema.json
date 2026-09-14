@@ -1,0 +1,378 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-platform.local/schemas/workflow-dsl.schema.json",
+  "title": "Workflow DSL",
+  "description": "業務流程定義。三方共用契約：Rust serde、Python Pydantic、TypeScript 皆由此產生型別。不得含 Temporal 詞彙（activity/signal/timer）。",
+  "type": "object",
+  "required": ["workflow_key", "version", "business_object", "trigger", "nodes", "edges"],
+  "additionalProperties": false,
+  "properties": {
+    "workflow_key": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{2,63}$",
+      "description": "租戶內唯一識別"
+    },
+    "version": { "type": "integer", "minimum": 1 },
+    "business_object": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{2,63}$",
+      "description": "對應的業務物件，例如 quotation、purchase_request"
+    },
+    "name": { "type": "string", "maxLength": 200 },
+    "description": { "type": "string", "maxLength": 2000 },
+    "trigger": { "$ref": "#/$defs/trigger" },
+    "nodes": {
+      "type": "array",
+      "minItems": 2,
+      "items": { "$ref": "#/$defs/node" }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" }
+    }
+  },
+
+  "$defs": {
+    "nodeId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{1,63}$"
+    },
+
+    "expression": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000,
+      "description": "CEL 子集。可用比較、邏輯、算術、路徑存取。變數：business object 路徑、node、instance、initiator"
+    },
+
+    "duration": {
+      "type": "string",
+      "pattern": "^P(\\d+D)?(T(\\d+H)?(\\d+M)?)?$",
+      "description": "ISO 8601 duration 子集，例如 P3D、PT8H、P1DT12H"
+    },
+
+    "trigger": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["form_submit", "schedule", "webhook", "manual"] },
+        "cron": { "type": "string", "description": "type=schedule 時必填" },
+        "webhook_key": { "type": "string", "description": "type=webhook 時必填" }
+      }
+    },
+
+    "node": {
+      "type": "object",
+      "required": ["id", "type"],
+      "discriminator": { "propertyName": "type" },
+      "oneOf": [
+        { "$ref": "#/$defs/nodeStart" },
+        { "$ref": "#/$defs/nodeCondition" },
+        { "$ref": "#/$defs/nodeHumanApproval" },
+        { "$ref": "#/$defs/nodeHumanTask" },
+        { "$ref": "#/$defs/nodeParallel" },
+        { "$ref": "#/$defs/nodeJoin" },
+        { "$ref": "#/$defs/nodeAction" },
+        { "$ref": "#/$defs/nodeNotification" },
+        { "$ref": "#/$defs/nodeEnd" }
+      ]
+    },
+
+    "nodeBase": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/nodeId" },
+        "label": { "type": "string", "maxLength": 100 }
+      }
+    },
+
+    "nodeStart": {
+      "type": "object",
+      "required": ["id", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/nodeId" },
+        "type": { "const": "trigger" },
+        "label": { "type": "string", "maxLength": 100 }
+      }
+    },
+
+    "nodeCondition": {
+      "type": "object",
+      "required": ["id", "type", "expression"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/nodeId" },
+        "type": { "const": "condition" },
+        "label": { "type": "string", "maxLength": 100 },
+        "expression": { "$ref": "#/$defs/expression" }
+      }
+    },
+
+    "nodeHumanApproval": {
+      "type": "object",
+      "required": ["id", "type", "participant", "resolver"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/nodeId" },
+        "type": { "const": "human_approval" },
+        "label": { "type": "string", "maxLength": 100 },
+        "participant": { "enum": ["internal", "external"] },
+        "resolver": { "$ref": "#/$defs/resolver" },
+        "form_key": { "type": "string", "description": "省略時用 business object 預設表單" },
+        "join": { "$ref": "#/$defs/joinPolicy" },
+        "timeout": { "$ref": "#/$defs/timeoutPolicy" },
+        "on_reject": { "$ref": "#/$defs/rejectPolicy" }
+      }
+    },
+
+    "nodeHumanTask": {
+      "type": "object",
+      "required": ["id", "type", "participant", "assignee"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/nodeId" },
+        "type": { "const": "human_task" },
+        "label": { "type": "string", "maxLength": 100 },
+        "participant": { "enum": ["internal", "external"] },
+        "assignee": { "$ref": "#/$defs/resolver" },
+        "form_key": { "type": "string" },
+        "timeout": { "$ref": "#/$defs/timeoutPolicy" }
+      }
+    },
+
+    "nodeParallel": {
+      "type": "object",
+      "required": ["id", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/nodeId" },
+        "type": { "const": "parallel" },
+        "label": { "type": "string", "maxLength": 100 }
+      }
+    },
+
+    "nodeJoin": {
+      "type": "object",
+      "required": ["id", "type", "join"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/nodeId" },
+        "type": { "const": "join" },
+        "label": { "type": "string", "maxLength": 100 },
+        "join": { "$ref": "#/$defs/joinPolicy" }
+      }
+    },
+
+    "nodeAction": {
+      "type": "object",
+      "required": ["id", "type", "action"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/nodeId" },
+        "type": { "const": "action" },
+        "label": { "type": "string", "maxLength": 100 },
+        "action": {
+          "type": "string",
+          "description": "Action Registry 中的名稱，例如 odoo.create_sale_order",
+          "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$"
+        },
+        "input_mapping": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "值為模板字串，例如 {{quotation.total}}"
+        },
+        "idempotency_key": {
+          "type": "string",
+          "description": "模板字串。寫入外部系統的 action 必填"
+        },
+        "retry": { "$ref": "#/$defs/retryPolicy" },
+        "on_failure": { "$ref": "#/$defs/rejectPolicy" }
+      }
+    },
+
+    "nodeNotification": {
+      "type": "object",
+      "required": ["id", "type", "channel", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/nodeId" },
+        "type": { "const": "notification" },
+        "label": { "type": "string", "maxLength": 100 },
+        "channel": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "enum": ["email", "line"] }
+        },
+        "to": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" },
+          "description": "initiator、角色名、或業務資料路徑"
+        },
+        "template_key": { "type": "string" }
+      }
+    },
+
+    "nodeEnd": {
+      "type": "object",
+      "required": ["id", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/nodeId" },
+        "type": { "const": "end" },
+        "label": { "type": "string", "maxLength": 100 },
+        "result": { "enum": ["completed", "rejected", "cancelled"], "default": "completed" }
+      }
+    },
+
+    "resolver": {
+      "type": "object",
+      "required": ["type"],
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "user" },
+            "user_id": { "type": "string", "format": "uuid" }
+          },
+          "required": ["type", "user_id"]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "role" },
+            "value": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "department_manager" },
+            "of": { "type": "string", "description": "initiator 或 department_id" }
+          },
+          "required": ["type", "of"]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "manager_of" },
+            "of": { "type": "string", "description": "initiator 或 user_id" }
+          },
+          "required": ["type", "of"]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "initiator" }
+          },
+          "required": ["type"]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "external_contacts" },
+            "path": { "type": "string", "description": "業務資料路徑，例如 quotation.customer_contacts" }
+          },
+          "required": ["type", "path"]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "expression" },
+            "cel": { "$ref": "#/$defs/expression" }
+          },
+          "required": ["type", "cel"]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "composite" },
+            "of": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": ["spec"],
+                "additionalProperties": false,
+                "properties": {
+                  "spec": { "$ref": "#/$defs/resolver" },
+                  "when": { "$ref": "#/$defs/expression" }
+                }
+              }
+            }
+          },
+          "required": ["type", "of"],
+          "description": "子項逐一求值 when，true 者展開為參與者並去重。全部 false 回 RESOLVE_EMPTY"
+        }
+      ]
+    },
+
+    "joinPolicy": {
+      "type": "object",
+      "required": ["completion"],
+      "additionalProperties": false,
+      "properties": {
+        "completion": { "enum": ["ALL", "ANY", "N_OF_M"] },
+        "n": { "type": "integer", "minimum": 1, "description": "completion=N_OF_M 時必填" },
+        "result": {
+          "enum": ["ALL_SUCCESS", "ANY_REJECT", "MAJORITY"],
+          "default": "ALL_SUCCESS"
+        }
+      }
+    },
+
+    "timeoutPolicy": {
+      "type": "object",
+      "required": ["after", "policy"],
+      "additionalProperties": false,
+      "properties": {
+        "after": { "$ref": "#/$defs/duration" },
+        "policy": { "enum": ["WAIT", "ESCALATE", "AUTO_APPROVE", "AUTO_REJECT"] },
+        "to": { "$ref": "#/$defs/resolver", "description": "policy=ESCALATE 時必填" }
+      }
+    },
+
+    "rejectPolicy": {
+      "type": "object",
+      "required": ["action"],
+      "additionalProperties": false,
+      "properties": {
+        "action": { "enum": ["goto", "end"] },
+        "node": { "$ref": "#/$defs/nodeId", "description": "action=goto 時必填，目標須在上游路徑" },
+        "result": { "enum": ["rejected", "cancelled"], "description": "action=end 時使用" }
+      }
+    },
+
+    "retryPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_attempts": { "type": "integer", "minimum": 1, "maximum": 10, "default": 3 },
+        "backoff": { "enum": ["fixed", "exponential"], "default": "exponential" },
+        "initial_interval": { "$ref": "#/$defs/duration", "default": "PT1M" }
+      }
+    },
+
+    "edge": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 3,
+      "prefixItems": [
+        { "$ref": "#/$defs/nodeId" },
+        { "$ref": "#/$defs/nodeId" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "when": { "type": "boolean", "description": "condition 節點的分支" },
+            "label": { "type": "string", "maxLength": 50 }
+          }
+        }
+      ],
+      "description": "[from, to] 或 [from, to, {when}]"
+    }
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "workflow_key": "purchase_approval",
+  "version": 1,
+  "business_object": "purchase_request",
+  "name": "採購申請簽核流程",
+  "description": "人工填單，金額門檻動態並簽，全數核准後 Odoo 建立採購單",
+  "trigger": { "type": "form_submit" },
+  "nodes": [
+    { "id": "start", "type": "trigger", "label": "採購員送出申請" },
+
+    {
+      "id": "approval",
+      "type": "human_approval",
+      "label": "並簽",
+      "participant": "internal",
+      "resolver": {
+        "type": "composite",
+        "of": [
+          { "spec": { "type": "manager_of", "of": "initiator" } },
+          { "spec": { "type": "role", "value": "finance_manager" } },
+          {
+            "spec": { "type": "role", "value": "cfo" },
+            "when": "purchase_request.total > 1000000"
+          }
+        ]
+      },
+      "join": { "completion": "ALL", "result": "ALL_SUCCESS" },
+      "timeout": {
+        "after": "P3D",
+        "policy": "ESCALATE",
+        "to": { "type": "initiator" }
+      },
+      "on_reject": { "action": "goto", "node": "revise" }
+    },
+
+    {
+      "id": "create_po",
+      "type": "action",
+      "label": "Odoo 建立採購單",
+      "action": "odoo.create_purchase_order",
+      "idempotency_key": "{{instance.id}}:{{node.id}}",
+      "retry": { "max_attempts": 5, "backoff": "exponential" },
+      "on_failure": { "action": "goto", "node": "revise" }
+    },
+
+    {
+      "id": "revise",
+      "type": "human_task",
+      "label": "採購員修改申請",
+      "participant": "internal",
+      "assignee": { "type": "initiator" }
+    },
+
+    {
+      "id": "notify_done",
+      "type": "notification",
+      "label": "通知申請人",
+      "channel": ["email", "line"],
+      "to": ["initiator"],
+      "template_key": "purchase_ordered"
+    },
+
+    { "id": "end", "type": "end", "label": "完成", "result": "completed" }
+  ],
+  "edges": [
+    ["start", "approval"],
+    ["approval", "create_po"],
+    ["revise", "approval"],
+    ["create_po", "notify_done"],
+    ["notify_done", "end"]
+  ]
+}

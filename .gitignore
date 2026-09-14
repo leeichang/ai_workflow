@@ -1,0 +1,47 @@
+# 參考用開源原始碼，不納入本專案版控
+/reference/
+
+# PoC 程式碼保留（驗證證據），但排除依賴與產生物
+/poc/**/.venv/
+/poc/**/node_modules/
+/poc/**/package-lock.json
+
+# 工具自動產生的暫存檔
+.planning/
+
+# macOS
+.DS_Store
+
+# Rust
+/server/target/
+**/*.rs.bk
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# 環境變數與憑證
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# 字型檔納入版控（決議 2026-09-14）
+# 理由：確保任何人 clone 後可直接產生 PDF，不需額外下載步驟
+# 授權：SIL Open Font License 1.1，允許商業使用與重新散布
+
+# 日誌與暫存
+*.log
+tmp/

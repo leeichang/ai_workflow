@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-platform.local/schemas/form.schema.json",
+  "title": "Form Definition",
+  "description": "表單定義。單一物件，每個欄位內含 ui / data / workflow 三個 key（決議 A-02）。Phase 2 若拆三層分檔，語意不變。",
+  "type": "object",
+  "required": ["form_key", "version", "business_object", "fields"],
+  "additionalProperties": false,
+  "properties": {
+    "form_key": { "type": "string", "pattern": "^[a-z][a-z0-9_]{2,63}$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "business_object": { "type": "string", "pattern": "^[a-z][a-z0-9_]{2,63}$" },
+    "name": { "type": "string", "maxLength": 200 },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "columns": { "type": "integer", "minimum": 1, "maximum": 24, "default": 12 },
+        "label_width": { "type": "string", "default": "120px" },
+        "label_position": { "enum": ["left", "top"], "default": "left" }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "title"],
+        "additionalProperties": false,
+        "properties": {
+          "key": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$" },
+          "title": { "type": "string", "maxLength": 100 },
+          "collapsible": { "type": "boolean", "default": false },
+          "visible_when": { "$ref": "#/$defs/expression" }
+        }
+      }
+    },
+    "fields": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/field" }
+    }
+  },
+
+  "$defs": {
+    "expression": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000,
+      "description": "CEL 子集。可用變數：業務資料路徑、node（當前節點）、user（當前使用者）、instance"
+    },
+
+    "field": {
+      "type": "object",
+      "required": ["key", "ui", "data"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$" },
+        "section": { "type": "string", "description": "所屬 section 的 key" },
+        "ui": { "$ref": "#/$defs/uiSpec" },
+        "data": { "$ref": "#/$defs/dataSpec" },
+        "workflow": { "$ref": "#/$defs/workflowSpec" }
+      }
+    },
+
+    "uiSpec": {
+      "type": "object",
+      "required": ["component", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "component": {
+          "enum": [
+            "input", "textarea", "number", "select", "multi_select",
+            "date", "datetime", "checkbox", "radio", "switch",
+            "upload", "table", "reference", "user_picker", "department_picker",
+            "display"
+          ]
+        },
+        "label": { "type": "string", "maxLength": 100 },
+        "placeholder": { "type": "string", "maxLength": 200 },
+        "help": { "type": "string", "maxLength": 500 },
+        "width": { "type": "integer", "minimum": 1, "maximum": 24, "default": 12 },
+        "precision": { "type": "integer", "minimum": 0, "maximum": 6 },
+        "prefix": { "type": "string", "maxLength": 10 },
+        "suffix": { "type": "string", "maxLength": 10 },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["value", "label"],
+            "additionalProperties": false,
+            "properties": {
+              "value": { "type": ["string", "number", "boolean"] },
+              "label": { "type": "string" }
+            }
+          },
+          "description": "select / radio / multi_select 用"
+        },
+        "columns": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tableColumn" },
+          "description": "component=table 時必填"
+        },
+        "reference": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "source": { "type": "string", "description": "lookup 端點，例如 partners、products、suppliers" },
+            "value_field": { "type": "string", "default": "id" },
+            "label_field": { "type": "string", "default": "name" },
+            "fill": {
+              "type": "object",
+              "additionalProperties": { "type": "string" },
+              "description": "選定後自動填入其他欄位。key 為目標欄位 key，value 為來源屬性"
+            }
+          },
+          "description": "component=reference 時必填"
+        },
+        "external_visible": {
+          "type": "boolean",
+          "default": true,
+          "description": "false 時客戶 Portal 不顯示此欄位（例如成本、毛利）"
+        }
+      }
+    },
+
+    "tableColumn": {
+      "type": "object",
+      "required": ["key", "label", "component"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$" },
+        "label": { "type": "string", "maxLength": 50 },
+        "component": {
+          "enum": ["input", "number", "select", "reference", "display", "date"]
+        },
+        "width": { "type": "string", "description": "CSS 寬度，例如 120px、20%" },
+        "align": { "enum": ["left", "center", "right"], "default": "left" },
+        "precision": { "type": "integer", "minimum": 0, "maximum": 6 },
+        "readonly": { "type": "boolean", "default": false },
+        "formula": {
+          "$ref": "#/$defs/expression",
+          "description": "計算欄位，例如 row.qty * row.unit_price"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["value", "label"],
+            "properties": {
+              "value": { "type": ["string", "number", "boolean"] },
+              "label": { "type": "string" }
+            }
+          }
+        },
+        "reference": {
+          "type": "object",
+          "properties": {
+            "source": { "type": "string" },
+            "value_field": { "type": "string" },
+            "label_field": { "type": "string" },
+            "fill": { "type": "object", "additionalProperties": { "type": "string" } }
+          }
+        }
+      }
+    },
+
+    "dataSpec": {
+      "type": "object",
+      "required": ["path", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "業務資料路徑，例如 quotation.discount_rate"
+        },
+        "type": {
+          "enum": ["string", "text", "integer", "decimal", "boolean", "date", "datetime", "uuid", "array", "file"]
+        },
+        "item": {
+          "type": "string",
+          "description": "type=array 時的元素型別名稱，例如 quotation_line"
+        },
+        "default": {},
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "max_length": { "type": "integer", "minimum": 1 },
+        "pattern": { "type": "string", "description": "正則表達式" },
+        "computed": {
+          "$ref": "#/$defs/expression",
+          "description": "後端計算欄位，前端唯讀。例如 margin_rate"
+        }
+      }
+    },
+
+    "workflowSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "visible_when": { "$ref": "#/$defs/expression" },
+        "readonly_when": { "$ref": "#/$defs/expression" },
+        "required_when": { "$ref": "#/$defs/expression" },
+        "editable_roles": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "省略時所有有該表單編輯權的角色皆可編輯"
+        },
+        "readable_roles": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "省略時所有有該表單檢視權的角色皆可讀"
+        }
+      },
+      "description": "省略整個 workflow 區塊代表：永遠可見、永遠可編輯、非必填"
+    }
+  }
+}

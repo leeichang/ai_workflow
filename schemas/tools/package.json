@@ -1,0 +1,17 @@
+{
+  "name": "@workflow/schema-tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate": "node validate.mjs",
+    "negative": "node negative.mjs",
+    "graph": "node graph-check.mjs",
+    "graph-negative": "node graph-negative.mjs",
+    "test": "node validate.mjs && node negative.mjs && node graph-check.mjs && node graph-negative.mjs"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  }
+}

@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-tertiary":"#ffffff","surface-bright":"#f7f9fb","surface-container-highest":"#e0e3e5","on-tertiary-fixed-variant":"#38485d","secondary":"#565e74","on-primary-fixed-variant":"#003ea8","inverse-surface":"#2d3133","on-surface-variant":"#434655","error":"#ba1a1a","on-tertiary-container":"#e9f0ff","surface-container-high":"#e6e8ea","on-secondary-fixed-variant":"#3f465c","primary-container":"#2563eb","surface":"#f7f9fb","outline":"#737686","surface-container-lowest":"#ffffff","background":"#f7f9fb","primary":"#004ac6","tertiary-container":"#5e6e85","secondary-fixed-dim":"#bec6e0","on-tertiary-fixed":"#0b1c30","on-secondary-fixed":"#131b2e","secondary-fixed":"#dae2fd","outline-variant":"#c3c6d7","on-primary-fixed":"#00174b","primary-fixed":"#dbe1ff","surface-tint":"#0053db","surface-container-low":"#f2f4f6","tertiary":"#46566c","on-primary-container":"#eeefff","inverse-on-surface":"#eff1f3","on-surface":"#191c1e","error-container":"#ffdad6","tertiary-fixed":"#d3e4fe","on-secondary-container":"#5c647a","secondary-container":"#dae2fd","on-error":"#ffffff","on-background":"#191c1e","primary-fixed-dim":"#b4c5ff","tertiary-fixed-dim":"#b7c8e1","on-secondary":"#ffffff","surface-dim":"#d8dadc","surface-container":"#eceef0","inverse-primary":"#b4c5ff","on-error-container":"#93000a","surface-variant":"#e0e3e5","on-primary":"#ffffff"},borderRadius:{DEFAULT:"0.125rem",lg:"0.25rem",xl:"0.5rem",full:"0.75rem"},spacing:{gutter:"1rem","space-xl":"1.5rem","space-lg":"1rem","space-xs":"0.25rem","space-sm":"0.5rem",margin:"1rem","space-md":"0.75rem"},fontFamily:{"body-dense":["Noto Sans"],"headline-xl":["Noto Sans"],"label-caption":["Noto Sans"],"data-mono":["JetBrains Mono"],"headline-lg":["Noto Sans"],"title-md":["Noto Sans"],"body-default":["Noto Sans"],"label-header":["Noto Sans"]},fontSize:{"body-dense":["13px",{lineHeight:"18px",fontWeight:"400"}],"headline-xl":["24px",{lineHeight:"32px",letterSpacing:"-0.01em",fontWeight:"600"}],"label-caption":["11px",{lineHeight:"14px",fontWeight:"400"}],"data-mono":["13px",{lineHeight:"18px",fontWeight:"500"}],"headline-lg":["18px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],"title-md":["15px",{lineHeight:"20px",fontWeight:"600"}],"body-default":["14px",{lineHeight:"20px",fontWeight:"400"}],"label-header":["12px",{lineHeight:"16px",letterSpacing:"0.02em",fontWeight:"600"}]}}}};</script></head><body class="bg-surface font-body-default text-body-default text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-[240px] bg-surface-container-lowest border-r border-[#E2E8F0] z-50 flex flex-col justify-between select-none"><div class="flex flex-col"><div class="h-[56px] px-space-md border-b border-[#E2E8F0] flex items-center gap-space-sm"><img alt="台製精工 ERP Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1UDMT-K79FVuLNrOZa_mMQx5ExeOZM7T-kj3Xrz5-TvwSkZ4hYXzTiyZMfhfl3hCsBiVwF7CskUrQkkAHYMmweltx-j7ozkBxDLwW_rit1kBhkcnh5Vf2vRyrWi9XrpbV21KuMSyPCO_D1l6GLPSGcVY2nnt1C3A8LAb29HoVuGtEfQUKAN_zSU-wGhc9g4c9zXu4B8oumwVnhCF_FJLuQB9vo4jjcufx_V5cyOP5QvnyxeRwCKKH5Uzi7p"/><div class="flex flex-col min-w-0"><span class="font-title-md text-title-md text-on-surface truncate leading-none">台製精工 ERP</span><span class="font-label-caption text-label-caption text-secondary truncate mt-0.5">製造營運管理系統</span></div></div><div class="px-space-md pt-space-md pb-space-xs"><span class="font-label-header text-label-header text-secondary uppercase tracking-wider">營運功能模組</span></div><nav class="px-space-sm space-y-0.5 flex flex-col" data-active-classes="bg-surface-container-low text-primary font-semibold"><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="dashboard-overview" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">dashboard</span><span class="font-body-dense text-body-dense">首頁</span></div></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="my-tasks-approvals" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">check_box</span><span class="font-body-dense text-body-dense">我的待辦</span></div><span class="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-error text-on-error font-label-caption text-[10px] font-bold">5</span></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="quotations-sales" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">description</span><span class="font-body-dense text-body-dense">報價單</span></div></a><a aria-current="page" class="flex items-center justify-between px-space-md py-space-sm rounded-lg transition-colors bg-surface-container-low text-primary font-semibold" data-path="purchase-requisitions" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">shopping_cart</span><span class="font-body-dense text-body-dense">採購申請</span></div></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="product-configurator-cad" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">layers</span><span class="font-body-dense text-body-dense">設計器</span></div></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="reports-analytics" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">bar_chart</span><span class="font-body-dense text-body-dense">報表</span></div></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="system-settings" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-body-dense text-body-dense">設定</span></div></a></nav></div><div class="p-space-md border-t border-[#E2E8F0] bg-surface-container-lowest flex flex-col gap-space-xs"><div class="flex items-center justify-between"><span class="font-data-mono text-data-mono text-secondary text-[11px]">v2.4.1 (正式營運版)</span><span class="inline-block w-2 h-2 rounded-full bg-[#15803D]"></span></div><a class="flex items-center gap-1.5 text-secondary hover:text-primary transition-colors" data-path="help-support" href="#"><span class="material-symbols-outlined text-[16px]">help</span><span class="font-label-caption text-label-caption">IT服務台 / 快速支援</span></a></div></aside><div class="pl-[240px]"><header class="fixed top-0 left-[240px] right-0 h-[56px] bg-surface-container-lowest border-b border-[#E2E8F0] z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-md"><button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-low transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">menu_open</span></button><nav class="hidden sm:flex items-center gap-1 font-label-header text-label-header text-secondary"><span class="hover:text-on-surface cursor-pointer">製造核心</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="text-on-surface font-semibold">生產作業總覽</span></nav></div><div class="flex-1 max-w-md mx-space-lg"><div class="relative flex items-center"><span class="material-symbols-outlined absolute left-2.5 text-[18px] text-outline">search</span><input class="w-full h-8 pl-8 pr-16 bg-surface-container-low border border-[#CBD5E1] rounded-lg font-body-dense text-body-dense text-on-surface placeholder:text-outline focus:outline-none focus:border-primary-container focus:bg-surface-container-lowest transition-all" placeholder="搜尋單號、客戶、物料 (Ctrl+K)" type="text"/><kbd class="absolute right-2 px-1.5 py-0.5 font-data-mono text-[10px] text-secondary bg-surface-container rounded border border-[#CBD5E1]">Ctrl+K</kbd></div></div><div class="flex items-center gap-space-md"><div class="hidden md:flex items-center gap-1 text-secondary font-data-mono text-data-mono text-[12px]"><span class="material-symbols-outlined text-[16px]">calendar_today</span><span>2025年3月30日 (週日)</span></div><div class="h-4 w-[1px] bg-[#E2E8F0] hidden md:block"></div><button class="relative p-1.5 text-secondary hover:text-on-surface rounded hover:bg-surface-container-low transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-error"></span></span></button><div class="flex items-center gap-space-sm pl-space-xs"><img alt="Profile" class="w-8 h-8 rounded-full object-cover border border-[#CBD5E1]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAL_5RFUBZ7fdUNv3u0PSpj5V_haplMsIRcYA9PqJeKDAeKIqlhVSbtA-dHMlMJpGsNb9XlXrl-yKZeUVYYzELoO4zzp7n3LA4A81FYpEKlnYsBSPQ1ytDFSHAtgtqvGqgYxxsDTOx4MMTENh7Z-fvhEVmKwX1uqJhqvnUDw92DmY09HCKu6ce-Ko7k39i_4hioYnP68lfyw_oq6svn1EkRfwmC-OfRAgPMUgxyyZ14hlvSoiOgvixLvQ"/><div class="hidden lg:flex flex-col text-left"><span class="font-label-header text-label-header text-on-surface leading-tight">林建志 協理</span><span class="font-label-caption text-label-caption text-secondary leading-tight">營運製造部</span></div><span class="material-symbols-outlined text-[16px] text-secondary hidden lg:inline">arrow_drop_down</span></div></div></header><main class="w-full pt-[56px] min-h-screen bg-[#F8FAFC] p-space-xl"><div class="flex flex-col w-full">
+<!-- Breadcrumb & Workspace Header -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md mb-space-lg">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-1.5 text-secondary font-label-caption text-label-caption">
+<span>採購與供應鏈</span>
+<span class="material-symbols-outlined text-[12px]">chevron_right</span>
+<span class="text-on-surface font-medium">採購申請審核</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight flex items-center gap-space-sm">
+<span>採購申請與物料審核</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-label-header text-label-header font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+          急件待簽 (1)
+        </span>
+</h1>
+<p class="font-body-dense text-body-dense text-secondary">
+        管理廠內生管工令物料發包、常規耗材補充申請，支援三家供應商比價與線上多級審批。
+      </p>
+</div>
+<!-- Quick Action Toolbars -->
+<div class="flex items-center gap-space-sm self-start md:self-auto flex-wrap">
+<button class="h-8 px-3 rounded-lg bg-surface-container-lowest text-secondary hover:text-on-surface hover:bg-surface-container transition-all flex items-center gap-1.5 shadow-sm font-label-header text-label-header" type="button">
+<span class="material-symbols-outlined text-[16px]">storefront</span>
+<span>供應商資料庫</span>
+</button>
+<button class="h-8 px-3 rounded-lg bg-surface-container-lowest text-secondary hover:text-on-surface hover:bg-surface-container transition-all flex items-center gap-1.5 shadow-sm font-label-header text-label-header" type="button">
+<span class="material-symbols-outlined text-[16px]">inventory_2</span>
+<span>物料庫存對照</span>
+</button>
+<button class="h-8 px-3.5 rounded-lg bg-primary-container hover:bg-primary text-on-primary transition-all flex items-center gap-1.5 shadow font-label-header text-label-header" type="button">
+<span class="material-symbols-outlined text-[16px]">add</span>
+<span>新增採購申請</span>
+</button>
+</div>
+</div>
+<!-- KPI Overview Ribbon -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md mb-space-lg">
+<!-- Metric 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm relative overflow-hidden flex flex-col justify-between">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-caption text-label-caption text-secondary uppercase font-semibold">待處理專案</span>
+<div class="mt-1 flex items-baseline gap-2">
+<span class="font-data-mono text-[22px] font-bold text-on-surface leading-none">6</span>
+<span class="font-label-caption text-label-caption text-secondary">案待審</span>
+</div>
+</div>
+<div class="w-8 h-8 rounded-lg bg-primary-fixed text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">pending_actions</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between font-label-caption text-label-caption bg-surface-container-low px-2 py-1 rounded">
+<span class="text-secondary">審批總金額</span>
+<span class="font-data-mono text-primary font-bold">NT$ 3,840,000</span>
+</div>
+</div>
+<!-- Metric 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm relative overflow-hidden flex flex-col justify-between">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-caption text-label-caption text-error font-semibold uppercase flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>
+            安全庫存警戒
+          </span>
+<div class="mt-1 flex items-baseline gap-2">
+<span class="font-data-mono text-[22px] font-bold text-error leading-none">3</span>
+<span class="font-label-caption text-label-caption text-secondary">項原物料</span>
+</div>
+</div>
+<div class="w-8 h-8 rounded-lg bg-error-container text-error flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">warning</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between font-label-caption text-label-caption bg-error-container/40 px-2 py-1 rounded">
+<span class="text-on-surface-variant">急需發單補庫存</span>
+<span class="font-body-dense text-[11px] font-semibold text-error">SUS316L等鋼材</span>
+</div>
+</div>
+<!-- Metric 3 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm relative overflow-hidden flex flex-col justify-between">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-caption text-label-caption text-secondary uppercase font-semibold">供應商交期達標率</span>
+<div class="mt-1 flex items-baseline gap-2">
+<span class="font-data-mono text-[22px] font-bold text-on-surface leading-none">7.4</span>
+<span class="font-label-caption text-label-caption text-secondary">天平均交期</span>
+</div>
+</div>
+<div class="w-8 h-8 rounded-lg bg-surface-container-high text-secondary flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">local_shipping</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between font-label-caption text-label-caption bg-surface-container-low px-2 py-1 rounded">
+<span class="text-secondary">30日履約率</span>
+<span class="font-data-mono font-semibold text-[#15803D]">94.8% 正常</span>
+</div>
+</div>
+<!-- Metric 4 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm relative overflow-hidden flex flex-col justify-between">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-caption text-label-caption text-secondary uppercase font-semibold">本月採購議價效益</span>
+<div class="mt-1 flex items-baseline gap-2">
+<span class="font-data-mono text-[22px] font-bold text-[#15803D] leading-none">215K</span>
+<span class="font-label-caption text-label-caption text-secondary">NT$ 節省</span>
+</div>
+</div>
+<div class="w-8 h-8 rounded-lg bg-[#DCFCE7] text-[#15803D] flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">trending_up</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between font-label-caption text-label-caption bg-surface-container-low px-2 py-1 rounded">
+<span class="text-secondary">平均降價幅度</span>
+<span class="font-data-mono font-semibold text-secondary">4.2%</span>
+</div>
+</div>
+</div>
+<!-- Workspace Split Grid (40% / 60%) -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-space-lg items-start">
+<!-- LEFT PANEL: Filterable PR List (5 of 12 cols = 41.6%) -->
+<div class="xl:col-span-5 flex flex-col gap-space-md bg-surface-container-lowest rounded-xl shadow-sm p-space-md">
+<!-- Tab filters -->
+<div class="flex items-center justify-between border-b-0 pb-1 overflow-x-auto">
+<div class="inline-flex p-1 bg-surface-container-low rounded-lg text-body-dense font-body-dense">
+<button class="px-2.5 py-1 rounded-md bg-surface-container-lowest text-primary font-semibold shadow-xs flex items-center gap-1.5 transition-all" type="button">
+<span>待我審批</span>
+<span class="px-1.5 py-0.2 rounded-full bg-primary text-on-primary text-[10px] font-bold font-data-mono leading-tight">4</span>
+</button>
+<button class="px-2.5 py-1 rounded-md text-secondary hover:text-on-surface transition-all flex items-center gap-1" type="button">
+<span>部門審核中</span>
+<span class="text-[11px] font-data-mono text-outline">5</span>
+</button>
+<button class="px-2.5 py-1 rounded-md text-secondary hover:text-on-surface transition-all flex items-center gap-1" type="button">
+<span>議價比價</span>
+<span class="text-[11px] font-data-mono text-outline">3</span>
+</button>
+<button class="px-2.5 py-1 rounded-md text-secondary hover:text-on-surface transition-all hidden sm:flex items-center gap-1" type="button">
+<span>已開PO</span>
+<span class="text-[11px] font-data-mono text-outline">28</span>
+</button>
+</div>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-low" type="button">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+</button>
+</div>
+<!-- Quick Search inside PR List -->
+<div class="relative">
+<span class="material-symbols-outlined absolute left-2.5 top-2 text-[16px] text-outline">filter_alt</span>
+<input class="w-full h-8 pl-8 pr-3 bg-surface-container-low rounded-lg font-body-dense text-body-dense text-on-surface placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest shadow-inner transition-all" placeholder="篩選單號、品名規格或發單人..." type="text"/>
+</div>
+<!-- PR Cards List -->
+<div class="flex flex-col gap-space-sm max-h-[820px] overflow-y-auto pr-0.5">
+<!-- CARD 1 (Active / Selected) -->
+<div class="p-space-md rounded-xl bg-primary-fixed/30 cursor-pointer shadow-sm relative transition-all duration-150">
+<div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r"></div>
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-2">
+<span class="font-data-mono text-body-dense font-bold text-primary">PR-20250329-012</span>
+<span class="px-1.5 py-0.5 rounded bg-error-container text-error font-label-caption text-label-caption font-semibold">急件</span>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-primary text-on-primary font-label-caption text-[11px] font-medium">待營運協理覆核</span>
+</div>
+<h3 class="mt-2 font-title-md text-title-md text-on-surface font-semibold line-clamp-1">
+            工令 2503-A 專用 SUS316L 不鏽鋼板材 (3.0mm)
+          </h3>
+<div class="mt-2 flex items-center justify-between text-secondary font-label-caption text-label-caption">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">person</span>
+<span>郭振峰 (製造二廠/生管)</span>
+</div>
+<span class="font-data-mono text-[11px]">2025/03/29 11:20</span>
+</div>
+<div class="mt-3 pt-2 bg-surface-container-lowest/60 px-2.5 py-1.5 rounded-lg flex items-center justify-between font-body-dense">
+<span class="text-secondary text-label-caption">預估核算總額:</span>
+<span class="font-data-mono text-title-md font-bold text-on-surface">NT$ 860,000</span>
+</div>
+</div>
+<!-- CARD 2 -->
+<div class="p-space-md rounded-xl bg-surface-container-low/70 hover:bg-surface-container-low cursor-pointer shadow-xs transition-all duration-150">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-2">
+<span class="font-data-mono text-body-dense font-semibold text-on-surface">PR-20250329-008</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-secondary font-label-caption text-label-caption">常規</span>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-secondary font-label-caption text-[11px] font-medium">採購覆核中</span>
+</div>
+<h3 class="mt-2 font-title-md text-title-md text-on-surface line-clamp-1">
+            模具車間超硬鎢鋼立銑刀與球刀批次耗材
+          </h3>
+<div class="mt-2 flex items-center justify-between text-secondary font-label-caption text-label-caption">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">person</span>
+<span>廖志豪 (模具研發部)</span>
+</div>
+<span class="font-data-mono text-[11px]">2025/03/29 09:40</span>
+</div>
+<div class="mt-3 pt-2 bg-surface-container-lowest px-2.5 py-1.5 rounded-lg flex items-center justify-between font-body-dense">
+<span class="text-secondary text-label-caption">預估核算總額:</span>
+<span class="font-data-mono text-body-dense font-bold text-on-surface">NT$ 240,000</span>
+</div>
+</div>
+<!-- CARD 3 -->
+<div class="p-space-md rounded-xl bg-surface-container-low/70 hover:bg-surface-container-low cursor-pointer shadow-xs transition-all duration-150">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-2">
+<span class="font-data-mono text-body-dense font-semibold text-on-surface">PR-20250328-015</span>
+<span class="px-1.5 py-0.5 rounded bg-[#DCFCE7] text-[#15803D] font-label-caption text-label-caption">已核准</span>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-secondary font-label-caption text-[11px] font-medium">PO-20250328 備料中</span>
+</div>
+<h3 class="mt-2 font-title-md text-title-md text-on-surface line-clamp-1">
+            環保水性金屬清洗劑與防鏽油年約常態備庫
+          </h3>
+<div class="mt-2 flex items-center justify-between text-secondary font-label-caption text-label-caption">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">person</span>
+<span>謝美玲 (總務倉儲組)</span>
+</div>
+<span class="font-data-mono text-[11px]">2025/03/28 16:15</span>
+</div>
+<div class="mt-3 pt-2 bg-surface-container-lowest px-2.5 py-1.5 rounded-lg flex items-center justify-between font-body-dense">
+<span class="text-secondary text-label-caption">採購總額:</span>
+<span class="font-data-mono text-body-dense font-bold text-on-surface">NT$ 115,000</span>
+</div>
+</div>
+<!-- CARD 4 -->
+<div class="p-space-md rounded-xl bg-surface-container-low/70 hover:bg-surface-container-low cursor-pointer shadow-xs transition-all duration-150">
+<div class="flex items-start justify-between gap-2">
+<div class="flex items-center gap-2">
+<span class="font-data-mono text-body-dense font-semibold text-on-surface">PR-20250327-020</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-secondary font-label-caption text-label-caption">設備保養</span>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-caption text-[11px] font-medium">廠商報價中 (2/3)</span>
+</div>
+<h3 class="mt-2 font-title-md text-title-md text-on-surface line-clamp-1">
+            CNC 五軸高速加工中心主軸潤滑合成循環液
+          </h3>
+<div class="mt-2 flex items-center justify-between text-secondary font-label-caption text-label-caption">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">person</span>
+<span>賴偉倫 (廠務設備維護)</span>
+</div>
+<span class="font-data-mono text-[11px]">2025/03/27 14:05</span>
+</div>
+<div class="mt-3 pt-2 bg-surface-container-lowest px-2.5 py-1.5 rounded-lg flex items-center justify-between font-body-dense">
+<span class="text-secondary text-label-caption">預估預算額度:</span>
+<span class="font-data-mono text-body-dense font-bold text-on-surface">NT$ 180,000</span>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT PANEL: Approval & Comparison Matrix Workspace (7 of 12 cols = 58.4%) -->
+<div class="xl:col-span-7 flex flex-col gap-space-lg">
+<!-- Main Detail Container -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-lg">
+<!-- Header Strip of Detail Card -->
+<div class="flex flex-col gap-space-xs pb-space-md bg-surface-container-low -mx-space-lg -mt-space-lg p-space-lg rounded-t-xl">
+<div class="flex items-center justify-between flex-wrap gap-2">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-error-container text-error font-label-header text-label-header font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">priority_high</span>
+                產線停工風險・特急採購案
+              </span>
+<span class="font-data-mono text-body-dense text-secondary">單號: PR-20250329-012</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-2.5 py-1 bg-surface-container-lowest text-secondary hover:text-on-surface rounded-md text-label-caption font-semibold flex items-center gap-1 shadow-xs" type="button">
+<span class="material-symbols-outlined text-[14px]">print</span>
+                列印請購單
+              </button>
+<button class="px-2.5 py-1 bg-surface-container-lowest text-secondary hover:text-on-surface rounded-md text-label-caption font-semibold flex items-center gap-1 shadow-xs" type="button">
+<span class="material-symbols-outlined text-[14px]">history</span>
+                歷史變更
+              </button>
+</div>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mt-1">
+            工令 2503-A SUS316L 不鏽鋼板材補充申請
+          </h2>
+<!-- Key Meta Properties Row -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-space-sm pt-space-xs text-body-dense">
+<div class="flex flex-col">
+<span class="font-label-caption text-label-caption text-secondary">申請人員</span>
+<span class="font-medium text-on-surface">郭振峰 (生管組)</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caption text-label-caption text-secondary">發單廠區</span>
+<span class="font-medium text-on-surface">新竹生管二廠</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caption text-label-caption text-secondary">關聯製造工令</span>
+<a class="font-data-mono text-primary hover:underline font-semibold" href="#">MO-20250325-004</a>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caption text-label-caption text-secondary">要求到廠日期</span>
+<span class="font-data-mono font-bold text-error">2025/04/08 (限期10日)</span>
+</div>
+</div>
+</div>
+<!-- Section 1: Item Inventory & Specification Section -->
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-header text-label-header text-secondary uppercase tracking-wider flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">view_in_ar</span>
+              品項與庫存衝擊對照
+            </span>
+<span class="font-label-caption text-label-caption text-secondary">品號: MAT-SS-316L-030</span>
+</div>
+<!-- Product Spec Bento Box -->
+<div class="bg-surface-container-low rounded-xl p-space-md grid grid-cols-1 md:grid-cols-12 gap-space-md items-center">
+<!-- Visual Spec & Thumbnail Placeholder -->
+<div class="md:col-span-4 flex items-center gap-space-md">
+<div class="w-16 h-16 rounded-lg overflow-hidden shrink-0 shadow-inner bg-surface-container-high">
+<img class="w-full h-full object-cover" data-alt="High precision stainless steel sheet metal industrial raw material warehouse stack close up with metallic gleam" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0mf5TG4kdZY-Wp35fGaM96hLag0QhnEitO9nDHnHNM9EKPdeBY0Hwy7XLIEJFc1xyVmcBqIEfWeM0Nr8rFkNIQAacPjIeM6iz_VM61qKWyZq7pMNYMaFj2YXdt3_I2y8T7LiViqR90Y-iEIDFCNDChAfJB5scPGs-kcQzuENwq7uJhaQ8BIMLhQ8JTkq3L8jypsnxh4wsj8J0vVFO6cxRsHv57Y9FSgs6C5oL4GuFJvIScy_xoy7u7Q"/>
+</div>
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface font-semibold">SUS316L 冷軋鋼板</span>
+<span class="font-label-caption text-label-caption text-secondary mt-0.5">厚度 3.0mm × 1219 × 2438mm</span>
+<span class="font-data-mono text-[11px] text-secondary">密度: 7.98 g/cm³ (約70kg/片)</span>
+</div>
+</div>
+<!-- Stock Danger Bar Visualization -->
+<div class="md:col-span-8 bg-surface-container-lowest p-space-md rounded-lg flex flex-col gap-2">
+<div class="flex items-center justify-between text-body-dense">
+<span class="text-secondary font-medium">申請採購: <strong class="text-on-surface font-data-mono">120 片</strong> (約 8,400 kg)</span>
+<span class="font-label-caption text-label-caption text-error font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">trending_down</span>
+                  庫存嚴重不足 (-18片)
+                </span>
+</div>
+<!-- Visual stock bar -->
+<div class="w-full bg-surface-container-highest h-3 rounded-full overflow-hidden flex">
+<!-- Current stock: 12 pcs (out of max 150 target = 8%) -->
+<div class="bg-error h-full" style="width: 8%;" title="現存量: 12片"></div>
+<!-- Safety delta: 18 pcs gap = 12% -->
+<div class="bg-amber-400/50 h-full" style="width: 12%;" title="安全庫存線: 30片"></div>
+<!-- Requested incoming: 120 pcs = 80% -->
+<div class="bg-primary-container h-full" style="width: 80%;" title="此案採購: 120片"></div>
+</div>
+<div class="flex items-center justify-between text-secondary font-label-caption text-label-caption">
+<span>現有庫存: <strong class="text-on-surface font-data-mono">12 片</strong></span>
+<span class="text-secondary">安全儲備線: <strong class="text-on-surface font-data-mono">30 片</strong></span>
+<span>採購補足後預估: <strong class="text-primary font-data-mono">132 片</strong></span>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 2: 3-Vendor Quotation Comparison Matrix (Core Enterprise Value) -->
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="font-label-header text-label-header text-secondary uppercase tracking-wider flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">balance</span>
+                三家供應商詢價比價矩陣 (三商對照)
+              </span>
+<span class="px-2 py-0.5 rounded bg-[#DCFCE7] text-[#15803D] font-label-caption text-label-caption font-bold">已議定最優選</span>
+</div>
+<span class="font-label-caption text-label-caption text-secondary">詢價承辦人: 陳淑芬 (採購組)</span>
+</div>
+<!-- Comparative Table with visual winner -->
+<div class="overflow-x-auto rounded-xl">
+<table class="w-full border-collapse text-left font-body-dense text-body-dense">
+<thead>
+<tr class="bg-surface-container-low text-secondary font-label-header text-label-header">
+<th class="p-3 w-1/4">供應商名稱</th>
+<th class="p-3 text-right">單價 (片/未稅)</th>
+<th class="p-3 text-right">總價款 (NT$)</th>
+<th class="p-3 text-center">承諾交期</th>
+<th class="p-3">付款授信條件</th>
+<th class="p-3 text-center">評比狀態</th>
+</tr>
+</thead>
+<tbody class="divide-y-0">
+<!-- Vendor A (Recommended Winner) -->
+<tr class="bg-primary-fixed/20 hover:bg-primary-fixed/30 transition-colors font-medium">
+<td class="p-3">
+<div class="flex items-center gap-2">
+<div class="w-5 h-5 rounded-full bg-primary text-on-primary flex items-center justify-center font-label-caption text-[10px] font-bold">A</div>
+<div class="flex flex-col">
+<span class="font-bold text-on-surface">新協企業有限公司</span>
+<span class="font-label-caption text-label-caption text-primary">中鋼一級合格經銷商</span>
+</div>
+</div>
+</td>
+<td class="p-3 text-right font-data-mono font-bold text-primary">NT$ 7,166</td>
+<td class="p-3 text-right font-data-mono font-bold text-primary text-[15px]">NT$ 860,000</td>
+<td class="p-3 text-center">
+<span class="inline-flex items-center gap-1 font-data-mono font-semibold text-[#15803D]">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+                      7 天 (04/05到)
+                    </span>
+</td>
+<td class="p-3 text-secondary font-label-caption">月結 90 天期票</td>
+<td class="p-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-primary text-on-primary font-label-caption font-bold text-[11px]">
+<span class="material-symbols-outlined text-[12px]">verified</span>
+                      推薦採納
+                    </span>
+</td>
+</tr>
+<!-- Vendor B -->
+<tr class="bg-surface-container-lowest hover:bg-surface-container-low/50 transition-colors">
+<td class="p-3">
+<div class="flex items-center gap-2">
+<div class="w-5 h-5 rounded-full bg-surface-container-high text-secondary flex items-center justify-center font-label-caption text-[10px] font-bold">B</div>
+<div class="flex flex-col">
+<span class="text-on-surface">展成金屬實業</span>
+<span class="font-label-caption text-label-caption text-secondary">華新麗華特約供應商</span>
+</div>
+</div>
+</td>
+<td class="p-3 text-right font-data-mono text-secondary">NT$ 7,300</td>
+<td class="p-3 text-right font-data-mono text-secondary">NT$ 876,000</td>
+<td class="p-3 text-center text-secondary font-data-mono">10 天 (04/08到)</td>
+<td class="p-3 text-secondary font-label-caption">月結 60 天電匯</td>
+<td class="p-3 text-center">
+<span class="text-outline font-label-caption">高 NT$ 16,000</span>
+</td>
+</tr>
+<!-- Vendor C -->
+<tr class="bg-surface-container-lowest hover:bg-surface-container-low/50 transition-colors">
+<td class="p-3">
+<div class="flex items-center gap-2">
+<div class="w-5 h-5 rounded-full bg-surface-container-high text-secondary flex items-center justify-center font-label-caption text-[10px] font-bold">C</div>
+<div class="flex flex-col">
+<span class="text-on-surface">大統特殊鋼材股份</span>
+<span class="font-label-caption text-label-caption text-secondary">進口盤元及板材批發</span>
+</div>
+</div>
+</td>
+<td class="p-3 text-right font-data-mono text-secondary">NT$ 7,450</td>
+<td class="p-3 text-right font-data-mono text-secondary">NT$ 894,000</td>
+<td class="p-3 text-center font-data-mono text-[#15803D]">5 天 (極快)</td>
+<td class="p-3 text-secondary font-label-caption text-error font-medium">現金電匯 (條件苛)</td>
+<td class="p-3 text-center">
+<span class="text-outline font-label-caption">報價最高</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Buyer Negotiation Notes -->
+<div class="bg-surface-container-low p-space-sm rounded-lg flex items-start gap-2 text-body-dense text-secondary">
+<span class="material-symbols-outlined text-[18px] text-primary shrink-0 mt-0.5">info</span>
+<div>
+<span class="font-medium text-on-surface">採購部建議綜述: </span>
+              新協企業（廠商A）單價最優，每公斤約 NT$ 102.3，較上季合約調降 3.2%。交期保證 7 天內送達新竹廠，且配合既有月結 90 天財務條件，綜合評估效益最佳。
+            </div>
+</div>
+</div>
+<!-- Section 3: Approval Multi-Stage Timeline -->
+<div class="flex flex-col gap-space-sm">
+<span class="font-label-header text-label-header text-secondary uppercase tracking-wider flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">schema</span>
+            線上多級簽核流轉歷程
+          </span>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-sm">
+<!-- Stage 1 (Passed) -->
+<div class="bg-surface-container-low rounded-xl p-space-sm flex flex-col gap-1 relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-header text-label-header text-secondary">關卡 1: 生管覆核</span>
+<span class="material-symbols-outlined text-[16px] text-[#15803D]">check_circle</span>
+</div>
+<span class="font-title-md text-title-md text-on-surface font-semibold">張勝男 組長</span>
+<span class="font-data-mono text-[11px] text-secondary">2025/03/29 14:20:18</span>
+<p class="font-label-caption text-label-caption text-secondary mt-1 bg-surface-container-lowest p-1.5 rounded">
+                「工令 2503-A 預計下週四上機台，請購數量已核對排程無誤。」
+              </p>
+</div>
+<!-- Stage 2 (Passed) -->
+<div class="bg-surface-container-low rounded-xl p-space-sm flex flex-col gap-1 relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-header text-label-header text-secondary">關卡 2: 採購比價</span>
+<span class="material-symbols-outlined text-[16px] text-[#15803D]">check_circle</span>
+</div>
+<span class="font-title-md text-title-md text-on-surface font-semibold">陳淑芬 課長</span>
+<span class="font-data-mono text-[11px] text-secondary">2025/03/29 17:45:02</span>
+<p class="font-label-caption text-label-caption text-secondary mt-1 bg-surface-container-lowest p-1.5 rounded">
+                「已向三家合格供應商詢價，建議發包新協企業 (廠商 A)。」
+              </p>
+</div>
+<!-- Stage 3 (Current Waiting) -->
+<div class="bg-primary-fixed/20 rounded-xl p-space-sm flex flex-col gap-1 relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-header text-label-header text-primary font-bold">關卡 3: 營運處決行</span>
+<span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+</div>
+<span class="font-title-md text-title-md text-on-surface font-bold">林建志 協理 (您)</span>
+<span class="font-label-caption text-label-caption text-primary font-medium">現正等待您的核決簽批</span>
+<p class="font-label-caption text-label-caption text-secondary mt-1 bg-surface-container-lowest p-1.5 rounded">
+                超逾 NT$ 500,000 門檻，需處級主管核發正本 PO 訂單。
+              </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Box (Sticky Approval Dock at Bottom) -->
+<div class="bg-surface-container-lowest rounded-xl shadow-md p-space-md flex flex-col sm:flex-row items-center gap-space-md justify-between">
+<!-- Approval Input Note -->
+<div class="w-full sm:flex-1">
+<label class="font-label-header text-label-header text-on-surface block mb-1" for="approval-note">
+            主管核決批示 (選填意見備忘)
+          </label>
+<input class="w-full h-8 px-3 rounded-lg bg-surface-container-low font-body-dense text-body-dense text-on-surface focus:outline-none focus:bg-surface-container-lowest shadow-inner transition-all" id="approval-note" type="text" value="同意採納新協企業報價，請採購課務必釘緊 4/8 前送達新竹廠交驗。"/>
+</div>
+<!-- Action Decision Buttons -->
+<div class="flex items-center gap-space-sm w-full sm:w-auto shrink-0 self-end sm:self-center">
+<button class="h-8 px-3 rounded-lg bg-surface-container-low text-error hover:bg-error-container hover:text-on-error-container transition-all flex items-center gap-1 font-label-header text-label-header" type="button">
+<span class="material-symbols-outlined text-[16px]">undo</span>
+<span>退回補件</span>
+</button>
+<button class="h-8 px-3 rounded-lg bg-surface-container-low text-secondary hover:text-on-surface transition-all flex items-center gap-1 font-label-header text-label-header" type="button">
+<span class="material-symbols-outlined text-[16px]">forward</span>
+<span>轉交會簽</span>
+</button>
+<button class="h-8 px-4 rounded-lg bg-primary-container hover:bg-primary text-on-primary transition-all flex items-center gap-1.5 font-label-header text-label-header shadow" id="approve-btn" type="button">
+<span class="material-symbols-outlined text-[16px]">assignment_turned_in</span>
+<span>核准並自動生成採購單 (PO)</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  (function() {
+    const approveBtn = document.getElementById('approve-btn');
+    if (approveBtn) {
+      approveBtn.addEventListener('click', function() {
+        const originalContent = this.innerHTML;
+        this.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">sync</span> <span>PO 訂單生成中...</span>';
+        this.classList.add('opacity-80', 'pointer-events-none');
+        
+        setTimeout(() => {
+          this.innerHTML = '<span class="material-symbols-outlined text-[16px]">check</span> <span>已核准發出 (PO-20250330-001)</span>';
+          this.classList.remove('bg-primary-container', 'hover:bg-primary', 'opacity-80');
+          this.classList.add('bg-[#15803D]');
+        }, 800);
+      });
+    }
+  })();
+</script></main></div></body></html>

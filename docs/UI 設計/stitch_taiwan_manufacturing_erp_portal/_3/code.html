@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-tertiary":"#ffffff","surface-bright":"#f7f9fb","surface-container-highest":"#e0e3e5","on-tertiary-fixed-variant":"#38485d","secondary":"#565e74","on-primary-fixed-variant":"#003ea8","inverse-surface":"#2d3133","on-surface-variant":"#434655","error":"#ba1a1a","on-tertiary-container":"#e9f0ff","surface-container-high":"#e6e8ea","on-secondary-fixed-variant":"#3f465c","primary-container":"#2563eb","surface":"#f7f9fb","outline":"#737686","surface-container-lowest":"#ffffff","background":"#f7f9fb","primary":"#004ac6","tertiary-container":"#5e6e85","secondary-fixed-dim":"#bec6e0","on-tertiary-fixed":"#0b1c30","on-secondary-fixed":"#131b2e","secondary-fixed":"#dae2fd","outline-variant":"#c3c6d7","on-primary-fixed":"#00174b","primary-fixed":"#dbe1ff","surface-tint":"#0053db","surface-container-low":"#f2f4f6","tertiary":"#46566c","on-primary-container":"#eeefff","inverse-on-surface":"#eff1f3","on-surface":"#191c1e","error-container":"#ffdad6","tertiary-fixed":"#d3e4fe","on-secondary-container":"#5c647a","secondary-container":"#dae2fd","on-error":"#ffffff","on-background":"#191c1e","primary-fixed-dim":"#b4c5ff","tertiary-fixed-dim":"#b7c8e1","on-secondary":"#ffffff","surface-dim":"#d8dadc","surface-container":"#eceef0","inverse-primary":"#b4c5ff","on-error-container":"#93000a","surface-variant":"#e0e3e5","on-primary":"#ffffff"},borderRadius:{DEFAULT:"0.125rem",lg:"0.25rem",xl:"0.5rem",full:"0.75rem"},spacing:{gutter:"1rem","space-xl":"1.5rem","space-lg":"1rem","space-xs":"0.25rem","space-sm":"0.5rem",margin:"1rem","space-md":"0.75rem"},fontFamily:{"body-dense":["Noto Sans"],"headline-xl":["Noto Sans"],"label-caption":["Noto Sans"],"data-mono":["JetBrains Mono"],"headline-lg":["Noto Sans"],"title-md":["Noto Sans"],"body-default":["Noto Sans"],"label-header":["Noto Sans"]},fontSize:{"body-dense":["13px",{lineHeight:"18px",fontWeight:"400"}],"headline-xl":["24px",{lineHeight:"32px",letterSpacing:"-0.01em",fontWeight:"600"}],"label-caption":["11px",{lineHeight:"14px",fontWeight:"400"}],"data-mono":["13px",{lineHeight:"18px",fontWeight:"500"}],"headline-lg":["18px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],"title-md":["15px",{lineHeight:"20px",fontWeight:"600"}],"body-default":["14px",{lineHeight:"20px",fontWeight:"400"}],"label-header":["12px",{lineHeight:"16px",letterSpacing:"0.02em",fontWeight:"600"}]}}}};</script></head><body class="bg-surface font-body-default text-body-default text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-[240px] bg-surface-container-lowest border-r border-[#E2E8F0] z-50 flex flex-col justify-between select-none"><div class="flex flex-col"><div class="h-[56px] px-space-md border-b border-[#E2E8F0] flex items-center gap-space-sm"><img alt="台製精工 ERP Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1UDMT-K79FVuLNrOZa_mMQx5ExeOZM7T-kj3Xrz5-TvwSkZ4hYXzTiyZMfhfl3hCsBiVwF7CskUrQkkAHYMmweltx-j7ozkBxDLwW_rit1kBhkcnh5Vf2vRyrWi9XrpbV21KuMSyPCO_D1l6GLPSGcVY2nnt1C3A8LAb29HoVuGtEfQUKAN_zSU-wGhc9g4c9zXu4B8oumwVnhCF_FJLuQB9vo4jjcufx_V5cyOP5QvnyxeRwCKKH5Uzi7p"/><div class="flex flex-col min-w-0"><span class="font-title-md text-title-md text-on-surface truncate leading-none">台製精工 ERP</span><span class="font-label-caption text-label-caption text-secondary truncate mt-0.5">製造營運管理系統</span></div></div><div class="px-space-md pt-space-md pb-space-xs"><span class="font-label-header text-label-header text-secondary uppercase tracking-wider">營運功能模組</span></div><nav class="px-space-sm space-y-0.5 flex flex-col" data-active-classes="bg-surface-container-low text-primary font-semibold"><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="dashboard-overview" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">dashboard</span><span class="font-body-dense text-body-dense">首頁</span></div></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="my-tasks-approvals" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">check_box</span><span class="font-body-dense text-body-dense">我的待辦</span></div><span class="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-error text-on-error font-label-caption text-[10px] font-bold">5</span></a><a aria-current="page" class="flex items-center justify-between px-space-md py-space-sm rounded-lg transition-colors bg-surface-container-low text-primary font-semibold" data-path="quotations-sales" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">description</span><span class="font-body-dense text-body-dense">報價單</span></div></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="purchase-requisitions" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">shopping_cart</span><span class="font-body-dense text-body-dense">採購申請</span></div></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="product-configurator-cad" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">layers</span><span class="font-body-dense text-body-dense">設計器</span></div></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="reports-analytics" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">bar_chart</span><span class="font-body-dense text-body-dense">報表</span></div></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="system-settings" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-body-dense text-body-dense">設定</span></div></a></nav></div><div class="p-space-md border-t border-[#E2E8F0] bg-surface-container-lowest flex flex-col gap-space-xs"><div class="flex items-center justify-between"><span class="font-data-mono text-data-mono text-secondary text-[11px]">v2.4.1 (正式營運版)</span><span class="inline-block w-2 h-2 rounded-full bg-[#15803D]"></span></div><a class="flex items-center gap-1.5 text-secondary hover:text-primary transition-colors" data-path="help-support" href="#"><span class="material-symbols-outlined text-[16px]">help</span><span class="font-label-caption text-label-caption">IT服務台 / 快速支援</span></a></div></aside><div class="pl-[240px]"><header class="fixed top-0 left-[240px] right-0 h-[56px] bg-surface-container-lowest border-b border-[#E2E8F0] z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-md"><button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-low transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">menu_open</span></button><nav class="hidden sm:flex items-center gap-1 font-label-header text-label-header text-secondary"><span class="hover:text-on-surface cursor-pointer">製造核心</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="text-on-surface font-semibold">生產作業總覽</span></nav></div><div class="flex-1 max-w-md mx-space-lg"><div class="relative flex items-center"><span class="material-symbols-outlined absolute left-2.5 text-[18px] text-outline">search</span><input class="w-full h-8 pl-8 pr-16 bg-surface-container-low border border-[#CBD5E1] rounded-lg font-body-dense text-body-dense text-on-surface placeholder:text-outline focus:outline-none focus:border-primary-container focus:bg-surface-container-lowest transition-all" placeholder="搜尋單號、客戶、物料 (Ctrl+K)" type="text"/><kbd class="absolute right-2 px-1.5 py-0.5 font-data-mono text-[10px] text-secondary bg-surface-container rounded border border-[#CBD5E1]">Ctrl+K</kbd></div></div><div class="flex items-center gap-space-md"><div class="hidden md:flex items-center gap-1 text-secondary font-data-mono text-data-mono text-[12px]"><span class="material-symbols-outlined text-[16px]">calendar_today</span><span>2025年3月30日 (週日)</span></div><div class="h-4 w-[1px] bg-[#E2E8F0] hidden md:block"></div><button class="relative p-1.5 text-secondary hover:text-on-surface rounded hover:bg-surface-container-low transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-error"></span></span></button><div class="flex items-center gap-space-sm pl-space-xs"><img alt="Profile" class="w-8 h-8 rounded-full object-cover border border-[#CBD5E1]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAL_5RFUBZ7fdUNv3u0PSpj5V_haplMsIRcYA9PqJeKDAeKIqlhVSbtA-dHMlMJpGsNb9XlXrl-yKZeUVYYzELoO4zzp7n3LA4A81FYpEKlnYsBSPQ1ytDFSHAtgtqvGqgYxxsDTOx4MMTENh7Z-fvhEVmKwX1uqJhqvnUDw92DmY09HCKu6ce-Ko7k39i_4hioYnP68lfyw_oq6svn1EkRfwmC-OfRAgPMUgxyyZ14hlvSoiOgvixLvQ"/><div class="hidden lg:flex flex-col text-left"><span class="font-label-header text-label-header text-on-surface leading-tight">林建志 協理</span><span class="font-label-caption text-label-caption text-secondary leading-tight">營運製造部</span></div><span class="material-symbols-outlined text-[16px] text-secondary hidden lg:inline">arrow_drop_down</span></div></div></header><main class="w-full pt-[56px] min-h-screen bg-[#F8FAFC] p-space-xl"><div class="flex flex-col w-full gap-space-lg text-on-surface">
+<!-- Top Command & Action Bar -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md bg-surface-container-lowest p-space-md rounded-lg shadow-sm">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs font-label-caption text-label-caption text-secondary">
+<span>業務管理</span>
+<span class="material-symbols-outlined text-[12px]">chevron_right</span>
+<span>報價單管理</span>
+<span class="material-symbols-outlined text-[12px]">chevron_right</span>
+<span class="font-data-mono text-primary font-semibold">新增報價單 (QT-20250330-009)</span>
+</div>
+<div class="flex items-center gap-space-sm mt-1">
+<h1 class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">新增客製化產品報價單</h1>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-primary-fixed text-on-primary-fixed font-data-mono text-[11px] font-semibold">草稿階段</span>
+</div>
+<p class="font-body-dense text-body-dense text-secondary mt-0.5">填寫客戶商務條件、交期需求與加工物料明細，系統自動計算材料費、工序成本與預估毛利率。</p>
+</div>
+<div class="flex items-center gap-space-sm self-end lg:self-center">
+<button class="h-8 px-3 rounded bg-surface-container-lowest hover:bg-surface-container-low text-secondary font-label-header text-label-header transition-colors flex items-center gap-1.5 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">save</span>
+<span>儲存為草稿</span>
+</button>
+<button class="h-8 px-3 rounded bg-surface-container-lowest hover:bg-surface-container-low text-secondary font-label-header text-label-header transition-colors flex items-center gap-1.5 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">print</span>
+<span>列印預覽</span>
+</button>
+<button class="h-8 px-3.5 rounded bg-primary-container hover:bg-primary text-on-primary font-label-header text-label-header font-medium transition-all shadow-sm flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[16px]">send</span>
+<span>送出主管審核</span>
+</button>
+</div>
+</div>
+<!-- Form Section 1: Basic Information Grid -->
+<div class="bg-surface-container-lowest rounded-lg shadow-sm overflow-hidden">
+<div class="bg-surface-container-low px-space-md py-space-xs flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">receipt_long</span>
+<span class="font-label-header text-label-header font-semibold text-on-surface">基本商務條件與客戶資料</span>
+</div>
+<span class="font-label-caption text-label-caption text-secondary">所有帶有 * 號為製造工令建立必填欄位</span>
+</div>
+<div class="p-space-md grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<!-- Row 1 -->
+<div class="flex flex-col gap-1">
+<label class="font-label-header text-label-header text-secondary font-medium">報價單號</label>
+<div class="h-8 px-2.5 bg-surface-container-low rounded flex items-center justify-between font-data-mono text-data-mono text-on-surface font-semibold select-all">
+<span>QT-20250330-009</span>
+<span class="material-symbols-outlined text-[14px] text-secondary">lock</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-header text-label-header text-secondary font-medium">報價日期 <span class="text-error">*</span></label>
+<div class="relative flex items-center">
+<input class="w-full h-8 px-2.5 bg-surface-container-lowest rounded font-data-mono text-body-dense text-on-surface focus:outline-none focus:bg-surface-container-lowest shadow-sm" type="date" value="2025-03-30"/>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-header text-label-header text-secondary font-medium">有效截止日 (預設 30 天)</label>
+<div class="relative flex items-center">
+<input class="w-full h-8 px-2.5 bg-surface-container-lowest rounded font-data-mono text-body-dense text-on-surface focus:outline-none focus:bg-surface-container-lowest shadow-sm" type="date" value="2025-04-29"/>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-header text-label-header text-secondary font-medium">負責業務員</label>
+<div class="h-8 px-2.5 bg-surface-container-lowest rounded flex items-center gap-2 shadow-sm">
+<span class="w-5 h-5 rounded-full bg-primary-fixed text-on-primary-fixed flex items-center justify-center font-label-caption text-[10px] font-bold">雅</span>
+<span class="font-body-dense text-body-dense text-on-surface">陳雅婷</span>
+<span class="font-label-caption text-label-caption text-secondary ml-auto">(業務一部)</span>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="flex flex-col gap-1 lg:col-span-2">
+<label class="font-label-header text-label-header text-secondary font-medium">客戶名稱 / 統一編號 <span class="text-error">*</span></label>
+<div class="relative flex items-center">
+<input class="w-full h-8 pl-2.5 pr-8 bg-surface-container-lowest rounded font-body-dense text-body-dense text-on-surface font-medium focus:outline-none shadow-sm" type="text" value="台灣松下精密機械股份有限公司 (統編: 11093847)"/>
+<span class="material-symbols-outlined absolute right-2 text-[18px] text-secondary pointer-events-none">corporate_fare</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-header text-label-header text-secondary font-medium">聯絡窗口 / 電話</label>
+<input class="w-full h-8 px-2.5 bg-surface-container-lowest rounded font-body-dense text-body-dense text-on-surface focus:outline-none shadow-sm" type="text" value="王景榮 經理 (02-2798-8832 #302)"/>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-header text-label-header text-secondary font-medium">計價幣別與基準匯率</label>
+<div class="grid grid-cols-2 gap-1.5">
+<select class="h-8 px-2 bg-surface-container-lowest rounded font-body-dense text-body-dense text-on-surface focus:outline-none shadow-sm">
+<option selected="">新台幣 (TWD)</option>
+<option>美元 (USD)</option>
+<option>日圓 (JPY)</option>
+</select>
+<div class="h-8 px-2 bg-surface-container-low rounded flex items-center justify-between font-data-mono text-data-mono text-secondary">
+<span>1.000</span>
+<span class="font-label-caption text-[10px]">FIXED</span>
+</div>
+</div>
+</div>
+<!-- Row 3 -->
+<div class="flex flex-col gap-1">
+<label class="font-label-header text-label-header text-secondary font-medium">交易與結算付款條件 <span class="text-error">*</span></label>
+<select class="h-8 px-2 bg-surface-container-lowest rounded font-body-dense text-body-dense text-on-surface focus:outline-none shadow-sm">
+<option selected="">月結 60 天 (TT 匯款)</option>
+<option>月結 30 天 (支票託收)</option>
+<option>訂金 30% / 尾款驗收交貨</option>
+<option>即期信用狀 (L/C at sight)</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-header text-label-header text-secondary font-medium">交付方式與交貨廠址</label>
+<input class="w-full h-8 px-2.5 bg-surface-container-lowest rounded font-body-dense text-body-dense text-on-surface focus:outline-none shadow-sm" type="text" value="廠車專送 (桃園蘆竹第二製造廠)"/>
+</div>
+<div class="flex flex-col gap-1 lg:col-span-2">
+<label class="font-label-header text-label-header text-secondary font-medium">預計製造交期承諾</label>
+<div class="flex items-center gap-space-sm">
+<div class="relative flex-1">
+<input class="w-full h-8 px-2.5 bg-surface-container-lowest rounded font-body-dense text-body-dense text-on-surface focus:outline-none shadow-sm" type="text" value="接單圖面正式確認後 21 個工作天 (急件工單可協調)"/>
+</div>
+<span class="inline-flex items-center gap-1 px-2 h-8 rounded bg-surface-container text-secondary font-label-caption text-label-caption whitespace-nowrap">
+<span class="material-symbols-outlined text-[14px]">factory</span>
+<span>廠能估算: 餘裕充足</span>
+</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Form Section 2: BOM Line Items and Precision Machining Spreadsheet -->
+<div class="bg-surface-container-lowest rounded-lg shadow-sm flex flex-col">
+<!-- Toolbar / Action Row -->
+<div class="p-space-md bg-surface-container-lowest flex flex-wrap items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm flex-wrap">
+<button class="h-8 px-3 rounded bg-primary text-on-primary font-label-header text-label-header font-medium hover:bg-primary-container transition-colors flex items-center gap-1 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">add</span>
+<span>新增品項明細</span>
+</button>
+<button class="h-8 px-3 rounded bg-surface-container-lowest hover:bg-surface-container-low text-secondary font-label-header text-label-header transition-colors flex items-center gap-1 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">inventory_2</span>
+<span>批次從 BOM 載入</span>
+</button>
+<button class="h-8 px-3 rounded bg-surface-container-lowest hover:bg-surface-container-low text-secondary font-label-header text-label-header transition-colors flex items-center gap-1 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">history</span>
+<span>從歷史報價複製</span>
+</button>
+<button class="h-8 px-2.5 rounded bg-surface-container-lowest hover:bg-surface-container-low text-secondary font-label-header text-label-header transition-colors flex items-center gap-1 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">tune</span>
+<span>自訂欄位 (13)</span>
+</button>
+</div>
+<div class="flex items-center gap-space-sm">
+<div class="flex items-center bg-surface-container-low px-2 py-1 rounded font-data-mono text-label-caption text-secondary">
+<span>共 <strong class="text-on-surface font-bold">3</strong> 項製造品項</span>
+</div>
+<button class="p-1 rounded text-secondary hover:text-primary hover:bg-surface-container-low transition-colors" title="重算全單毛利" type="button">
+<span class="material-symbols-outlined text-[18px]">sync</span>
+</button>
+</div>
+</div>
+<!-- Data Grid Container with Horizontal Scroll for Dense Manufacturing View -->
+<div class="w-full overflow-x-auto">
+<table class="w-full text-left font-body-dense text-body-dense border-collapse min-w-[1340px]">
+<thead>
+<tr class="h-9 bg-surface-container-low text-secondary font-label-header text-label-header select-none">
+<th class="w-12 px-2 text-center">項次</th>
+<th class="w-[280px] px-3">料號 / 規格品名</th>
+<th class="w-[140px] px-2">圖號 / 版次</th>
+<th class="w-[180px] px-2">材質 / 熱處理條件</th>
+<th class="w-24 px-2 text-right">數量</th>
+<th class="w-14 px-2 text-center">單位</th>
+<th class="w-28 px-2 text-right">單位材料費</th>
+<th class="w-28 px-2 text-right">單位加工費</th>
+<th class="w-28 px-2 text-right">目標報價</th>
+<th class="w-20 px-2 text-right">折扣率</th>
+<th class="w-28 px-2 text-right bg-primary-fixed/20 text-on-primary-fixed">報價單價</th>
+<th class="w-32 px-3 text-right">小計金額 (NT$)</th>
+<th class="w-28 px-2 text-right">預估毛利</th>
+<th class="w-20 px-2 text-center">操作</th>
+</tr>
+</thead>
+<tbody class="divide-y-0">
+<!-- Item #1 -->
+<tr class="h-10 hover:bg-surface-container-low/60 transition-colors group">
+<td class="px-2 text-center font-data-mono text-secondary text-[12px]">01</td>
+<td class="px-3">
+<div class="flex flex-col min-w-0">
+<span class="font-semibold text-primary truncate">SP-4402 高硬度冷作模具鋼定位銷</span>
+<span class="font-data-mono text-label-caption text-secondary truncate">Ø12mm × L85mm / 精密研磨級</span>
+</div>
+</td>
+<td class="px-2">
+<div class="flex flex-col">
+<span class="font-data-mono text-on-surface text-[12px]">DWG-2025-A04</span>
+<span class="font-data-mono text-label-caption text-secondary">Rev. 02</span>
+</div>
+</td>
+<td class="px-2">
+<span class="inline-block px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-data-mono text-[11px]">SKD11 / HRC 58-60</span>
+</td>
+<td class="px-2 text-right font-data-mono font-medium">1,500</td>
+<td class="px-2 text-center font-label-caption text-secondary">PCS</td>
+<td class="px-2 text-right font-data-mono text-secondary">42.00</td>
+<td class="px-2 text-right font-data-mono text-secondary">65.00</td>
+<td class="px-2 text-right font-data-mono text-secondary">158.00</td>
+<td class="px-2 text-right font-data-mono text-secondary">95.0%</td>
+<td class="px-2 text-right font-data-mono font-bold text-primary bg-primary-fixed/20">150.10</td>
+<td class="px-3 text-right font-data-mono font-bold text-on-surface">225,150</td>
+<td class="px-2 text-right">
+<span class="inline-flex items-center gap-0.5 font-data-mono text-[12px] font-bold text-[#15803D] bg-[#F0FDF4] px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined text-[13px]">trending_up</span>
+                34.2%
+              </span>
+</td>
+<td class="px-2 text-center">
+<div class="flex items-center justify-center gap-1">
+<button class="p-1 text-secondary hover:text-primary rounded" title="編輯工序備註" type="button">
+<span class="material-symbols-outlined text-[16px]">edit_note</span>
+</button>
+<button class="p-1 text-secondary hover:text-error rounded" title="移除品項" type="button">
+<span class="material-symbols-outlined text-[16px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Item #2 -->
+<tr class="h-10 bg-surface-container-low/30 hover:bg-surface-container-low/70 transition-colors group">
+<td class="px-2 text-center font-data-mono text-secondary text-[12px]">02</td>
+<td class="px-3">
+<div class="flex flex-col min-w-0">
+<span class="font-semibold text-primary truncate">PL-8819 航空級輕量化伺服夾爪滑塊</span>
+<span class="font-data-mono text-label-caption text-secondary truncate">75 × 45 × 22mm / 五軸銑削倒角</span>
+</div>
+</td>
+<td class="px-2">
+<div class="flex flex-col">
+<span class="font-data-mono text-on-surface text-[12px]">DWG-2025-C11</span>
+<span class="font-data-mono text-label-caption text-secondary">Rev. 01</span>
+</div>
+</td>
+<td class="px-2">
+<span class="inline-block px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-data-mono text-[11px]">AL7075-T6 / 硬陽處理</span>
+</td>
+<td class="px-2 text-right font-data-mono font-medium">800</td>
+<td class="px-2 text-center font-label-caption text-secondary">PCS</td>
+<td class="px-2 text-right font-data-mono text-secondary">95.00</td>
+<td class="px-2 text-right font-data-mono text-secondary">142.00</td>
+<td class="px-2 text-right font-data-mono text-secondary">380.00</td>
+<td class="px-2 text-right font-data-mono text-secondary">100%</td>
+<td class="px-2 text-right font-data-mono font-bold text-primary bg-primary-fixed/20">380.00</td>
+<td class="px-3 text-right font-data-mono font-bold text-on-surface">304,000</td>
+<td class="px-2 text-right">
+<span class="inline-flex items-center gap-0.5 font-data-mono text-[12px] font-bold text-[#15803D] bg-[#F0FDF4] px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined text-[13px]">trending_up</span>
+                37.6%
+              </span>
+</td>
+<td class="px-2 text-center">
+<div class="flex items-center justify-center gap-1">
+<button class="p-1 text-secondary hover:text-primary rounded" title="編輯工序備註" type="button">
+<span class="material-symbols-outlined text-[16px]">edit_note</span>
+</button>
+<button class="p-1 text-secondary hover:text-error rounded" title="移除品項" type="button">
+<span class="material-symbols-outlined text-[16px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Item #3 -->
+<tr class="h-10 hover:bg-surface-container-low/60 transition-colors group">
+<td class="px-2 text-center font-data-mono text-secondary text-[12px]">03</td>
+<td class="px-3">
+<div class="flex flex-col min-w-0">
+<span class="font-semibold text-primary truncate">BS-1044 耐磨合金同心軸承承載套套筒</span>
+<span class="font-data-mono text-label-caption text-secondary truncate">OD Ø38mm / ID Ø25mm × L50mm</span>
+</div>
+</td>
+<td class="px-2">
+<div class="flex flex-col">
+<span class="font-data-mono text-on-surface text-[12px]">DWG-2024-F89</span>
+<span class="font-data-mono text-label-caption text-secondary">Rev. 04</span>
+</div>
+</td>
+<td class="px-2">
+<span class="inline-block px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-data-mono text-[11px]">SUS316L / 鈍化防鏽</span>
+</td>
+<td class="px-2 text-right font-data-mono font-medium">1,200</td>
+<td class="px-2 text-center font-label-caption text-secondary">PCS</td>
+<td class="px-2 text-right font-data-mono text-secondary">38.00</td>
+<td class="px-2 text-right font-data-mono text-secondary">47.50</td>
+<td class="px-2 text-right font-data-mono text-secondary">135.00</td>
+<td class="px-2 text-right font-data-mono text-secondary">97.2%</td>
+<td class="px-2 text-right font-data-mono font-bold text-primary bg-primary-fixed/20">130.21</td>
+<td class="px-3 text-right font-data-mono font-bold text-on-surface">156,250</td>
+<td class="px-2 text-right">
+<span class="inline-flex items-center gap-0.5 font-data-mono text-[12px] font-bold text-[#15803D] bg-[#F0FDF4] px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined text-[13px]">trending_up</span>
+                29.8%
+              </span>
+</td>
+<td class="px-2 text-center">
+<div class="flex items-center justify-center gap-1">
+<button class="p-1 text-secondary hover:text-primary rounded" title="編輯工序備註" type="button">
+<span class="material-symbols-outlined text-[16px]">edit_note</span>
+</button>
+<button class="p-1 text-secondary hover:text-error rounded" title="移除品項" type="button">
+<span class="material-symbols-outlined text-[16px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Inline Stats Strip -->
+<div class="bg-surface-container-low px-space-md py-2 flex flex-wrap items-center justify-between gap-space-sm text-secondary font-label-header text-label-header">
+<div class="flex items-center gap-space-md">
+<span class="flex items-center gap-1 text-secondary">
+<span class="material-symbols-outlined text-[16px]">verified</span>
+          已匹配工藝製程圖面 (3/3)
+        </span>
+<span class="flex items-center gap-1 text-secondary">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+          總標準估算工時: 284.5 小時
+        </span>
+</div>
+<div class="flex items-center gap-space-md font-data-mono text-[12px]">
+<span>數量總合: <strong class="text-on-surface">3,500 PCS</strong></span>
+<span>平均單件售價: <strong class="text-primary">NT$ 195.8</strong></span>
+</div>
+</div>
+</div>
+<!-- Form Section 3: Commercial Terms, Internal Approval Notes & Profit Dashboard -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
+<!-- Left Column: Terms & Disclaimers (7 Cols) -->
+<div class="lg:col-span-7 flex flex-col gap-space-md">
+<!-- Commercial Terms -->
+<div class="bg-surface-container-lowest p-space-md rounded-lg shadow-sm flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<label class="font-label-header text-label-header text-on-surface font-semibold flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[18px]">gavel</span>
+<span>商務條款與特記說明 (列印於報價單尾頁)</span>
+</label>
+<span class="font-label-caption text-label-caption text-secondary">標準精密加工條款已帶入</span>
+</div>
+<textarea class="w-full p-2.5 bg-surface-container-lowest rounded font-body-dense text-body-dense text-on-surface focus:outline-none shadow-sm leading-relaxed" rows="4">1. 樣品確認簽署後 3 週正式交貨；急件插單交期另依產能排程協議。
+2. 尺寸允收標準依據台製精工 ISO 9001 與 JIS B 0405 精級標準檢驗。
+3. 專用治具與專用刀具模具費用另計，分批次攤提至首批 3,000 件完工結算。
+4. 本報價單受國際金屬原料價格波動機制保護，鋼材價格若漲幅達 ±8% 得重新議定單價。</textarea>
+</div>
+<!-- Internal Approval Justification (Managerial visibility only) -->
+<div class="bg-surface-container-lowest p-space-md rounded-lg shadow-sm flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<label class="font-label-header text-label-header text-on-surface font-semibold flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[18px]">lock_person</span>
+<span>內部簽核與業務議價備註 (僅限廠務主管與核決層可見)</span>
+</label>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-surface-container text-secondary font-label-caption text-[11px]">內部機密</span>
+</div>
+<textarea class="w-full p-2.5 bg-surface-container-lowest rounded font-body-dense text-body-dense text-on-surface focus:outline-none shadow-sm leading-relaxed" placeholder="請填寫業務價格折讓原因、客戶年度合約框架或特定產能配合說明..." rows="3">客戶松下精密承諾下半年將引進第二期自動化組裝線，若本次定位銷與伺服滑塊得標，後續預計有每季 5,000 件以上穩定訂單。本次已給予品項 #1 約 5% 專案折讓，綜合毛利率仍維持在 34% 健康水位。</textarea>
+</div>
+<!-- Attached Engineering Documents Strip -->
+<div class="bg-surface-container-lowest p-space-md rounded-lg shadow-sm flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[20px]">attach_file</span>
+<div class="flex flex-col">
+<span class="font-label-header text-label-header font-medium text-on-surface">工藝圖面及公差分析附件 (3 個檔案)</span>
+<span class="font-label-caption text-label-caption text-secondary">DWG_Pack_A04_C11_F89.zip (14.2 MB) / 已通過 CAM 刀路初審</span>
+</div>
+</div>
+<button class="h-7 px-2.5 rounded bg-surface-container-low hover:bg-surface-container text-on-surface font-label-caption text-label-caption transition-colors" type="button">
+          檢視附加檔案
+        </button>
+</div>
+</div>
+<!-- Right Column: Financial Settlement & Margin Dashboard (5 Cols) -->
+<div class="lg:col-span-5 flex flex-col gap-space-md">
+<div class="bg-surface-container-lowest p-space-lg rounded-lg shadow-sm flex flex-col justify-between h-full">
+<div>
+<div class="flex items-center justify-between pb-space-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">calculate</span>
+<span class="font-headline-lg text-headline-lg font-bold text-on-surface">報價金額與利潤核算</span>
+</div>
+<span class="font-data-mono text-label-caption text-secondary">幣別: TWD (未稅)</span>
+</div>
+<!-- Cost Breakdown List -->
+<div class="space-y-2 pt-space-xs">
+<div class="flex justify-between items-center text-secondary font-body-dense text-body-dense">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">raw_on</span>
+                材料成本合計 (原材料 + 粗胚)
+              </span>
+<span class="font-data-mono text-on-surface font-medium">NT$ 184,500</span>
+</div>
+<div class="flex justify-between items-center text-secondary font-body-dense text-body-dense">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">precision_manufacturing</span>
+                工序製造費合計 (車銑/熱處理/研磨)
+              </span>
+<span class="font-data-mono text-on-surface font-medium">NT$ 268,200</span>
+</div>
+<div class="flex justify-between items-center font-label-header text-label-header text-secondary bg-surface-container-low p-2 rounded">
+<span>預估總製造成本 (COGS)</span>
+<span class="font-data-mono text-on-surface font-bold">NT$ 452,700</span>
+</div>
+</div>
+<!-- Divider Decorative Graphic -->
+<div class="my-space-md flex items-center gap-2">
+<div class="h-0.5 bg-surface-container-high flex-1"></div>
+<span class="font-label-caption text-label-caption text-secondary uppercase tracking-widest text-[10px]">商務合計結算</span>
+<div class="h-0.5 bg-surface-container-high flex-1"></div>
+</div>
+<!-- Price Summaries -->
+<div class="space-y-2">
+<div class="flex justify-between items-baseline">
+<span class="font-body-dense text-body-dense text-secondary">報價銷售未稅總計</span>
+<span class="font-data-mono text-[16px] font-bold text-on-surface">NT$ 685,400</span>
+</div>
+<div class="flex justify-between items-baseline">
+<span class="font-body-dense text-body-dense text-secondary">法定營業稅 (5%)</span>
+<span class="font-data-mono text-body-dense text-secondary">NT$ 34,270</span>
+</div>
+<div class="flex justify-between items-baseline pt-2">
+<span class="font-headline-lg text-headline-lg font-bold text-on-surface">報價含稅總額</span>
+<span class="font-data-mono text-[22px] font-bold text-primary tracking-tight">NT$ 719,670</span>
+</div>
+</div>
+</div>
+<!-- Profit KPI Card Box -->
+<div class="mt-space-md p-space-md rounded-lg bg-surface-container-low flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[#15803D] text-[18px]">analytics</span>
+<span class="font-label-header text-label-header font-bold text-on-surface">全單綜合預估毛利率</span>
+</div>
+<span class="font-data-mono text-[18px] font-bold text-[#15803D]">34.0%</span>
+</div>
+<!-- Margin Visual Progress Bar -->
+<div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden flex">
+<!-- COGS: ~66% -->
+<div class="bg-secondary/40 h-full" style="width: 66%;" title="成本比率 66%"></div>
+<!-- Margin: 34% -->
+<div class="bg-[#15803D] h-full" style="width: 34%;" title="毛利比率 34%"></div>
+</div>
+<div class="flex items-center justify-between text-secondary font-label-caption text-[11px] pt-0.5">
+<span class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#15803D]"></span>
+              部門目標門檻: <strong>28.0%</strong>
+</span>
+<span class="text-[#15803D] font-medium flex items-center">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+              超額達標 +6.0%，適用標準審核流程
+            </span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Fast Sticky Operational Toolbar for Multi-Tasking -->
+<div class="bg-surface-container-lowest p-space-md rounded-lg shadow-sm flex flex-col sm:flex-row items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-md text-secondary font-label-caption text-label-caption">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-[#15803D]">cloud_done</span>
+        所有修改已自動暫存 (15:42:19)
+      </span>
+<span class="hidden md:inline">|</span>
+<span class="hidden md:inline font-data-mono">BOM 核心版本: v2025.03.RC2</span>
+</div>
+<div class="flex items-center gap-space-sm w-full sm:w-auto justify-end">
+<button class="h-8 px-3 rounded bg-surface-container-lowest hover:bg-surface-container-low text-secondary font-label-header text-label-header transition-colors shadow-sm" type="button">
+        放棄並返回列表
+      </button>
+<button class="h-8 px-4 rounded bg-primary-container hover:bg-primary text-on-primary font-label-header text-label-header font-medium transition-all shadow-sm flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[16px]">task_alt</span>
+<span>確認並建立正式報價單</span>
+</button>
+</div>
+</div>
+</div></main></div></body></html>

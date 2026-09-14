@@ -1,0 +1,199 @@
+{
+  "form_key": "quotation_form",
+  "version": 1,
+  "business_object": "quotation",
+  "name": "報價單",
+  "layout": { "columns": 12, "label_width": "110px", "label_position": "left" },
+  "sections": [
+    { "key": "customer", "title": "客戶資訊" },
+    { "key": "terms", "title": "報價條件" },
+    { "key": "lines", "title": "報價明細" },
+    { "key": "summary", "title": "金額" },
+    { "key": "internal", "title": "內部資訊", "visible_when": "user.kind == 'internal'" }
+  ],
+  "fields": [
+    {
+      "key": "customer_party_id",
+      "section": "customer",
+      "ui": {
+        "component": "reference",
+        "label": "客戶",
+        "width": 6,
+        "reference": {
+          "source": "partners",
+          "value_field": "id",
+          "label_field": "name",
+          "fill": { "customer_contact_ids": "contact_ids" }
+        }
+      },
+      "data": { "path": "quotation.customer_party_id", "type": "uuid" },
+      "workflow": {
+        "required_when": "true",
+        "readonly_when": "node.id != 'start' && node.id != 'revise'"
+      }
+    },
+    {
+      "key": "customer_contact_ids",
+      "section": "customer",
+      "ui": {
+        "component": "multi_select",
+        "label": "簽核聯絡人",
+        "width": 6,
+        "help": "客戶端需簽核的人，全部同意才算通過"
+      },
+      "data": { "path": "quotation.customer_contact_ids", "type": "array", "item": "external_contact" },
+      "workflow": {
+        "required_when": "true",
+        "readonly_when": "node.id != 'start' && node.id != 'revise'"
+      }
+    },
+    {
+      "key": "number",
+      "section": "terms",
+      "ui": { "component": "display", "label": "報價單號", "width": 4 },
+      "data": { "path": "quotation.number", "type": "string" }
+    },
+    {
+      "key": "valid_until",
+      "section": "terms",
+      "ui": { "component": "date", "label": "有效期限", "width": 4 },
+      "data": { "path": "quotation.valid_until", "type": "date" },
+      "workflow": {
+        "required_when": "true",
+        "readonly_when": "node.id != 'start' && node.id != 'revise'"
+      }
+    },
+    {
+      "key": "currency",
+      "section": "terms",
+      "ui": {
+        "component": "select",
+        "label": "幣別",
+        "width": 4,
+        "options": [
+          { "value": "TWD", "label": "新台幣" },
+          { "value": "USD", "label": "美金" },
+          { "value": "CNY", "label": "人民幣" }
+        ]
+      },
+      "data": { "path": "quotation.currency", "type": "string", "default": "TWD" },
+      "workflow": { "readonly_when": "node.id != 'start' && node.id != 'revise'" }
+    },
+    {
+      "key": "payment_terms",
+      "section": "terms",
+      "ui": { "component": "input", "label": "付款條件", "width": 12, "placeholder": "例如：月結 30 天" },
+      "data": { "path": "quotation.payment_terms", "type": "string", "max_length": 200 },
+      "workflow": { "readonly_when": "node.id != 'start' && node.id != 'revise'" }
+    },
+    {
+      "key": "lines",
+      "section": "lines",
+      "ui": {
+        "component": "table",
+        "label": "明細",
+        "width": 12,
+        "columns": [
+          {
+            "key": "product_ref",
+            "label": "品號",
+            "component": "reference",
+            "width": "160px",
+            "reference": {
+              "source": "products",
+              "value_field": "id",
+              "label_field": "name",
+              "fill": { "name": "name", "unit": "uom_name", "unit_price": "list_price", "cost": "standard_price" }
+            }
+          },
+          { "key": "name", "label": "品名", "component": "input", "width": "auto" },
+          { "key": "qty", "label": "數量", "component": "number", "width": "90px", "align": "right", "precision": 2 },
+          { "key": "unit", "label": "單位", "component": "input", "width": "70px" },
+          { "key": "unit_price", "label": "單價", "component": "number", "width": "110px", "align": "right", "precision": 2 },
+          { "key": "line_discount", "label": "折扣", "component": "number", "width": "90px", "align": "right", "precision": 4 },
+          {
+            "key": "amount",
+            "label": "金額",
+            "component": "number",
+            "width": "120px",
+            "align": "right",
+            "precision": 2,
+            "readonly": true,
+            "formula": "row.qty * row.unit_price * (1 - row.line_discount)"
+          },
+          {
+            "key": "cost",
+            "label": "成本",
+            "component": "number",
+            "width": "110px",
+            "align": "right",
+            "precision": 2,
+            "readonly": true
+          }
+        ]
+      },
+      "data": { "path": "quotation.lines", "type": "array", "item": "quotation_line" },
+      "workflow": {
+        "required_when": "true",
+        "readonly_when": "node.id != 'start' && node.id != 'revise'"
+      }
+    },
+    {
+      "key": "discount_rate",
+      "section": "summary",
+      "ui": { "component": "number", "label": "表頭折扣率", "width": 4, "precision": 4, "suffix": "%" },
+      "data": { "path": "quotation.discount_rate", "type": "decimal", "min": 0, "max": 0.5, "default": 0 },
+      "workflow": { "readonly_when": "node.id != 'start' && node.id != 'revise'" }
+    },
+    {
+      "key": "subtotal",
+      "section": "summary",
+      "ui": { "component": "display", "label": "小計", "width": 4, "precision": 2 },
+      "data": { "path": "quotation.subtotal", "type": "decimal", "computed": "sum(quotation.lines.amount)" }
+    },
+    {
+      "key": "total",
+      "section": "summary",
+      "ui": { "component": "display", "label": "總計", "width": 4, "precision": 2 },
+      "data": { "path": "quotation.total", "type": "decimal", "computed": "quotation.subtotal + quotation.tax" }
+    },
+    {
+      "key": "margin_rate",
+      "section": "internal",
+      "ui": {
+        "component": "display",
+        "label": "毛利率",
+        "width": 4,
+        "precision": 4,
+        "suffix": "%",
+        "external_visible": false
+      },
+      "data": {
+        "path": "quotation.margin_rate",
+        "type": "decimal",
+        "computed": "(quotation.subtotal - sum(quotation.lines.cost)) / quotation.subtotal"
+      },
+      "workflow": { "readable_roles": ["admin", "approver", "requester"] }
+    },
+    {
+      "key": "internal_note",
+      "section": "internal",
+      "ui": {
+        "component": "textarea",
+        "label": "內部備註",
+        "width": 12,
+        "help": "客戶看不到",
+        "external_visible": false
+      },
+      "data": { "path": "quotation.internal_note", "type": "text", "max_length": 2000 },
+      "workflow": { "readonly_when": "node.id != 'start' && node.id != 'revise'" }
+    },
+    {
+      "key": "attachments",
+      "section": "internal",
+      "ui": { "component": "upload", "label": "附件", "width": 12 },
+      "data": { "path": "quotation.attachments", "type": "array", "item": "file" },
+      "workflow": { "readonly_when": "node.id != 'start' && node.id != 'revise'" }
+    }
+  ]
+}

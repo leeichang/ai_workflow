@@ -1,0 +1,15 @@
+{
+  "name": "temporal",
+  "version": "1.0.0",
+  "description": "對應[實作計畫](../../docs/系統規劃/04_報價單流程實作計畫.md)任務 0.2。",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

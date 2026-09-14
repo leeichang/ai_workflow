@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-tertiary":"#ffffff","surface-bright":"#f7f9fb","surface-container-highest":"#e0e3e5","on-tertiary-fixed-variant":"#38485d","secondary":"#565e74","on-primary-fixed-variant":"#003ea8","inverse-surface":"#2d3133","on-surface-variant":"#434655","error":"#ba1a1a","on-tertiary-container":"#e9f0ff","surface-container-high":"#e6e8ea","on-secondary-fixed-variant":"#3f465c","primary-container":"#2563eb","surface":"#f7f9fb","outline":"#737686","surface-container-lowest":"#ffffff","background":"#f7f9fb","primary":"#004ac6","tertiary-container":"#5e6e85","secondary-fixed-dim":"#bec6e0","on-tertiary-fixed":"#0b1c30","on-secondary-fixed":"#131b2e","secondary-fixed":"#dae2fd","outline-variant":"#c3c6d7","on-primary-fixed":"#00174b","primary-fixed":"#dbe1ff","surface-tint":"#0053db","surface-container-low":"#f2f4f6","tertiary":"#46566c","on-primary-container":"#eeefff","inverse-on-surface":"#eff1f3","on-surface":"#191c1e","error-container":"#ffdad6","tertiary-fixed":"#d3e4fe","on-secondary-container":"#5c647a","secondary-container":"#dae2fd","on-error":"#ffffff","on-background":"#191c1e","primary-fixed-dim":"#b4c5ff","tertiary-fixed-dim":"#b7c8e1","on-secondary":"#ffffff","surface-dim":"#d8dadc","surface-container":"#eceef0","inverse-primary":"#b4c5ff","on-error-container":"#93000a","surface-variant":"#e0e3e5","on-primary":"#ffffff"},borderRadius:{DEFAULT:"0.125rem",lg:"0.25rem",xl:"0.5rem",full:"0.75rem"},spacing:{gutter:"1rem","space-xl":"1.5rem","space-lg":"1rem","space-xs":"0.25rem","space-sm":"0.5rem",margin:"1rem","space-md":"0.75rem"},fontFamily:{"body-dense":["Noto Sans"],"headline-xl":["Noto Sans"],"label-caption":["Noto Sans"],"data-mono":["JetBrains Mono"],"headline-lg":["Noto Sans"],"title-md":["Noto Sans"],"body-default":["Noto Sans"],"label-header":["Noto Sans"]},fontSize:{"body-dense":["13px",{lineHeight:"18px",fontWeight:"400"}],"headline-xl":["24px",{lineHeight:"32px",letterSpacing:"-0.01em",fontWeight:"600"}],"label-caption":["11px",{lineHeight:"14px",fontWeight:"400"}],"data-mono":["13px",{lineHeight:"18px",fontWeight:"500"}],"headline-lg":["18px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],"title-md":["15px",{lineHeight:"20px",fontWeight:"600"}],"body-default":["14px",{lineHeight:"20px",fontWeight:"400"}],"label-header":["12px",{lineHeight:"16px",letterSpacing:"0.02em",fontWeight:"600"}]}}}};</script></head><body class="bg-surface font-body-default text-body-default text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-[240px] bg-surface-container-lowest border-r border-[#E2E8F0] z-50 flex flex-col justify-between select-none"><div class="flex flex-col"><div class="h-[56px] px-space-md border-b border-[#E2E8F0] flex items-center gap-space-sm"><img alt="台製精工 ERP Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1UDMT-K79FVuLNrOZa_mMQx5ExeOZM7T-kj3Xrz5-TvwSkZ4hYXzTiyZMfhfl3hCsBiVwF7CskUrQkkAHYMmweltx-j7ozkBxDLwW_rit1kBhkcnh5Vf2vRyrWi9XrpbV21KuMSyPCO_D1l6GLPSGcVY2nnt1C3A8LAb29HoVuGtEfQUKAN_zSU-wGhc9g4c9zXu4B8oumwVnhCF_FJLuQB9vo4jjcufx_V5cyOP5QvnyxeRwCKKH5Uzi7p"/><div class="flex flex-col min-w-0"><span class="font-title-md text-title-md text-on-surface truncate leading-none">台製精工 ERP</span><span class="font-label-caption text-label-caption text-secondary truncate mt-0.5">製造營運管理系統</span></div></div><div class="px-space-md pt-space-md pb-space-xs"><span class="font-label-header text-label-header text-secondary uppercase tracking-wider">營運功能模組</span></div><nav class="px-space-sm space-y-0.5 flex flex-col" data-active-classes="bg-surface-container-low text-primary font-semibold"><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="dashboard-overview" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">dashboard</span><span class="font-body-dense text-body-dense">首頁</span></div></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="my-tasks-approvals" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">check_box</span><span class="font-body-dense text-body-dense">我的待辦</span></div><span class="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-error text-on-error font-label-caption text-[10px] font-bold">5</span></a><a aria-current="page" class="flex items-center justify-between px-space-md py-space-sm rounded-lg transition-colors bg-surface-container-low text-primary font-semibold" data-path="quotations-sales" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">description</span><span class="font-body-dense text-body-dense">報價單</span></div></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="purchase-requisitions" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">shopping_cart</span><span class="font-body-dense text-body-dense">採購申請</span></div></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="product-configurator-cad" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">layers</span><span class="font-body-dense text-body-dense">設計器</span></div></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="reports-analytics" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">bar_chart</span><span class="font-body-dense text-body-dense">報表</span></div></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" data-path="system-settings" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-body-dense text-body-dense">設定</span></div></a></nav></div><div class="p-space-md border-t border-[#E2E8F0] bg-surface-container-lowest flex flex-col gap-space-xs"><div class="flex items-center justify-between"><span class="font-data-mono text-data-mono text-secondary text-[11px]">v2.4.1 (正式營運版)</span><span class="inline-block w-2 h-2 rounded-full bg-[#15803D]"></span></div><a class="flex items-center gap-1.5 text-secondary hover:text-primary transition-colors" data-path="help-support" href="#"><span class="material-symbols-outlined text-[16px]">help</span><span class="font-label-caption text-label-caption">IT服務台 / 快速支援</span></a></div></aside><div class="pl-[240px]"><header class="fixed top-0 left-[240px] right-0 h-[56px] bg-surface-container-lowest border-b border-[#E2E8F0] z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-md"><button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-low transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">menu_open</span></button><nav class="hidden sm:flex items-center gap-1 font-label-header text-label-header text-secondary"><span class="hover:text-on-surface cursor-pointer">製造核心</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="text-on-surface font-semibold">生產作業總覽</span></nav></div><div class="flex-1 max-w-md mx-space-lg"><div class="relative flex items-center"><span class="material-symbols-outlined absolute left-2.5 text-[18px] text-outline">search</span><input class="w-full h-8 pl-8 pr-16 bg-surface-container-low border border-[#CBD5E1] rounded-lg font-body-dense text-body-dense text-on-surface placeholder:text-outline focus:outline-none focus:border-primary-container focus:bg-surface-container-lowest transition-all" placeholder="搜尋單號、客戶、物料 (Ctrl+K)" type="text"/><kbd class="absolute right-2 px-1.5 py-0.5 font-data-mono text-[10px] text-secondary bg-surface-container rounded border border-[#CBD5E1]">Ctrl+K</kbd></div></div><div class="flex items-center gap-space-md"><div class="hidden md:flex items-center gap-1 text-secondary font-data-mono text-data-mono text-[12px]"><span class="material-symbols-outlined text-[16px]">calendar_today</span><span>2025年3月30日 (週日)</span></div><div class="h-4 w-[1px] bg-[#E2E8F0] hidden md:block"></div><button class="relative p-1.5 text-secondary hover:text-on-surface rounded hover:bg-surface-container-low transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-error"></span></span></button><div class="flex items-center gap-space-sm pl-space-xs"><img alt="Profile" class="w-8 h-8 rounded-full object-cover border border-[#CBD5E1]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAL_5RFUBZ7fdUNv3u0PSpj5V_haplMsIRcYA9PqJeKDAeKIqlhVSbtA-dHMlMJpGsNb9XlXrl-yKZeUVYYzELoO4zzp7n3LA4A81FYpEKlnYsBSPQ1ytDFSHAtgtqvGqgYxxsDTOx4MMTENh7Z-fvhEVmKwX1uqJhqvnUDw92DmY09HCKu6ce-Ko7k39i_4hioYnP68lfyw_oq6svn1EkRfwmC-OfRAgPMUgxyyZ14hlvSoiOgvixLvQ"/><div class="hidden lg:flex flex-col text-left"><span class="font-label-header text-label-header text-on-surface leading-tight">林建志 協理</span><span class="font-label-caption text-label-caption text-secondary leading-tight">營運製造部</span></div><span class="material-symbols-outlined text-[16px] text-secondary hidden lg:inline">arrow_drop_down</span></div></div></header><main class="w-full pt-[56px] min-h-screen bg-[#F8FAFC] p-space-xl"><div class="flex flex-col w-full gap-space-md">
+<!-- Top Navigation Context & Quick Summary Bar -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md bg-surface-container-lowest p-space-lg rounded-xl shadow-sm">
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5 font-label-caption text-label-caption text-secondary mb-1">
+<span>業務管理</span>
+<span class="material-symbols-outlined text-[12px]">chevron_right</span>
+<span class="text-primary font-semibold">報價單管理</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">報價單管理</h1>
+<span class="font-data-mono text-data-mono text-secondary text-[12px] bg-surface-container-low px-2 py-0.5 rounded">REV-2025Q1</span>
+</div>
+<p class="font-body-dense text-body-dense text-secondary mt-1">
+        檢視全公司客製報價、毛利率分析、審批進度及客戶簽核狀態（共 142 筆資料）。
+      </p>
+</div>
+<!-- Quick Actions -->
+<div class="flex items-center gap-space-sm self-start md:self-center">
+<button class="h-8 px-3 rounded-lg bg-surface-container-lowest text-secondary hover:bg-surface-container-low hover:text-on-surface flex items-center gap-1.5 font-body-dense text-body-dense shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">table_view</span>
+<span>匯出 Excel</span>
+</button>
+<button class="h-8 px-3 rounded-lg bg-surface-container-lowest text-secondary hover:bg-surface-container-low hover:text-on-surface flex items-center gap-1.5 font-body-dense text-body-dense shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">print</span>
+<span>批次列印</span>
+</button>
+<button class="h-8 px-3.5 rounded-lg bg-primary text-on-primary hover:bg-primary-container flex items-center gap-1.5 font-title-md text-title-md shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">add</span>
+<span>新增報價單</span>
+</button>
+</div>
+</div>
+<!-- KPI Pulse Strip -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-header text-label-header text-secondary uppercase">本月報價總額</span>
+<span class="font-data-mono text-headline-lg text-on-surface mt-0.5">NT$ 42,910,000</span>
+<span class="font-label-caption text-label-caption text-secondary flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px] text-primary">trending_up</span>
+          較上月增加 +12.4%
+        </span>
+</div>
+<div class="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[22px]">payments</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-header text-label-header text-secondary uppercase">平均毛利率 (已核准)</span>
+<span class="font-data-mono text-headline-lg text-[#15803D] mt-0.5">31.2%</span>
+<span class="font-label-caption text-label-caption text-secondary flex items-center gap-1 mt-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#15803D]"></span>
+          高於目標門檻 (28.0%)
+        </span>
+</div>
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[22px]">query_stats</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-header text-label-header text-secondary uppercase">待主管覆核</span>
+<div class="flex items-baseline gap-2 mt-0.5">
+<span class="font-data-mono text-headline-lg text-[#B45309]">14 筆</span>
+<span class="font-label-caption text-label-caption text-secondary">超逾48H: 2筆</span>
+</div>
+<span class="font-label-caption text-label-caption text-secondary mt-1">
+          預估合約款 NT$ 8,450,000
+        </span>
+</div>
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-[#B45309]">
+<span class="material-symbols-outlined text-[22px]">hourglass_top</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-header text-label-header text-secondary uppercase">轉工令成單率</span>
+<span class="font-data-mono text-headline-lg text-primary mt-0.5">53.5%</span>
+<span class="font-label-caption text-label-caption text-secondary flex items-center gap-1 mt-1">
+          本季累積 76 張轉製造令
+        </span>
+</div>
+<div class="w-10 h-10 rounded-lg bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed">
+<span class="material-symbols-outlined text-[22px]">precision_manufacturing</span>
+</div>
+</div>
+</div>
+<!-- Status Tabs Navigation -->
+<div class="bg-surface-container-lowest px-space-md pt-2 rounded-xl shadow-sm flex flex-col">
+<div class="flex items-center overflow-x-auto gap-2 border-none">
+<button class="flex items-center gap-1.5 px-3 py-2 text-primary font-title-md text-title-md bg-surface-container-low rounded-t-lg transition-all">
+<span>全部報價</span>
+<span class="px-1.5 py-0.2 rounded-full bg-primary text-on-primary font-data-mono text-[11px]">142</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-2 text-secondary hover:text-on-surface font-body-dense text-body-dense rounded-t-lg hover:bg-surface-container-low transition-all">
+<span>草稿</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container text-secondary font-data-mono text-[11px]">8</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-2 text-secondary hover:text-on-surface font-body-dense text-body-dense rounded-t-lg hover:bg-surface-container-low transition-all">
+<span class="w-2 h-2 rounded-full bg-[#B45309]"></span>
+<span>待主管審核</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container text-secondary font-data-mono text-[11px]">14</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-2 text-secondary hover:text-on-surface font-body-dense text-body-dense rounded-t-lg hover:bg-surface-container-low transition-all">
+<span>已核准/待客戶確認</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container text-secondary font-data-mono text-[11px]">32</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-2 text-secondary hover:text-on-surface font-body-dense text-body-dense rounded-t-lg hover:bg-surface-container-low transition-all">
+<span>已成單轉工令</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container text-secondary font-data-mono text-[11px]">76</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-2 text-secondary hover:text-on-surface font-body-dense text-body-dense rounded-t-lg hover:bg-surface-container-low transition-all">
+<span>未成單/已作廢</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container text-secondary font-data-mono text-[11px]">12</span>
+</button>
+</div>
+</div>
+<!-- Multi-condition Filter Panel -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col gap-space-sm">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-space-md items-center">
+<!-- Search Input -->
+<div class="md:col-span-4 relative">
+<span class="material-symbols-outlined absolute left-2.5 top-2 text-[18px] text-secondary">search</span>
+<input class="w-full h-8 pl-8 pr-8 rounded-lg bg-surface-container-low text-on-surface font-body-dense text-body-dense placeholder:text-outline focus:outline-none focus:bg-surface-container-lowest" placeholder="搜尋客戶名稱、統一編號、報價單號、業務專員..." type="text"/>
+<button class="absolute right-2 top-2 text-outline hover:text-on-surface" type="button">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+<!-- Date Range Dropdown -->
+<div class="md:col-span-3 flex items-center bg-surface-container-low rounded-lg px-2.5 h-8">
+<span class="material-symbols-outlined text-[16px] text-secondary mr-1.5">date_range</span>
+<span class="font-body-dense text-body-dense text-secondary text-[12px] whitespace-nowrap mr-2">報價日期:</span>
+<span class="font-data-mono text-data-mono text-on-surface text-[12px] truncate">2025/03/01 ~ 2025/03/30</span>
+<span class="material-symbols-outlined text-[16px] text-secondary ml-auto cursor-pointer">arrow_drop_down</span>
+</div>
+<!-- Salesperson Dropdown -->
+<div class="md:col-span-2 flex items-center bg-surface-container-low rounded-lg px-2.5 h-8">
+<span class="material-symbols-outlined text-[16px] text-secondary mr-1.5">person</span>
+<span class="font-body-dense text-body-dense text-on-surface truncate">負責業務: 全部</span>
+<span class="material-symbols-outlined text-[16px] text-secondary ml-auto cursor-pointer">arrow_drop_down</span>
+</div>
+<!-- Customer Tier Dropdown -->
+<div class="md:col-span-2 flex items-center bg-surface-container-low rounded-lg px-2.5 h-8">
+<span class="material-symbols-outlined text-[16px] text-secondary mr-1.5">grade</span>
+<span class="font-body-dense text-body-dense text-on-surface truncate">等級: 全部客群</span>
+<span class="material-symbols-outlined text-[16px] text-secondary ml-auto cursor-pointer">arrow_drop_down</span>
+</div>
+<!-- Table Config & Quick Filter Menu Button -->
+<div class="md:col-span-1 flex items-center justify-end gap-1">
+<button class="w-8 h-8 rounded-lg bg-surface-container-low text-secondary hover:text-on-surface flex items-center justify-center transition-colors" title="欄位顯示設定" type="button">
+<span class="material-symbols-outlined text-[18px]">view_column</span>
+</button>
+<button class="w-8 h-8 rounded-lg bg-surface-container-low text-secondary hover:text-on-surface flex items-center justify-center transition-colors" title="更多進階篩選條件" type="button">
+<span class="material-symbols-outlined text-[18px]">tune</span>
+</button>
+</div>
+</div>
+<!-- Sub Filter Badges Bar -->
+<div class="flex flex-wrap items-center gap-2 pt-1">
+<span class="font-label-caption text-label-caption text-secondary">作用中過濾條件:</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-caption text-label-caption">
+        毛利率 &gt; 25.0%
+        <span class="material-symbols-outlined text-[12px] cursor-pointer hover:text-error">close</span>
+</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-caption text-label-caption">
+        付款條件: 全部含月結
+        <span class="material-symbols-outlined text-[12px] cursor-pointer hover:text-error">close</span>
+</span>
+<button class="text-primary hover:underline font-label-caption text-label-caption ml-1" type="button">
+        清除所有條件
+      </button>
+<div class="ml-auto flex items-center gap-2">
+<span class="font-label-caption text-label-caption text-secondary">顯示密度:</span>
+<div class="flex items-center bg-surface-container-low p-0.5 rounded">
+<button class="px-1.5 py-0.5 rounded text-[11px] font-body-dense bg-surface-container-lowest text-primary shadow-sm">精簡</button>
+<button class="px-1.5 py-0.5 rounded text-[11px] font-body-dense text-secondary hover:text-on-surface">標準</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Main High-Density Data Grid -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
+<div class="overflow-x-auto w-full">
+<table class="w-full text-left border-collapse select-text">
+<thead>
+<tr class="bg-surface-container-low text-secondary font-label-header text-label-header h-9 tracking-wider select-none">
+<th class="w-10 px-3 text-center">
+<input class="w-3.5 h-3.5 rounded bg-surface-container-lowest text-primary focus:ring-0 cursor-pointer" type="checkbox"/>
+</th>
+<th class="px-3 min-w-[130px]">報價單號</th>
+<th class="px-3 min-w-[220px]">客戶名稱 / 統編</th>
+<th class="px-3 min-w-[200px]">專案與品項簡述</th>
+<th class="px-3 min-w-[120px]">業務專員</th>
+<th class="px-3 min-w-[150px] text-right">報價總金額 (NT$)</th>
+<th class="px-3 min-w-[100px] text-right">預估毛利率</th>
+<th class="px-3 min-w-[110px]">付款條件</th>
+<th class="px-3 min-w-[95px]">有效期限</th>
+<th class="px-3 min-w-[110px] text-center">審核狀態</th>
+<th class="px-3 min-w-[140px] text-center sticky right-0 bg-surface-container-low shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.03)]">作業功能</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-transparent font-body-dense text-body-dense text-on-surface">
+<!-- Row 1: 待主管審核 -->
+<tr class="h-10 hover:bg-surface-container-low transition-colors group">
+<td class="px-3 text-center">
+<input class="w-3.5 h-3.5 rounded bg-surface-container text-primary cursor-pointer" type="checkbox"/>
+</td>
+<td class="px-3 font-data-mono text-data-mono">
+<a class="text-primary hover:underline font-semibold flex items-center gap-1" href="#">
+                QT-20250330-008
+                <span class="material-symbols-outlined text-[13px] opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
+</a>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface truncate max-w-[210px]" title="大同精密科技股份有限公司">大同精密科技股份有限公司</span>
+<span class="font-data-mono text-[11px] text-secondary">23891044 (VIP 客戶)</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="truncate max-w-[190px]" title="航太級鈦合金法蘭盤客製 500件">航太級鈦合金法蘭盤客製</span>
+<span class="font-label-caption text-label-caption text-secondary">數量: 500 PCS / 精密鍛造</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex items-center gap-1.5">
+<div class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center font-label-caption text-[10px] font-bold text-secondary">陳</div>
+<div class="flex flex-col">
+<span>陳雅婷</span>
+<span class="font-label-caption text-label-caption text-secondary">業務一部</span>
+</div>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono">
+<div class="flex flex-col">
+<span class="font-semibold">1,280,000</span>
+<span class="font-label-caption text-label-caption text-secondary">含稅 1,344,000</span>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono font-semibold text-[#15803D]">
+              31.8%
+            </td>
+<td class="px-3 text-secondary">
+              月結 60 天 (電匯)
+            </td>
+<td class="px-3 font-data-mono text-[12px] text-secondary">
+              2025/04/15
+            </td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container font-label-header text-label-header text-[#B45309]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#B45309]"></span>
+                待主管審核
+              </span>
+</td>
+<td class="px-3 text-center sticky right-0 bg-surface-container-lowest group-hover:bg-surface-container-low shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.03)] transition-colors">
+<div class="flex items-center justify-center gap-1">
+<button class="px-1.5 py-0.5 bg-primary text-on-primary rounded text-[11px] font-semibold hover:bg-primary-container" title="快速審批">審批</button>
+<button class="p-1 text-secondary hover:text-primary rounded hover:bg-surface-container-high" title="編輯報價單"><span class="material-symbols-outlined text-[16px]">edit</span></button>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-high" title="列印PDF"><span class="material-symbols-outlined text-[16px]">picture_as_pdf</span></button>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-high" title="更多操作"><span class="material-symbols-outlined text-[16px]">more_vert</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 2: 已成單轉工令 -->
+<tr class="h-10 bg-surface-container-low/40 hover:bg-surface-container-low transition-colors group">
+<td class="px-3 text-center">
+<input class="w-3.5 h-3.5 rounded bg-surface-container text-primary cursor-pointer" type="checkbox"/>
+</td>
+<td class="px-3 font-data-mono text-data-mono">
+<a class="text-primary hover:underline font-semibold flex items-center gap-1" href="#">
+                QT-20250329-012
+                <span class="material-symbols-outlined text-[13px] opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
+</a>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface truncate max-w-[210px]" title="漢翔精密工業股份有限公司">漢翔精密工業股份有限公司</span>
+<span class="font-data-mono text-[11px] text-secondary">84902113 (A級 客戶)</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="truncate max-w-[190px]" title="SUS316L 閥體加工模組一式">SUS316L 閥體加工模組</span>
+<span class="font-label-caption text-label-caption text-secondary">MO-20250330-01 (已投產)</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex items-center gap-1.5">
+<div class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center font-label-caption text-[10px] font-bold text-secondary">黃</div>
+<div class="flex flex-col">
+<span>黃信宏</span>
+<span class="font-label-caption text-label-caption text-secondary">業務二部</span>
+</div>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono">
+<div class="flex flex-col">
+<span class="font-semibold">3,650,000</span>
+<span class="font-label-caption text-label-caption text-secondary">含稅 3,832,500</span>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono font-semibold text-[#15803D]">
+              34.5%
+            </td>
+<td class="px-3 text-secondary">
+              訂金 30% / 尾款月結
+            </td>
+<td class="px-3 font-data-mono text-[12px] text-secondary">
+              2025/04/28
+            </td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container-high font-label-header text-label-header text-primary">
+<span class="material-symbols-outlined text-[13px]">done_all</span>
+                已成單轉工令
+              </span>
+</td>
+<td class="px-3 text-center sticky right-0 bg-surface-container-low/40 group-hover:bg-surface-container-low shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.03)] transition-colors">
+<div class="flex items-center justify-center gap-1">
+<button class="px-1.5 py-0.5 bg-surface-container-high text-primary rounded text-[11px] font-semibold hover:bg-surface-container" title="查看工令">工令</button>
+<button class="p-1 text-secondary hover:text-primary rounded hover:bg-surface-container-high" title="複製報價單"><span class="material-symbols-outlined text-[16px]">content_copy</span></button>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-high" title="列印PDF"><span class="material-symbols-outlined text-[16px]">picture_as_pdf</span></button>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-high" title="更多操作"><span class="material-symbols-outlined text-[16px]">more_vert</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 3: 已核准/待客戶確認 -->
+<tr class="h-10 hover:bg-surface-container-low transition-colors group">
+<td class="px-3 text-center">
+<input class="w-3.5 h-3.5 rounded bg-surface-container text-primary cursor-pointer" type="checkbox"/>
+</td>
+<td class="px-3 font-data-mono text-data-mono">
+<a class="text-primary hover:underline font-semibold flex items-center gap-1" href="#">
+                QT-20250329-005
+                <span class="material-symbols-outlined text-[13px] opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
+</a>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface truncate max-w-[210px]" title="台灣工具機連網科技股份公司">台灣工具機連網科技</span>
+<span class="font-data-mono text-[11px] text-secondary">54820199 (一般客戶)</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="truncate max-w-[190px]" title="伺服馬達傳動軸承套筒 (專案試作)">伺服馬達傳動軸承套筒</span>
+<span class="font-label-caption text-label-caption text-secondary">試作批次 20 套</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex items-center gap-1.5">
+<div class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center font-label-caption text-[10px] font-bold text-secondary">陳</div>
+<div class="flex flex-col">
+<span>陳雅婷</span>
+<span class="font-label-caption text-label-caption text-secondary">業務一部</span>
+</div>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono">
+<div class="flex flex-col">
+<span class="font-semibold">420,000</span>
+<span class="font-label-caption text-label-caption text-secondary">含稅 441,000</span>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono font-semibold text-[#15803D]">
+              28.4%
+            </td>
+<td class="px-3 text-secondary">
+              月結 30 天
+            </td>
+<td class="px-3 font-data-mono text-[12px] text-secondary">
+              2025/04/10
+            </td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container font-label-header text-label-header text-[#15803D]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#15803D]"></span>
+                已核准/待簽回
+              </span>
+</td>
+<td class="px-3 text-center sticky right-0 bg-surface-container-lowest group-hover:bg-surface-container-low shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.03)] transition-colors">
+<div class="flex items-center justify-center gap-1">
+<button class="px-1.5 py-0.5 bg-primary text-on-primary rounded text-[11px] font-semibold hover:bg-primary-container" title="轉工令">轉工令</button>
+<button class="p-1 text-secondary hover:text-primary rounded hover:bg-surface-container-high" title="重新發送通知"><span class="material-symbols-outlined text-[16px]">send</span></button>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-high" title="列印PDF"><span class="material-symbols-outlined text-[16px]">picture_as_pdf</span></button>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-high" title="更多操作"><span class="material-symbols-outlined text-[16px]">more_vert</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 4: 草稿 -->
+<tr class="h-10 bg-surface-container-low/40 hover:bg-surface-container-low transition-colors group">
+<td class="px-3 text-center">
+<input class="w-3.5 h-3.5 rounded bg-surface-container text-primary cursor-pointer" type="checkbox"/>
+</td>
+<td class="px-3 font-data-mono text-data-mono">
+<a class="text-primary hover:underline font-semibold flex items-center gap-1" href="#">
+                QT-20250328-021
+                <span class="material-symbols-outlined text-[13px] opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
+</a>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface truncate max-w-[210px]" title="光陽自動化設備股份有限公司">光陽自動化設備</span>
+<span class="font-data-mono text-[11px] text-secondary">19284729 (VIP 客戶)</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="truncate max-w-[190px]" title="連續沖壓模具開發專案 (含熱處理)">連續沖壓模具開發專案</span>
+<span class="font-label-caption text-label-caption text-secondary">客製開模 / 報價試算中</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex items-center gap-1.5">
+<div class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center font-label-caption text-[10px] font-bold text-secondary">林</div>
+<div class="flex flex-col">
+<span>林敏雄</span>
+<span class="font-label-caption text-label-caption text-secondary">業務一部</span>
+</div>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono">
+<div class="flex flex-col">
+<span class="font-semibold text-secondary">890,000</span>
+<span class="font-label-caption text-label-caption text-secondary">未確定稅額</span>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono text-secondary">
+              24.2%
+            </td>
+<td class="px-3 text-secondary">
+              未指定
+            </td>
+<td class="px-3 font-data-mono text-[12px] text-secondary">
+              2025/04/05
+            </td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container-high font-label-header text-label-header text-secondary">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                草稿
+              </span>
+</td>
+<td class="px-3 text-center sticky right-0 bg-surface-container-low/40 group-hover:bg-surface-container-low shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.03)] transition-colors">
+<div class="flex items-center justify-center gap-1">
+<button class="px-1.5 py-0.5 bg-surface-container-high text-on-surface rounded text-[11px] font-semibold hover:bg-surface-container" title="繼續編輯">繼續編輯</button>
+<button class="p-1 text-primary hover:text-primary-container rounded hover:bg-surface-container-high" title="送出審核"><span class="material-symbols-outlined text-[16px]">assignment_turned_in</span></button>
+<button class="p-1 text-secondary hover:text-error rounded hover:bg-surface-container-high" title="刪除草稿"><span class="material-symbols-outlined text-[16px]">delete</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 5: 待主管審核 (超時警示) -->
+<tr class="h-10 hover:bg-surface-container-low transition-colors group">
+<td class="px-3 text-center">
+<input class="w-3.5 h-3.5 rounded bg-surface-container text-primary cursor-pointer" type="checkbox"/>
+</td>
+<td class="px-3 font-data-mono text-data-mono">
+<a class="text-primary hover:underline font-semibold flex items-center gap-1" href="#">
+                QT-20250328-002
+                <span class="material-symbols-outlined text-[13px] opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
+</a>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface truncate max-w-[210px]" title="瑞興精密鑄造工業">瑞興精密鑄造工業</span>
+<span class="font-data-mono text-[11px] text-secondary">70491823 (A級 客戶)</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="truncate max-w-[190px]" title="高壓液壓閥件組裝 120組">高壓液壓閥件組裝</span>
+<span class="font-label-caption text-label-caption text-secondary">數量: 120 組 / 含超音波清洗</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex items-center gap-1.5">
+<div class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center font-label-caption text-[10px] font-bold text-secondary">王</div>
+<div class="flex flex-col">
+<span>王志強</span>
+<span class="font-label-caption text-label-caption text-secondary">業務二部</span>
+</div>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono">
+<div class="flex flex-col">
+<span class="font-semibold">2,150,000</span>
+<span class="font-label-caption text-label-caption text-secondary">含稅 2,257,500</span>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono font-semibold text-[#15803D]">
+              33.1%
+            </td>
+<td class="px-3 text-secondary">
+              月結 90 天
+            </td>
+<td class="px-3 font-data-mono text-[12px] text-secondary">
+              2025/04/18
+            </td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container font-label-header text-label-header text-[#B45309]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#B45309]"></span>
+                待主管審核
+              </span>
+</td>
+<td class="px-3 text-center sticky right-0 bg-surface-container-lowest group-hover:bg-surface-container-low shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.03)] transition-colors">
+<div class="flex items-center justify-center gap-1">
+<button class="px-1.5 py-0.5 bg-primary text-on-primary rounded text-[11px] font-semibold hover:bg-primary-container" title="快速審批">審批</button>
+<button class="p-1 text-secondary hover:text-primary rounded hover:bg-surface-container-high" title="編輯報價單"><span class="material-symbols-outlined text-[16px]">edit</span></button>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-high" title="列印PDF"><span class="material-symbols-outlined text-[16px]">picture_as_pdf</span></button>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-high" title="更多操作"><span class="material-symbols-outlined text-[16px]">more_vert</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 6: 客戶已確認 -->
+<tr class="h-10 bg-surface-container-low/40 hover:bg-surface-container-low transition-colors group">
+<td class="px-3 text-center">
+<input class="w-3.5 h-3.5 rounded bg-surface-container text-primary cursor-pointer" type="checkbox"/>
+</td>
+<td class="px-3 font-data-mono text-data-mono">
+<a class="text-primary hover:underline font-semibold flex items-center gap-1" href="#">
+                QT-20250327-018
+                <span class="material-symbols-outlined text-[13px] opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
+</a>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface truncate max-w-[210px]" title="宏昇機械實業有限公司">宏昇機械實業有限公司</span>
+<span class="font-data-mono text-[11px] text-secondary">91823481 (一般客戶)</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="truncate max-w-[190px]" title="鋁合金外殼 CNC 四軸加工 800 件">鋁合金外殼 CNC 四軸加工</span>
+<span class="font-label-caption text-label-caption text-secondary">已回傳採購訂單 PO#8821</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex items-center gap-1.5">
+<div class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center font-label-caption text-[10px] font-bold text-secondary">黃</div>
+<div class="flex flex-col">
+<span>黃信宏</span>
+<span class="font-label-caption text-label-caption text-secondary">業務二部</span>
+</div>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono">
+<div class="flex flex-col">
+<span class="font-semibold">630,000</span>
+<span class="font-label-caption text-label-caption text-secondary">含稅 661,500</span>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono font-semibold text-[#15803D]">
+              29.8%
+            </td>
+<td class="px-3 text-secondary">
+              月結 60 天 (票期)
+            </td>
+<td class="px-3 font-data-mono text-[12px] text-secondary">
+              2025/04/20
+            </td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container-high font-label-header text-label-header text-primary">
+<span class="material-symbols-outlined text-[13px]">check_circle</span>
+                客戶已確認
+              </span>
+</td>
+<td class="px-3 text-center sticky right-0 bg-surface-container-low/40 group-hover:bg-surface-container-low shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.03)] transition-colors">
+<div class="flex items-center justify-center gap-1">
+<button class="px-1.5 py-0.5 bg-primary text-on-primary rounded text-[11px] font-semibold hover:bg-primary-container" title="產生工令單">轉工令</button>
+<button class="p-1 text-secondary hover:text-primary rounded hover:bg-surface-container-high" title="預覽簽核"><span class="material-symbols-outlined text-[16px]">visibility</span></button>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-high" title="複製"><span class="material-symbols-outlined text-[16px]">content_copy</span></button>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-high" title="更多操作"><span class="material-symbols-outlined text-[16px]">more_vert</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 7: 未成單/已作廢 -->
+<tr class="h-10 hover:bg-surface-container-low transition-colors group opacity-75">
+<td class="px-3 text-center">
+<input class="w-3.5 h-3.5 rounded bg-surface-container text-primary cursor-pointer" type="checkbox"/>
+</td>
+<td class="px-3 font-data-mono text-data-mono">
+<a class="text-secondary line-through hover:text-on-surface flex items-center gap-1" href="#">
+                QT-20250325-033
+              </a>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-secondary truncate max-w-[210px]" title="東立金屬研磨企業社">東立金屬研磨企業社</span>
+<span class="font-data-mono text-[11px] text-secondary">66281002</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="truncate max-w-[190px] text-secondary" title="精密齒輪箱體改質試作 10組">精密齒輪箱體改質試作</span>
+<span class="font-label-caption text-label-caption text-error">原因: 客戶專案預算縮減</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex items-center gap-1.5">
+<div class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center font-label-caption text-[10px] font-bold text-secondary">王</div>
+<div class="flex flex-col text-secondary">
+<span>王志強</span>
+<span class="font-label-caption text-label-caption">業務二部</span>
+</div>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono text-secondary line-through">
+              380,000
+            </td>
+<td class="px-3 text-right font-data-mono text-secondary">
+              21.0%
+            </td>
+<td class="px-3 text-secondary">
+              月結 30 天
+            </td>
+<td class="px-3 font-data-mono text-[12px] text-secondary">
+              2025/04/01
+            </td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container font-label-header text-label-header text-error">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+                已作廢
+              </span>
+</td>
+<td class="px-3 text-center sticky right-0 bg-surface-container-lowest group-hover:bg-surface-container-low shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.03)] transition-colors">
+<div class="flex items-center justify-center gap-1">
+<button class="px-1.5 py-0.5 bg-surface-container-high text-on-surface rounded text-[11px] font-semibold hover:bg-surface-container" title="複製為新單">重新報價</button>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-high" title="查看原因"><span class="material-symbols-outlined text-[16px]">info</span></button>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-high" title="更多操作"><span class="material-symbols-outlined text-[16px]">more_vert</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 8: 已核准/待客戶確認 -->
+<tr class="h-10 bg-surface-container-low/40 hover:bg-surface-container-low transition-colors group">
+<td class="px-3 text-center">
+<input class="w-3.5 h-3.5 rounded bg-surface-container text-primary cursor-pointer" type="checkbox"/>
+</td>
+<td class="px-3 font-data-mono text-data-mono">
+<a class="text-primary hover:underline font-semibold flex items-center gap-1" href="#">
+                QT-20250325-014
+                <span class="material-symbols-outlined text-[13px] opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
+</a>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface truncate max-w-[210px]" title="全曜自動化工業股份有限公司">全曜自動化工業</span>
+<span class="font-data-mono text-[11px] text-secondary">38104821 (VIP 客戶)</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="truncate max-w-[190px]" title="真空腔體焊接與密封測試 5套">真空腔體焊接與密封測試</span>
+<span class="font-label-caption text-label-caption text-secondary">航太規範 / 氦氣檢漏</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex items-center gap-1.5">
+<div class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center font-label-caption text-[10px] font-bold text-secondary">林</div>
+<div class="flex flex-col">
+<span>林敏雄</span>
+<span class="font-label-caption text-label-caption text-secondary">業務一部</span>
+</div>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono">
+<div class="flex flex-col">
+<span class="font-semibold">2,850,000</span>
+<span class="font-label-caption text-label-caption text-secondary">含稅 2,992,500</span>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono font-semibold text-[#15803D]">
+              35.4%
+            </td>
+<td class="px-3 text-secondary">
+              月結 60 天 (電匯)
+            </td>
+<td class="px-3 font-data-mono text-[12px] text-secondary">
+              2025/04/25
+            </td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container font-label-header text-label-header text-[#15803D]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#15803D]"></span>
+                已核准/待簽回
+              </span>
+</td>
+<td class="px-3 text-center sticky right-0 bg-surface-container-low/40 group-hover:bg-surface-container-low shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.03)] transition-colors">
+<div class="flex items-center justify-center gap-1">
+<button class="px-1.5 py-0.5 bg-primary text-on-primary rounded text-[11px] font-semibold hover:bg-primary-container" title="轉工令">轉工令</button>
+<button class="p-1 text-secondary hover:text-primary rounded hover:bg-surface-container-high" title="編輯報價單"><span class="material-symbols-outlined text-[16px]">edit</span></button>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-high" title="列印PDF"><span class="material-symbols-outlined text-[16px]">picture_as_pdf</span></button>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-high" title="更多操作"><span class="material-symbols-outlined text-[16px]">more_vert</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 9: 待主管審核 -->
+<tr class="h-10 hover:bg-surface-container-low transition-colors group">
+<td class="px-3 text-center">
+<input class="w-3.5 h-3.5 rounded bg-surface-container text-primary cursor-pointer" type="checkbox"/>
+</td>
+<td class="px-3 font-data-mono text-data-mono">
+<a class="text-primary hover:underline font-semibold flex items-center gap-1" href="#">
+                QT-20250324-009
+                <span class="material-symbols-outlined text-[13px] opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
+</a>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface truncate max-w-[210px]" title="達發五金傳動精密股份有限公司">達發五金傳動精密</span>
+<span class="font-data-mono text-[11px] text-secondary">82049103 (一般客戶)</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="truncate max-w-[190px]" title="硬鉻電鍍傳動滾輪 300支">硬鉻電鍍傳動滾輪</span>
+<span class="font-label-caption text-label-caption text-secondary">外徑120mm / 精度5um</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex items-center gap-1.5">
+<div class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center font-label-caption text-[10px] font-bold text-secondary">陳</div>
+<div class="flex flex-col">
+<span>陳雅婷</span>
+<span class="font-label-caption text-label-caption text-secondary">業務一部</span>
+</div>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono">
+<div class="flex flex-col">
+<span class="font-semibold">780,000</span>
+<span class="font-label-caption text-label-caption text-secondary">含稅 819,000</span>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono font-semibold text-[#15803D]">
+              30.2%
+            </td>
+<td class="px-3 text-secondary">
+              月結 45 天
+            </td>
+<td class="px-3 font-data-mono text-[12px] text-secondary">
+              2025/04/12
+            </td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container font-label-header text-label-header text-[#B45309]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#B45309]"></span>
+                待主管審核
+              </span>
+</td>
+<td class="px-3 text-center sticky right-0 bg-surface-container-lowest group-hover:bg-surface-container-low shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.03)] transition-colors">
+<div class="flex items-center justify-center gap-1">
+<button class="px-1.5 py-0.5 bg-primary text-on-primary rounded text-[11px] font-semibold hover:bg-primary-container" title="快速審批">審批</button>
+<button class="p-1 text-secondary hover:text-primary rounded hover:bg-surface-container-high" title="編輯報價單"><span class="material-symbols-outlined text-[16px]">edit</span></button>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-high" title="列印PDF"><span class="material-symbols-outlined text-[16px]">picture_as_pdf</span></button>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-high" title="更多操作"><span class="material-symbols-outlined text-[16px]">more_vert</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 10: 已成單轉工令 -->
+<tr class="h-10 bg-surface-container-low/40 hover:bg-surface-container-low transition-colors group">
+<td class="px-3 text-center">
+<input class="w-3.5 h-3.5 rounded bg-surface-container text-primary cursor-pointer" type="checkbox"/>
+</td>
+<td class="px-3 font-data-mono text-data-mono">
+<a class="text-primary hover:underline font-semibold flex items-center gap-1" href="#">
+                QT-20250323-011
+                <span class="material-symbols-outlined text-[13px] opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
+</a>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface truncate max-w-[210px]" title="長榮航宇精密組件廠">長榮航宇精密組件廠</span>
+<span class="font-data-mono text-[11px] text-secondary">24901924 (VIP 客戶)</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex flex-col">
+<span class="truncate max-w-[190px]" title="高剛性連桿臂精修加工 250件">高剛性連桿臂精修加工</span>
+<span class="font-label-caption text-label-caption text-secondary">MO-20250324-03 (製造中)</span>
+</div>
+</td>
+<td class="px-3">
+<div class="flex items-center gap-1.5">
+<div class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center font-label-caption text-[10px] font-bold text-secondary">黃</div>
+<div class="flex flex-col">
+<span>黃信宏</span>
+<span class="font-label-caption text-label-caption text-secondary">業務二部</span>
+</div>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono">
+<div class="flex flex-col">
+<span class="font-semibold">2,410,000</span>
+<span class="font-label-caption text-label-caption text-secondary">含稅 2,530,500</span>
+</div>
+</td>
+<td class="px-3 text-right font-data-mono font-semibold text-[#15803D]">
+              32.0%
+            </td>
+<td class="px-3 text-secondary">
+              月結 60 天 (電匯)
+            </td>
+<td class="px-3 font-data-mono text-[12px] text-secondary">
+              2025/04/22
+            </td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container-high font-label-header text-label-header text-primary">
+<span class="material-symbols-outlined text-[13px]">done_all</span>
+                已成單轉工令
+              </span>
+</td>
+<td class="px-3 text-center sticky right-0 bg-surface-container-low/40 group-hover:bg-surface-container-low shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.03)] transition-colors">
+<div class="flex items-center justify-center gap-1">
+<button class="px-1.5 py-0.5 bg-surface-container-high text-primary rounded text-[11px] font-semibold hover:bg-surface-container" title="查看工令">工令</button>
+<button class="p-1 text-secondary hover:text-primary rounded hover:bg-surface-container-high" title="複製報價單"><span class="material-symbols-outlined text-[16px]">content_copy</span></button>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-high" title="列印PDF"><span class="material-symbols-outlined text-[16px]">picture_as_pdf</span></button>
+<button class="p-1 text-secondary hover:text-on-surface rounded hover:bg-surface-container-high" title="更多操作"><span class="material-symbols-outlined text-[16px]">more_vert</span></button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Live Grid Page Summary Bar -->
+<div class="bg-surface-container-low px-space-md py-2 flex flex-wrap items-center justify-between gap-space-sm text-secondary font-body-dense text-[12px]">
+<div class="flex items-center gap-4">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">calculate</span>
+          本頁選取項目統計:
+        </span>
+<span>已選取: <strong class="font-data-mono text-on-surface">0</strong> 筆</span>
+<span>本頁未稅總計: <strong class="font-data-mono text-on-surface">NT$ 14,820,000</strong></span>
+<span>含稅總計: <strong class="font-data-mono text-on-surface">NT$ 15,561,000</strong></span>
+<span>預估加權平均毛利率: <strong class="font-data-mono text-[#15803D] font-bold">29.4%</strong></span>
+</div>
+<div class="flex items-center gap-2">
+<span class="inline-block w-2 h-2 rounded-full bg-[#15803D]"></span>
+<span class="font-label-caption text-label-caption">資料已即時同調 (最後更新 10 秒前)</span>
+</div>
+</div>
+</div>
+<!-- Pagination & Controls Footer -->
+<div class="flex flex-col sm:flex-row items-center justify-between gap-space-md bg-surface-container-lowest px-space-md py-space-sm rounded-xl shadow-sm">
+<div class="flex items-center gap-space-md">
+<span class="font-body-dense text-body-dense text-secondary">
+        顯示第 <strong class="text-on-surface">1</strong> 至 <strong class="text-on-surface">15</strong> 筆，共 <strong class="text-on-surface">142</strong> 筆
+      </span>
+<div class="flex items-center gap-1.5 font-body-dense text-body-dense text-secondary">
+<span>每頁顯示:</span>
+<select class="h-7 bg-surface-container-low text-on-surface rounded px-2 font-data-mono text-[12px] focus:outline-none">
+<option selected="">15</option>
+<option>30</option>
+<option>50</option>
+<option>100</option>
+</select>
+<span>筆</span>
+</div>
+</div>
+<!-- Page Selector Controls -->
+<div class="flex items-center gap-1 select-none">
+<button class="h-8 px-2.5 rounded-lg text-outline bg-surface-container-low cursor-not-allowed flex items-center justify-center" disabled="" type="button">
+<span class="material-symbols-outlined text-[16px]">first_page</span>
+</button>
+<button class="h-8 px-2.5 rounded-lg text-outline bg-surface-container-low cursor-not-allowed flex items-center justify-center" disabled="" type="button">
+<span class="material-symbols-outlined text-[16px]">chevron_left</span>
+</button>
+<button class="h-8 min-w-8 px-2 rounded-lg bg-primary text-on-primary font-data-mono text-[13px] font-semibold flex items-center justify-center" type="button">1</button>
+<button class="h-8 min-w-8 px-2 rounded-lg text-secondary hover:bg-surface-container-low hover:text-on-surface font-data-mono text-[13px] flex items-center justify-center" type="button">2</button>
+<button class="h-8 min-w-8 px-2 rounded-lg text-secondary hover:bg-surface-container-low hover:text-on-surface font-data-mono text-[13px] flex items-center justify-center" type="button">3</button>
+<span class="px-1 text-secondary font-data-mono text-[12px]">...</span>
+<button class="h-8 min-w-8 px-2 rounded-lg text-secondary hover:bg-surface-container-low hover:text-on-surface font-data-mono text-[13px] flex items-center justify-center" type="button">10</button>
+<button class="h-8 px-2.5 rounded-lg text-secondary hover:bg-surface-container-low hover:text-on-surface flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+<button class="h-8 px-2.5 rounded-lg text-secondary hover:bg-surface-container-low hover:text-on-surface flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[16px]">last_page</span>
+</button>
+<div class="hidden lg:flex items-center gap-1.5 ml-2 pl-2 border-none">
+<span class="font-label-caption text-label-caption text-secondary">跳至:</span>
+<input class="w-10 h-7 text-center font-data-mono text-[12px] bg-surface-container-low text-on-surface rounded focus:outline-none" type="text" value="1"/>
+<span class="font-label-caption text-label-caption text-secondary">頁</span>
+</div>
+</div>
+</div>
+<!-- Drawer/Modal Preview Drawer Script for UX Micro-Interactions -->
+<script>
+    // Lightweight interactivity for checkbox state summary updates
+    document.addEventListener('DOMContentLoaded', () => {
+      const headerCheckbox = document.querySelector('thead input[type="checkbox"]');
+      const rowCheckboxes = document.querySelectorAll('tbody input[type="checkbox"]');
+      const selectedCountSpan = document.querySelector('div.bg-surface-container-low strong');
+
+      function updateCount() {
+        let count = 0;
+        rowCheckboxes.forEach(cb => {
+          if (cb.checked) count++;
+        });
+        if (selectedCountSpan) {
+          selectedCountSpan.textContent = count.toString();
+        }
+      }
+
+      if (headerCheckbox) {
+        headerCheckbox.addEventListener('change', (e) => {
+          rowCheckboxes.forEach(cb => {
+            cb.checked = e.target.checked;
+          });
+          updateCount();
+        });
+      }
+
+      rowCheckboxes.forEach(cb => {
+        cb.addEventListener('change', () => {
+          updateCount();
+          if (headerCheckbox) {
+            headerCheckbox.checked = Array.from(rowCheckboxes).every(c => c.checked);
+          }
+        });
+      });
+    });
+  </script>
+</div></main></div></body></html>

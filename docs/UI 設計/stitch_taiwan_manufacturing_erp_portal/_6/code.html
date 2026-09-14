@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&amp;family=Noto+Sans:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "surface-container-highest": "#e0e3e5",
+          "tertiary": "#46566c",
+          "surface-container": "#eceef0",
+          "error": "#ba1a1a",
+          "on-surface": "#191c1e",
+          "inverse-on-surface": "#eff1f3",
+          "surface-container-high": "#e6e8ea",
+          "background": "#f7f9fb",
+          "on-tertiary-fixed-variant": "#38485d",
+          "error-container": "#ffdad6",
+          "on-background": "#191c1e",
+          "on-tertiary-container": "#e9f0ff",
+          "primary-fixed": "#dbe1ff",
+          "on-tertiary": "#ffffff",
+          "tertiary-fixed-dim": "#b7c8e1",
+          "on-secondary-container": "#5c647a",
+          "tertiary-fixed": "#d3e4fe",
+          "on-primary-fixed-variant": "#003ea8",
+          "surface-variant": "#e0e3e5",
+          "surface-container-lowest": "#ffffff",
+          "on-primary-fixed": "#00174b",
+          "secondary-fixed": "#dae2fd",
+          "surface-dim": "#d8dadc",
+          "primary": "#004ac6",
+          "surface": "#f7f9fb",
+          "surface-container-low": "#f2f4f6",
+          "surface-tint": "#0053db",
+          "on-primary-container": "#eeefff",
+          "on-secondary-fixed-variant": "#3f465c",
+          "on-error-container": "#93000a",
+          "outline": "#737686",
+          "on-secondary": "#ffffff",
+          "on-surface-variant": "#434655",
+          "inverse-primary": "#b4c5ff",
+          "tertiary-container": "#5e6e85",
+          "on-secondary-fixed": "#131b2e",
+          "outline-variant": "#c3c6d7",
+          "secondary-fixed-dim": "#bec6e0",
+          "on-error": "#ffffff",
+          "inverse-surface": "#2d3133",
+          "secondary-container": "#dae2fd",
+          "surface-bright": "#f7f9fb",
+          "on-tertiary-fixed": "#0b1c30",
+          "secondary": "#565e74",
+          "primary-container": "#2563eb",
+          "on-primary": "#ffffff",
+          "primary-fixed-dim": "#b4c5ff"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.125rem",
+          "lg": "0.25rem",
+          "xl": "0.5rem",
+          "full": "0.75rem"
+        },
+        "spacing": {
+          "space-sm": "0.5rem",
+          "space-md": "0.75rem",
+          "margin": "1rem",
+          "space-lg": "1rem",
+          "gutter": "1rem",
+          "space-xl": "1.5rem",
+          "space-xs": "0.25rem"
+        },
+        "fontFamily": {
+          "headline-lg": ["Noto Sans"],
+          "label-header": ["Noto Sans"],
+          "headline-xl": ["Noto Sans"],
+          "label-caption": ["Noto Sans"],
+          "body-default": ["Noto Sans"],
+          "body-dense": ["Noto Sans"],
+          "title-md": ["Noto Sans"],
+          "data-mono": ["JetBrains Mono"]
+        },
+        "fontSize": {
+          "headline-lg": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.005em", "fontWeight": "600"}],
+          "label-header": ["12px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+          "headline-xl": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+          "label-caption": ["11px", {"lineHeight": "14px", "fontWeight": "400"}],
+          "body-default": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+          "body-dense": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+          "title-md": ["15px", {"lineHeight": "20px", "fontWeight": "600"}],
+          "data-mono": ["13px", {"lineHeight": "18px", "fontWeight": "500"}]
+        }
+      }
+    }
+  }</script></head><body class="bg-background font-body-default text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-[240px] bg-surface-container-lowest z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col"><div class="h-14 flex items-center gap-space-sm px-space-lg bg-surface-container-lowest"><img alt="Brand logo. - Primary color: #2563eb
+- Font: notoSans
+- Mode: light
+- Roundness: rounded-sm
+" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1UDMT-K79FVuLNrOZa_mMQx5ExeOZM7T-kj3Xrz5-TvwSkZ4hYXzTiyZMfhfl3hCsBiVwF7CskUrQkkAHYMmweltx-j7ozkBxDLwW_rit1kBhkcnh5Vf2vRyrWi9XrpbV21KuMSyPCO_D1l6GLPSGcVY2nnt1C3A8LAb29HoVuGtEfQUKAN_zSU-wGhc9g4c9zXu4B8oumwVnhCF_FJLuQB9vo4jjcufx_V5cyOP5QvnyxeRwCKKH5Uzi7p"/><div class="flex flex-col"><span class="font-title-md text-title-md text-on-surface leading-none">台製精工</span><span class="font-label-caption text-label-caption text-tertiary mt-space-xs">ERP 製造管理系統</span></div></div><div class="px-space-md py-space-sm"><span class="font-label-caption text-label-caption text-secondary uppercase tracking-wider px-space-xs">核心功能模組</span></div><nav class="flex flex-col gap-space-xs px-space-sm" data-active-classes="bg-primary-container text-on-primary font-title-md rounded-lg"><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="dashboard" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">space_dashboard</span><span class="font-body-dense text-body-dense">首頁</span></div></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="my-tasks" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">assignment_late</span><span class="font-body-dense text-body-dense">我的待辦</span></div><span class="inline-flex items-center justify-center px-space-xs py-0.5 rounded-full bg-error text-on-error font-label-caption text-label-caption font-semibold">5</span></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="quotations" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">request_quote</span><span class="font-body-dense text-body-dense">報價單</span></div></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="purchase-requisitions" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">shopping_cart_checkout</span><span class="font-body-dense text-body-dense">採購申請</span></div></a><a aria-current="page" class="flex items-center justify-between px-space-md py-space-sm transition-colors bg-primary-container text-on-primary font-title-md rounded-lg" data-path="workflow-designer" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">account_tree</span><span class="font-body-dense text-body-dense">設計器</span></div></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="reports" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">monitoring</span><span class="font-body-dense text-body-dense">報表</span></div></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="system-settings" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-body-dense text-body-dense">設定</span></div></a></nav></div><div class="p-space-md bg-surface-container-low flex items-center justify-between"><div class="flex flex-col"><span class="font-label-caption text-label-caption text-secondary">系統版本</span><span class="font-data-mono text-data-mono text-tertiary">v2.4.1</span></div><span class="material-symbols-outlined text-secondary text-[18px]">terminal</span></div></aside><div class="pl-[240px]"><header class="fixed top-0 left-[240px] right-0 h-14 bg-surface-container-lowest z-40 flex items-center justify-between px-space-lg shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs font-body-dense text-body-dense"><span class="text-tertiary">設計器</span><span class="material-symbols-outlined text-[14px] text-tertiary">chevron_right</span><span class="text-tertiary">流程</span><span class="material-symbols-outlined text-[14px] text-tertiary">chevron_right</span><span class="text-on-surface font-semibold">報價單簽核流程</span></div></div><div class="flex items-center gap-space-md"><div class="relative flex items-center"><span class="material-symbols-outlined absolute left-space-sm text-[16px] text-outline">search</span><input class="h-8 pl-8 pr-12 w-64 bg-surface-container text-on-surface font-body-dense text-body-dense rounded-lg focus:outline-none cursor-pointer placeholder:text-outline" placeholder="搜尋表單、料號或單據 (Ctrl+K)" readonly="" type="text"/><span class="absolute right-space-sm font-data-mono text-label-caption text-tertiary px-1.5 py-0.5 rounded bg-surface-container-high">⌘K</span></div><div class="flex items-center gap-space-xs text-tertiary px-space-sm py-1 rounded bg-surface-container-low"><span class="material-symbols-outlined text-[16px]">calendar_today</span><span class="font-data-mono text-data-mono">2025年3月30日</span></div><button class="relative h-8 w-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-error ring-2 ring-surface-container-lowest"></span></button><div class="flex items-center gap-space-sm pl-space-xs"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida/AEtjO1UV7rzq_--8hakcK5PA7TGJ33ahrtYFhwpFX2tao3oBj_sgXoCh1iXhIFCHvK-_OtcOHY4LQm4ajfZ-pGUvHG0PN0qceDRQlkNmUin84p9BSf7oUlnWsKIGog6RXCb3SMMLRVlqgS_LQQh_jEK3kc6JbPqcerhXc4ec1fA-PpW4yS7Q8RA-GpAS6--csOnGAwfKO902pXK_yHp21LF84z4wOXKTijxyZhk56yEt5PkKJHUFUkNdQWHIjegH"/><div class="flex flex-col text-left"><span class="font-label-header text-label-header text-on-surface leading-tight">林建志</span><span class="font-label-caption text-label-caption text-secondary leading-tight">協理</span></div></div></div></header><main class="w-full pt-14 px-margin bg-background min-h-screen"><div class="flex flex-col w-full">
+<!-- TOP ACTION BAR -->
+<div class="w-full bg-surface-container-lowest border-b border-surface-container-high px-space-lg py-space-sm flex flex-col gap-space-xs sticky top-0 z-30 shadow-sm">
+<div class="flex items-center justify-between">
+<!-- Left: Title & Status -->
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-space-sm">
+<span class="font-headline-lg text-headline-lg text-on-surface tracking-tight">報價單簽核流程</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant font-data-mono text-label-caption font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+            v1.0.4-草稿
+          </span>
+<span class="font-label-caption text-label-caption text-secondary">最後更新於 14:32 (林建志)</span>
+</div>
+</div>
+<!-- Right: Action Buttons -->
+<div class="flex items-center gap-space-sm">
+<button class="h-8 px-space-md rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-1.5 font-label-header text-label-header border border-outline-variant/60" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary">play_arrow</span>
+<span>模擬執行</span>
+</button>
+<button class="h-8 px-space-md rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-1.5 font-label-header text-label-header border border-outline-variant/60" id="btn-validate" type="button">
+<span class="material-symbols-outlined text-[16px] text-tertiary">verified_user</span>
+<span>驗證結構</span>
+</button>
+<button class="h-8 px-space-md rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors flex items-center gap-1.5 font-label-header text-label-header border border-outline-variant" type="button">
+<span class="material-symbols-outlined text-[16px] text-secondary">save</span>
+<span>儲存草稿</span>
+</button>
+<button class="h-8 px-space-lg rounded-lg bg-primary-container text-on-primary hover:bg-primary transition-colors flex items-center gap-1.5 font-label-header text-label-header shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">publish</span>
+<span>發布生效</span>
+</button>
+</div>
+</div>
+<!-- VALIDATION BANNER (Collapsible alert drawer) -->
+<div class="w-full bg-error-container/60 border border-error/30 rounded-lg p-2.5 flex flex-col gap-2 transition-all" id="validation-banner">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-error text-[18px]">warning</span>
+<span class="font-title-md text-title-md text-on-error-container">流程結構存在 2 個設定問題</span>
+<span class="px-1.5 py-0.5 rounded bg-error text-on-error font-label-caption text-label-caption font-semibold">阻擋發布</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="text-on-error-container hover:underline font-label-caption text-label-caption flex items-center gap-0.5" id="toggle-validation-detail" type="button">
+<span>檢視詳情 (2)</span>
+<span class="material-symbols-outlined text-[14px]" id="chevron-icon">expand_more</span>
+</button>
+<button class="text-on-error-container/70 hover:text-on-error-container" onclick="document.getElementById('validation-banner').classList.add('hidden')" type="button">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+</div>
+<!-- Collapsible Alert Items -->
+<div class="flex flex-col gap-1.5 pt-1 pl-6" id="validation-details-list">
+<div class="flex items-center justify-between text-on-error-container text-body-dense font-body-dense bg-surface-container-lowest/80 p-1.5 px-2 rounded border border-error/20">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-error text-[16px]">error</span>
+<span>節點 <strong class="font-semibold underline cursor-pointer hover:text-error">「財務簽核」</strong> 指派之角色 <code class="font-data-mono text-label-caption bg-error-container px-1 py-0.5 rounded text-error">finance_manager</code> 於組織架構中不存在</span>
+</div>
+<button class="text-primary hover:underline font-label-caption text-label-caption" type="button">點擊定位節點</button>
+</div>
+<div class="flex items-center justify-between text-on-error-container text-body-dense font-body-dense bg-surface-container-lowest/80 p-1.5 px-2 rounded border border-error/20">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-error text-[16px]">alt_route</span>
+<span>節點 <strong class="font-semibold underline cursor-pointer hover:text-error">「結束」</strong> 於「條件分支 (否)」路徑存在孤立匯流邏輯，未設定預設值</span>
+</div>
+<button class="text-primary hover:underline font-label-caption text-label-caption" type="button">點擊修復</button>
+</div>
+</div>
+</div>
+</div>
+<!-- THREE-COLUMN WORKFLOW BUILDER WORKSPACE -->
+<div class="w-full flex h-[calc(100vh-108px)] overflow-hidden">
+<!-- A. LEFT PANEL: NODE PALETTE (260px) -->
+<aside class="w-[260px] flex-shrink-0 bg-surface-container-lowest border-r border-surface-container-high flex flex-col justify-between overflow-y-auto select-none">
+<div class="p-space-md flex flex-col gap-space-md">
+<!-- Palette Header -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-title-md text-title-md text-on-surface">節點庫</span>
+<span class="font-label-caption text-label-caption text-secondary">8 個可用模組</span>
+</div>
+<div class="relative mt-1">
+<span class="material-symbols-outlined absolute left-2 top-2 text-[16px] text-outline">search</span>
+<input class="w-full h-8 pl-7 pr-2 bg-surface-container-low text-on-surface font-body-dense text-body-dense rounded border border-outline-variant/50 focus:outline-none focus:border-primary" placeholder="過濾節點類型..." type="text"/>
+</div>
+</div>
+<!-- 流程控制 -->
+<div class="flex flex-col gap-1.5">
+<span class="font-label-caption text-label-caption text-secondary uppercase font-semibold tracking-wider">流程控制</span>
+<div class="group p-2 rounded-lg bg-surface-container-lowest hover:bg-surface-container-low border border-surface-container-high hover:border-outline-variant cursor-grab active:cursor-grabbing transition-all flex items-start gap-2.5">
+<div class="w-7 h-7 rounded bg-surface-container text-tertiary flex items-center justify-center flex-shrink-0 group-hover:bg-tertiary group-hover:text-on-tertiary transition-colors">
+<span class="material-symbols-outlined text-[18px]">call_split</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-dense text-body-dense font-semibold text-on-surface leading-tight">條件分支</span>
+<span class="font-label-caption text-label-caption text-secondary truncate">依據表單欄位邏輯分流</span>
+</div>
+</div>
+<div class="group p-2 rounded-lg bg-surface-container-lowest hover:bg-surface-container-low border border-surface-container-high hover:border-outline-variant cursor-grab active:cursor-grabbing transition-all flex items-start gap-2.5">
+<div class="w-7 h-7 rounded bg-surface-container text-tertiary flex items-center justify-center flex-shrink-0 group-hover:bg-tertiary group-hover:text-on-tertiary transition-colors">
+<span class="material-symbols-outlined text-[18px]">alt_route</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-dense text-body-dense font-semibold text-on-surface leading-tight">並行分支</span>
+<span class="font-label-caption text-label-caption text-secondary truncate">多個審核同步發動</span>
+</div>
+</div>
+<div class="group p-2 rounded-lg bg-surface-container-lowest hover:bg-surface-container-low border border-surface-container-high hover:border-outline-variant cursor-grab active:cursor-grabbing transition-all flex items-start gap-2.5">
+<div class="w-7 h-7 rounded bg-surface-container text-tertiary flex items-center justify-center flex-shrink-0 group-hover:bg-tertiary group-hover:text-on-tertiary transition-colors">
+<span class="material-symbols-outlined text-[18px]">merge_type</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-dense text-body-dense font-semibold text-on-surface leading-tight">匯合節點</span>
+<span class="font-label-caption text-label-caption text-secondary truncate">等待多條路線全數達成</span>
+</div>
+</div>
+</div>
+<!-- 人工節點 -->
+<div class="flex flex-col gap-1.5">
+<span class="font-label-caption text-label-caption text-primary font-semibold tracking-wider">人工處理</span>
+<div class="group p-2 rounded-lg bg-surface-container-lowest hover:bg-primary/5 border border-surface-container-high hover:border-primary/40 cursor-grab active:cursor-grabbing transition-all flex items-start gap-2.5">
+<div class="w-7 h-7 rounded bg-primary-fixed text-primary flex items-center justify-center flex-shrink-0 group-hover:bg-primary group-hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">how_to_reg</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-dense text-body-dense font-semibold text-on-surface leading-tight">人工簽核</span>
+<span class="font-label-caption text-label-caption text-secondary truncate">指定主管或角色審查核准</span>
+</div>
+</div>
+<div class="group p-2 rounded-lg bg-surface-container-lowest hover:bg-primary/5 border border-surface-container-high hover:border-primary/40 cursor-grab active:cursor-grabbing transition-all flex items-start gap-2.5">
+<div class="w-7 h-7 rounded bg-secondary-fixed text-secondary flex items-center justify-center flex-shrink-0 group-hover:bg-secondary group-hover:text-on-secondary transition-colors">
+<span class="material-symbols-outlined text-[18px]">edit_document</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-dense text-body-dense font-semibold text-on-surface leading-tight">人工處理</span>
+<span class="font-label-caption text-label-caption text-secondary truncate">填報更新單據特定欄位</span>
+</div>
+</div>
+</div>
+<!-- 系統動作 -->
+<div class="flex flex-col gap-1.5">
+<span class="font-label-caption text-label-caption text-on-secondary-fixed-variant font-semibold tracking-wider">自動化與整合</span>
+<div class="group p-2 rounded-lg bg-surface-container-lowest hover:bg-secondary-fixed/30 border border-surface-container-high hover:border-outline-variant cursor-grab active:cursor-grabbing transition-all flex items-start gap-2.5">
+<div class="w-7 h-7 rounded bg-tertiary-fixed text-tertiary flex items-center justify-center flex-shrink-0 group-hover:bg-tertiary group-hover:text-on-tertiary transition-colors">
+<span class="material-symbols-outlined text-[18px]">bolt</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-dense text-body-dense font-semibold text-on-surface leading-tight">系統動作</span>
+<span class="font-label-caption text-label-caption text-secondary truncate">觸發 Webhook 或 ERP 轉單</span>
+</div>
+</div>
+<div class="group p-2 rounded-lg bg-surface-container-lowest hover:bg-secondary-fixed/30 border border-surface-container-high hover:border-outline-variant cursor-grab active:cursor-grabbing transition-all flex items-start gap-2.5">
+<div class="w-7 h-7 rounded bg-surface-container-high text-tertiary flex items-center justify-center flex-shrink-0 group-hover:bg-tertiary-container group-hover:text-on-tertiary-container transition-colors">
+<span class="material-symbols-outlined text-[18px]">outgoing_mail</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-dense text-body-dense font-semibold text-on-surface leading-tight">發送通知</span>
+<span class="font-label-caption text-label-caption text-secondary truncate">Email / LINE 通知相關人</span>
+</div>
+</div>
+</div>
+<!-- 流程結束 -->
+<div class="flex flex-col gap-1.5">
+<span class="font-label-caption text-label-caption text-secondary uppercase font-semibold tracking-wider">終止與歸檔</span>
+<div class="group p-2 rounded-lg bg-surface-container-lowest hover:bg-surface-container border border-surface-container-high hover:border-outline cursor-grab active:cursor-grabbing transition-all flex items-start gap-2.5">
+<div class="w-7 h-7 rounded bg-inverse-surface text-inverse-on-surface flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-dense text-body-dense font-semibold text-on-surface leading-tight">結束節點</span>
+<span class="font-label-caption text-label-caption text-secondary truncate">流程正式歸檔完成</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom tip card -->
+<div class="p-space-md m-space-sm bg-surface-container-low rounded-lg border border-surface-container-high">
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">tips_and_updates</span>
+<span class="font-label-caption text-label-caption text-secondary leading-relaxed">
+            提示：點擊畫布上的「+」插入點，或由左側清單直接拖曳即可於指定位置插入節點。
+          </span>
+</div>
+</div>
+</aside>
+<!-- B. CENTER CANVAS: FLOW WORKSPACE (FLEXIBLE) -->
+<main class="flex-1 bg-surface relative overflow-auto select-none" style="background-image: radial-gradient(circle, #c3c6d7 1px, transparent 1px); background-size: 24px 24px;">
+<!-- Canvas Zoom / Mini Toolbar (Floating top right) -->
+<div class="sticky top-4 right-6 float-right z-20 flex items-center gap-1 bg-surface-container-lowest/90 backdrop-blur px-2 py-1 rounded-lg border border-surface-container-high shadow-sm">
+<button class="p-1 hover:bg-surface-container rounded text-tertiary" title="放大" type="button"><span class="material-symbols-outlined text-[18px]">add</span></button>
+<span class="font-data-mono text-label-caption px-1 text-on-surface">100%</span>
+<button class="p-1 hover:bg-surface-container rounded text-tertiary" title="縮小" type="button"><span class="material-symbols-outlined text-[18px]">remove</span></button>
+<span class="w-[1px] h-3 bg-surface-container-highest mx-0.5"></span>
+<button class="p-1 hover:bg-surface-container rounded text-tertiary" title="適應畫布" type="button"><span class="material-symbols-outlined text-[18px]">center_focus_strong</span></button>
+<button class="p-1 hover:bg-surface-container rounded text-tertiary" title="對齊整理" type="button"><span class="material-symbols-outlined text-[18px]">auto_fix_high</span></button>
+</div>
+<!-- Flow Central Stack -->
+<div class="min-w-[760px] flex flex-col items-center relative py-8 px-12">
+<!-- 0. RETURN LINE (Curved Path along Left Margin) -->
+<svg class="absolute top-[210px] left-[130px] pointer-events-none z-10" fill="none" height="540" width="220">
+<path d="M 190 530 L 40 530 A 24 24 0 0 1 16 506 L 16 44 A 24 24 0 0 1 40 20 L 190 20" stroke="#ba1a1a" stroke-dasharray="6 4" stroke-linecap="round" stroke-width="2"></path>
+<polygon fill="#ba1a1a" points="186,16 194,20 186,24"></polygon>
+<rect fill="#ffdad6" height="48" rx="4" width="28" x="2" y="240"></rect>
+<text fill="#93000a" font-size="11" font-weight="600" text-anchor="middle" x="16" y="268">退回</text>
+</svg>
+<!-- 1. [開始節點] Start Node -->
+<div class="px-4 py-1.5 rounded-full bg-surface-container-lowest border border-surface-container-highest shadow-sm flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100"></span>
+<span class="font-label-header text-label-header text-on-surface">開始 · 業務送出報價單</span>
+</div>
+<!-- Vertical Connector with + Button -->
+<div class="w-[2px] h-10 bg-outline-variant relative flex items-center justify-center my-0.5">
+<button class="group absolute w-5 h-5 rounded-full bg-surface-container-lowest border border-outline hover:border-primary hover:bg-primary-container text-outline hover:text-on-primary flex items-center justify-center shadow transition-all" title="插入節點" type="button">
+<span class="material-symbols-outlined text-[14px]">add</span>
+</button>
+</div>
+<!-- 2. [人工處理：業務修改報價] Upstream rework node -->
+<div class="w-[320px] bg-surface-container-lowest border border-surface-container-high rounded-lg p-3 shadow-sm border-l-4 border-l-secondary-fixed hover:border-outline transition-colors flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px]">edit_note</span>
+<span class="font-title-md text-title-md text-on-surface">業務修改報價</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-tertiary font-label-caption text-label-caption">人工處理</span>
+</div>
+<span class="font-body-dense text-body-dense text-secondary pl-5">處理人：申請業務員 · 依主管意見修正折扣與品項</span>
+</div>
+<!-- Vertical Connector with + Button -->
+<div class="w-[2px] h-10 bg-outline-variant relative flex items-center justify-center my-0.5">
+<button class="group absolute w-5 h-5 rounded-full bg-surface-container-lowest border border-outline hover:border-primary hover:bg-primary-container text-outline hover:text-on-primary flex items-center justify-center shadow transition-all" title="插入節點" type="button">
+<span class="material-symbols-outlined text-[14px]">add</span>
+</button>
+</div>
+<!-- 3. [人工簽核：主管簽核] ACTIVE / SELECTED NODE -->
+<div class="w-[320px] bg-surface-container-lowest border-2 border-primary rounded-lg p-3.5 shadow-md border-l-4 border-l-primary relative ring-4 ring-primary/10 transition-all cursor-pointer">
+<div class="flex items-center justify-between pb-1.5 border-b border-surface-container-high">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[18px]">verified_user</span>
+<span class="font-title-md text-title-md text-on-surface font-semibold">主管簽核</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="px-1.5 py-0.5 rounded bg-primary-fixed text-on-primary-fixed font-label-caption text-label-caption font-semibold">人工簽核</span>
+<button class="p-0.5 hover:bg-surface-container rounded text-outline" type="button"><span class="material-symbols-outlined text-[16px]">more_vert</span></button>
+</div>
+</div>
+<div class="flex flex-col gap-1 pt-2">
+<div class="flex items-center gap-1 text-on-surface-variant font-body-dense text-body-dense">
+<span class="text-tertiary">簽核人：</span>
+<span class="font-semibold text-on-surface">申請人直屬主管 (自動查找 1 級)</span>
+</div>
+<div class="flex items-center justify-between text-label-caption text-secondary pt-1">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-amber-600">schedule</span>
+                逾期 2 天自動升級業務總監
+              </span>
+<span class="font-data-mono text-[11px] bg-surface-container-low px-1 rounded">會簽</span>
+</div>
+</div>
+</div>
+<!-- Vertical Connector with + Button -->
+<div class="w-[2px] h-10 bg-outline-variant relative flex items-center justify-center my-0.5">
+<button class="group absolute w-5 h-5 rounded-full bg-surface-container-lowest border border-outline hover:border-primary hover:bg-primary-container text-outline hover:text-on-primary flex items-center justify-center shadow transition-all" title="插入節點" type="button">
+<span class="material-symbols-outlined text-[14px]">add</span>
+</button>
+</div>
+<!-- 4. [條件分支節點] Condition Branch Card -->
+<div class="w-[300px] bg-surface-container-lowest border border-amber-300 rounded-lg p-3 shadow-sm border-l-4 border-l-amber-500 flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-amber-600 text-[18px]">call_split</span>
+<span class="font-title-md text-title-md text-on-surface">條件判斷分流</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 font-label-caption text-label-caption font-semibold">條件分支</span>
+</div>
+<div class="bg-surface-container-low px-2 py-1 rounded flex items-center justify-between font-data-mono text-label-caption text-on-surface">
+<span>折扣率是否超過 15%</span>
+<code class="text-primary font-semibold">&gt; 0.15</code>
+</div>
+</div>
+<!-- Branch Split Lines and Sub-lanes -->
+<div class="relative w-[560px] flex flex-col items-center">
+<!-- Top Horizontal Split Bar -->
+<div class="w-full h-6 relative flex justify-between">
+<!-- Left Corner -->
+<div class="w-1/2 h-6 border-t-2 border-l-2 border-outline-variant rounded-tl-lg"></div>
+<!-- Right Corner -->
+<div class="w-1/2 h-6 border-t-2 border-r-2 border-outline-variant rounded-tr-lg"></div>
+</div>
+<!-- Dual Columns Container -->
+<div class="w-full flex justify-between items-start gap-12">
+<!-- Left Lane (YES / 是) -->
+<div class="w-[280px] flex flex-col items-center">
+<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-label-caption text-label-caption font-semibold -mt-3 mb-2 shadow-xs">
+                是 (折扣 &gt; 15%)
+              </span>
+<!-- Vertical Connector -->
+<div class="w-[2px] h-8 bg-outline-variant relative flex items-center justify-center">
+<button class="absolute w-4 h-4 rounded-full bg-surface-container-lowest border border-outline hover:border-primary text-outline hover:text-primary flex items-center justify-center text-[12px]" type="button">+</button>
+</div>
+<!-- [人工簽核：財務簽核] WITH ERROR BORDER -->
+<div class="w-full bg-surface-container-lowest border-2 border-error rounded-lg p-3 shadow-sm border-l-4 border-l-error relative flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-error text-[18px]">gavel</span>
+<span class="font-title-md text-title-md text-on-surface">財務簽核</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-error-container text-error font-label-caption text-label-caption font-semibold flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[12px]">error</span>
+                    角色未定義
+                  </span>
+</div>
+<div class="text-body-dense font-body-dense text-secondary">
+                  簽核人：<span class="font-semibold text-on-surface">財務長 / 財務經理</span>
+</div>
+<div class="bg-error-container/40 p-1.5 rounded text-label-caption text-error flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+<span>角色 finance_manager 不存在</span>
+</div>
+</div>
+<!-- Vertical Connector -->
+<div class="w-[2px] h-8 bg-outline-variant relative flex items-center justify-center">
+<button class="absolute w-4 h-4 rounded-full bg-surface-container-lowest border border-outline hover:border-primary text-outline hover:text-primary flex items-center justify-center text-[12px]" type="button">+</button>
+</div>
+</div>
+<!-- Right Lane (NO / 否 - Bypass straight path) -->
+<div class="w-[280px] flex flex-col items-center">
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-tertiary font-label-caption text-label-caption font-semibold -mt-3 mb-2 shadow-xs">
+                否 (一般折扣)
+              </span>
+<!-- Clean bypass straight path -->
+<div class="w-[2px] h-[138px] bg-outline-variant relative flex items-center justify-center">
+<button class="group absolute w-5 h-5 rounded-full bg-surface-container-lowest border border-outline hover:border-primary hover:bg-primary-container text-outline hover:text-on-primary flex items-center justify-center shadow transition-all" title="插入繞道動作" type="button">
+<span class="material-symbols-outlined text-[14px]">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Bottom Horizontal Merge Bar -->
+<div class="w-full h-6 relative flex justify-between">
+<div class="w-1/2 h-6 border-b-2 border-l-2 border-outline-variant rounded-bl-lg"></div>
+<div class="w-1/2 h-6 border-b-2 border-r-2 border-outline-variant rounded-br-lg"></div>
+</div>
+</div>
+<!-- Merged Vertical Connector with + Button -->
+<div class="w-[2px] h-10 bg-outline-variant relative flex items-center justify-center my-0.5">
+<button class="group absolute w-5 h-5 rounded-full bg-surface-container-lowest border border-outline hover:border-primary hover:bg-primary-container text-outline hover:text-on-primary flex items-center justify-center shadow transition-all" title="插入節點" type="button">
+<span class="material-symbols-outlined text-[14px]">add</span>
+</button>
+</div>
+<!-- 5. [系統動作節點] Generate PDF and Send -->
+<div class="w-[320px] bg-surface-container-lowest border border-surface-container-high rounded-lg p-3 shadow-sm border-l-4 border-l-secondary-container hover:border-outline transition-colors flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[18px]">picture_as_pdf</span>
+<span class="font-title-md text-title-md text-on-surface">產生 PDF 報價單</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-tertiary font-label-caption text-label-caption">系統動作</span>
+</div>
+<div class="flex items-center justify-between text-label-caption text-secondary">
+<span class="font-data-mono">動作：quotation.generate_pdf</span>
+<span class="bg-surface-container px-1 py-0.5 rounded text-tertiary">失敗重試 3 次</span>
+</div>
+</div>
+<!-- Vertical Connector with + Button -->
+<div class="w-[2px] h-10 bg-outline-variant relative flex items-center justify-center my-0.5">
+<button class="group absolute w-5 h-5 rounded-full bg-surface-container-lowest border border-outline hover:border-primary hover:bg-primary-container text-outline hover:text-on-primary flex items-center justify-center shadow transition-all" title="插入節點" type="button">
+<span class="material-symbols-outlined text-[14px]">add</span>
+</button>
+</div>
+<!-- 6. [人工簽核：客戶簽核] Customer Sign Node -->
+<div class="w-[320px] bg-surface-container-lowest border border-surface-container-high rounded-lg p-3 shadow-sm border-l-4 border-l-primary hover:border-outline transition-colors flex flex-col gap-1.5 relative">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[18px]">draw</span>
+<span class="font-title-md text-title-md text-on-surface">客戶線上簽核</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-label-caption text-label-caption font-semibold">外部簽署</span>
+<span class="px-1.5 py-0.5 rounded bg-primary-fixed text-primary font-label-caption text-label-caption">電子簽章</span>
+</div>
+</div>
+<div class="text-body-dense font-body-dense text-secondary">
+            簽核人：<span class="font-semibold text-on-surface">報價單客戶聯絡人 (Email 認證)</span>
+</div>
+<div class="flex items-center justify-between text-label-caption text-secondary pt-0.5 border-t border-surface-container-high">
+<span>須本人親簽確認</span>
+<span>逾期 7 天通知業務追蹤</span>
+</div>
+</div>
+<!-- Vertical Connector with + Button -->
+<div class="w-[2px] h-10 bg-outline-variant relative flex items-center justify-center my-0.5">
+<button class="group absolute w-5 h-5 rounded-full bg-surface-container-lowest border border-outline hover:border-primary hover:bg-primary-container text-outline hover:text-on-primary flex items-center justify-center shadow transition-all" title="插入節點" type="button">
+<span class="material-symbols-outlined text-[14px]">add</span>
+</button>
+</div>
+<!-- 7. [系統動作節點] ERP Order Creation -->
+<div class="w-[320px] bg-surface-container-lowest border border-surface-container-high rounded-lg p-3 shadow-sm border-l-4 border-l-tertiary-container hover:border-outline transition-colors flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[18px]">sync_alt</span>
+<span class="font-title-md text-title-md text-on-surface">ERP 自動建立銷售訂單</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-tertiary font-label-caption text-label-caption">系統動作</span>
+</div>
+<div class="flex items-center justify-between text-label-caption text-secondary">
+<span class="font-data-mono">動作：erp.so.create_from_quotation</span>
+<span class="text-primary font-medium">連動庫存預留</span>
+</div>
+</div>
+<!-- Vertical Connector with + Button -->
+<div class="w-[2px] h-10 bg-outline-variant relative flex items-center justify-center my-0.5">
+<button class="group absolute w-5 h-5 rounded-full bg-surface-container-lowest border border-outline hover:border-primary hover:bg-primary-container text-outline hover:text-on-primary flex items-center justify-center shadow transition-all" title="插入節點" type="button">
+<span class="material-symbols-outlined text-[14px]">add</span>
+</button>
+</div>
+<!-- 8. [發送通知節點] Final Notification -->
+<div class="w-[320px] bg-surface-container-lowest border border-surface-container-high rounded-lg p-3 shadow-sm border-l-4 border-l-primary hover:border-outline transition-colors flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[18px]">mark_email_read</span>
+<span class="font-title-md text-title-md text-on-surface">Email 通知雙方副本</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-tertiary font-label-caption text-label-caption">發送通知</span>
+</div>
+<span class="font-body-dense text-body-dense text-secondary pl-5 truncate">自動發送簽署憑據 PDF 至業務員及客戶窗口</span>
+</div>
+<!-- Vertical Connector with + Button -->
+<div class="w-[2px] h-10 bg-outline-variant relative flex items-center justify-center my-0.5">
+<button class="group absolute w-5 h-5 rounded-full bg-surface-container-lowest border border-outline hover:border-primary hover:bg-primary-container text-outline hover:text-on-primary flex items-center justify-center shadow transition-all" title="插入節點" type="button">
+<span class="material-symbols-outlined text-[14px]">add</span>
+</button>
+</div>
+<!-- 9. [結束節點] End Node -->
+<div class="px-5 py-2 rounded-full bg-inverse-surface text-inverse-on-surface shadow-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-emerald-400">check_circle</span>
+<span class="font-label-header text-label-header">結束 · 報價歸檔完成</span>
+</div>
+</div>
+</main>
+<!-- C. RIGHT PANEL: NODE INSPECTOR & CONFIGURATION (340px) -->
+<aside class="w-[340px] flex-shrink-0 bg-surface-container-lowest border-l border-surface-container-high flex flex-col justify-between overflow-y-auto">
+<div class="p-space-lg flex flex-col gap-space-lg">
+<!-- Inspector Title Header -->
+<div class="flex flex-col gap-1 pb-space-sm border-b border-surface-container-high">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">verified_user</span>
+<span class="font-headline-lg text-headline-lg text-on-surface font-semibold">主管簽核</span>
+</div>
+<span class="px-2 py-0.5 rounded bg-primary-fixed text-primary font-label-caption text-label-caption font-semibold">人工簽核</span>
+</div>
+<div class="flex items-center justify-between text-secondary font-label-caption text-label-caption">
+<span>節點代碼：<code class="font-data-mono text-tertiary">#node_mgr_approval</code></span>
+<span class="text-primary hover:underline cursor-pointer">修改別名</span>
+</div>
+</div>
+<!-- Form Section 1: 簽核人 Approver Mode -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<label class="font-label-header text-label-header text-on-surface flex items-center gap-1">
+<span>簽核人指派</span>
+<span class="text-error">*</span>
+</label>
+<span class="font-label-caption text-label-caption text-tertiary">階層查找模式</span>
+</div>
+<!-- Segmented Control Pills -->
+<div class="grid grid-cols-3 gap-1 bg-surface-container-low p-1 rounded-lg border border-surface-container-high">
+<button class="py-1 text-center font-label-caption text-label-caption text-secondary hover:text-on-surface rounded" type="button">指定人員</button>
+<button class="py-1 text-center font-label-caption text-label-caption text-secondary hover:text-on-surface rounded" type="button">角色群組</button>
+<button class="py-1 text-center font-label-caption text-label-caption font-semibold bg-surface-container-lowest text-primary shadow-xs rounded" type="button">主管層級</button>
+<button class="py-1 text-center font-label-caption text-label-caption text-secondary hover:text-on-surface rounded" type="button">部門主管</button>
+<button class="py-1 text-center font-label-caption text-label-caption text-secondary hover:text-on-surface rounded" type="button">外部窗口</button>
+<button class="py-1 text-center font-label-caption text-label-caption text-secondary hover:text-on-surface rounded" type="button">動態腳本</button>
+</div>
+<!-- Dynamic Parameter detail box -->
+<div class="mt-1 p-2.5 rounded bg-surface-container-low border border-surface-container-high flex flex-col gap-2">
+<div class="flex flex-col gap-1">
+<span class="font-label-caption text-label-caption text-secondary">主管層級設定</span>
+<select class="h-8 w-full bg-surface-container-lowest text-on-surface font-body-dense text-body-dense rounded px-2 border border-outline-variant focus:border-primary focus:outline-none">
+<option selected="">取得「申請人」直屬主管 (第 1 級)</option>
+<option>取得「申請人」二級主管 (處長/協理)</option>
+<option>取得「申請部門」最高權限負責人</option>
+</select>
+</div>
+<div class="flex items-start gap-1.5 text-label-caption text-tertiary">
+<span class="material-symbols-outlined text-[14px] text-primary mt-0.5">info</span>
+<span>執行時即時從人事組織樹解析，人員異動或職務代理時自動跟隨，無須人工更新。</span>
+</div>
+</div>
+</div>
+<!-- Form Section 2: 簽核方式 Approval Logic -->
+<div class="flex flex-col gap-2 pt-1">
+<label class="font-label-header text-label-header text-on-surface">簽核表決方式</label>
+<div class="flex flex-col gap-2 bg-surface-container-low p-2.5 rounded border border-surface-container-high">
+<label class="flex items-start gap-2 cursor-pointer">
+<input checked="" class="mt-0.5 text-primary focus:ring-primary h-4 w-4" name="approval_method" type="radio"/>
+<div class="flex flex-col">
+<span class="font-body-dense text-body-dense font-medium text-on-surface">會簽（需所有指定主管全數同意）</span>
+<span class="font-label-caption text-label-caption text-secondary">任一主管拒絕即刻退回</span>
+</div>
+</label>
+<label class="flex items-start gap-2 cursor-pointer">
+<input class="mt-0.5 text-primary focus:ring-primary h-4 w-4" name="approval_method" type="radio"/>
+<div class="flex flex-col">
+<span class="font-body-dense text-body-dense text-on-surface">或簽（任一主管同意即可流轉至下一關）</span>
+<span class="font-label-caption text-label-caption text-secondary">加速常規採購流程</span>
+</div>
+</label>
+</div>
+</div>
+<!-- Form Section 3: 逾期升級 Timeout Escalation -->
+<div class="flex flex-col gap-2 pt-1">
+<div class="flex items-center justify-between">
+<label class="font-label-header text-label-header text-on-surface">逾期處理機制</label>
+<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-label-caption text-label-caption font-semibold">已啟用</span>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div class="flex flex-col gap-1">
+<span class="font-label-caption text-label-caption text-secondary">逾期時限</span>
+<div class="flex items-center gap-1">
+<input class="h-8 w-full bg-surface-container-lowest text-on-surface font-body-dense text-body-dense rounded px-2 border border-outline-variant focus:border-primary text-center" type="number" value="2"/>
+<select class="h-8 bg-surface-container-lowest text-on-surface font-label-caption text-label-caption rounded px-1.5 border border-outline-variant">
+<option selected="">天 (工作日)</option>
+<option>小時</option>
+</select>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-caption text-label-caption text-secondary">觸發動作</span>
+<select class="h-8 w-full bg-surface-container-lowest text-on-surface font-body-dense text-body-dense rounded px-2 border border-outline-variant">
+<option selected="">自動升級代簽</option>
+<option>發送催辦通知</option>
+<option>自動核准通過</option>
+</select>
+</div>
+</div>
+<div class="flex flex-col gap-1 mt-1">
+<span class="font-label-caption text-label-caption text-secondary">升級代簽對象角色</span>
+<div class="flex items-center justify-between h-8 px-2 bg-surface-container-low rounded border border-outline-variant/60 font-body-dense text-body-dense text-on-surface">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-tertiary">shield_person</span>
+                業務總監 (Sales Director)
+              </span>
+<span class="material-symbols-outlined text-[16px] text-secondary cursor-pointer">arrow_drop_down</span>
+</div>
+</div>
+</div>
+<!-- Form Section 4: 退回設定 Return Rules -->
+<div class="flex flex-col gap-2 pt-1">
+<label class="font-label-header text-label-header text-on-surface">駁回與退回設定</label>
+<div class="flex flex-col gap-2 bg-surface-container-low p-2.5 rounded border border-surface-container-high">
+<label class="flex items-center gap-2 cursor-pointer">
+<input checked="" class="text-primary focus:ring-primary h-4 w-4" name="rejection_action" type="radio"/>
+<span class="font-body-dense text-body-dense font-medium text-on-surface">退回至指定上游節點</span>
+</label>
+<select class="h-8 w-full bg-surface-container-lowest text-on-surface font-body-dense text-body-dense rounded px-2 border border-outline-variant text-primary font-medium">
+<option selected="">業務修改報價 (上游節點)</option>
+<option>流程發起人 (重新提案)</option>
+</select>
+<label class="flex items-center gap-2 cursor-pointer mt-1">
+<input class="text-primary focus:ring-primary h-4 w-4" name="rejection_action" type="radio"/>
+<span class="font-body-dense text-body-dense text-on-surface">直接作廢並終止流程</span>
+</label>
+</div>
+<span class="font-label-caption text-label-caption text-secondary pl-1">
+            ℹ️ 系統限制：只能退回至當前節點前方的同源脈絡，保障資料防篡改審計。
+          </span>
+</div>
+<!-- Form Section 5: 表單權限 Form Permissions -->
+<div class="flex flex-col gap-2 pt-1 border-t border-surface-container-high">
+<div class="flex items-center justify-between">
+<label class="font-label-header text-label-header text-on-surface">表單欄位權限控制</label>
+<span class="font-data-mono text-label-caption text-primary cursor-pointer hover:underline">細項設定</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-low border border-surface-container-high font-body-dense text-body-dense">
+<span class="text-secondary">報價表單主體 (SO_QT_MAIN)</span>
+<span class="font-label-caption text-label-caption bg-surface-container px-1.5 py-0.5 rounded text-tertiary">已繼承 24 個欄位唯讀</span>
+</div>
+</div>
+</div>
+<!-- Right Panel Bottom Sticky Action Row -->
+<div class="p-space-md border-t border-surface-container-high bg-surface-container-lowest flex items-center justify-between sticky bottom-0">
+<button class="font-label-header text-label-header text-secondary hover:text-on-surface" type="button">
+          還原預設
+        </button>
+<button class="h-8 px-space-lg rounded-lg bg-primary text-on-primary hover:bg-primary-container transition-colors flex items-center gap-1.5 font-label-header text-label-header shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">check</span>
+<span>儲存節點變更</span>
+</button>
+</div>
+</aside>
+</div>
+<script>
+    // Toggle validation details drawer
+    const toggleBtn = document.getElementById('toggle-validation-detail');
+    const detailsList = document.getElementById('validation-details-list');
+    const chevron = document.getElementById('chevron-icon');
+
+    if (toggleBtn && detailsList && chevron) {
+      toggleBtn.addEventListener('click', () => {
+        const isHidden = detailsList.classList.toggle('hidden');
+        chevron.textContent = isHidden ? 'expand_more' : 'expand_less';
+      });
+    }
+
+    // Interactive button validation feedback
+    const validateBtn = document.getElementById('btn-validate');
+    const validationBanner = document.getElementById('validation-banner');
+    if (validateBtn && validationBanner) {
+      validateBtn.addEventListener('click', () => {
+        validationBanner.classList.remove('hidden');
+        validationBanner.scrollIntoView({ behavior: 'smooth' });
+      });
+    }
+  </script>
+</div></main></div></body></html>

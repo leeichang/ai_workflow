@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&amp;family=Noto+Sans:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"on-background":"#191c1e","surface-dim":"#d8dadc","surface-variant":"#e0e3e5","on-primary-fixed-variant":"#003ea8","outline":"#737686","error":"#ba1a1a","on-error-container":"#93000a","primary-fixed":"#dbe1ff","surface-container":"#eceef0","on-tertiary-fixed":"#0b1c30","inverse-on-surface":"#eff1f3","surface-container-low":"#f2f4f6","on-tertiary":"#ffffff","tertiary":"#46566c","on-tertiary-container":"#e9f0ff","tertiary-container":"#5e6e85","on-primary-fixed":"#00174b","inverse-primary":"#b4c5ff","error-container":"#ffdad6","on-primary-container":"#eeefff","on-tertiary-fixed-variant":"#38485d","secondary-fixed":"#dae2fd","on-secondary-fixed-variant":"#3f465c","secondary-fixed-dim":"#bec6e0","surface":"#f7f9fb","surface-container-high":"#e6e8ea","on-secondary":"#ffffff","surface-container-highest":"#e0e3e5","surface-bright":"#f7f9fb","tertiary-fixed":"#d3e4fe","on-secondary-fixed":"#131b2e","inverse-surface":"#2d3133","primary":"#004ac6","on-error":"#ffffff","surface-container-lowest":"#ffffff","outline-variant":"#c3c6d7","tertiary-fixed-dim":"#b7c8e1","primary-fixed-dim":"#b4c5ff","surface-tint":"#0053db","on-surface":"#191c1e","secondary":"#565e74","primary-container":"#2563eb","background":"#f7f9fb","secondary-container":"#dae2fd","on-primary":"#ffffff","on-surface-variant":"#434655","on-secondary-container":"#5c647a"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-sm":"0.5rem","space-xl":"1.5rem","space-md":"0.75rem","margin":"1rem","space-xs":"0.25rem","space-lg":"1rem","gutter":"1rem"},"fontFamily":{"headline-lg":["Noto Sans"],"headline-xl":["Noto Sans"],"title-md":["Noto Sans"],"label-header":["Noto Sans"],"data-mono":["JetBrains Mono"],"label-caption":["Noto Sans"],"body-dense":["Noto Sans"],"body-default":["Noto Sans"]},"fontSize":{"headline-lg":["18px",{"lineHeight":"24px","letterSpacing":"-0.005em","fontWeight":"600"}],"headline-xl":["24px",{"lineHeight":"32px","letterSpacing":"-0.01em","fontWeight":"600"}],"title-md":["15px",{"lineHeight":"20px","fontWeight":"600"}],"label-header":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"data-mono":["13px",{"lineHeight":"18px","fontWeight":"500"}],"label-caption":["11px",{"lineHeight":"14px","fontWeight":"400"}],"body-dense":["13px",{"lineHeight":"18px","fontWeight":"400"}],"body-default":["14px",{"lineHeight":"20px","fontWeight":"400"}]}}}};</script></head><body class="bg-background font-body-default text-body-default text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-60 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col select-none"><div class="h-14 flex items-center justify-between px-space-lg bg-surface-container-low"><div class="flex items-center gap-space-sm"><img alt="Brand logo. - Primary color: #2563eb - Font: notoSans - Mode: light - Roundness: rounded-sm" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1UDMT-K79FVuLNrOZa_mMQx5ExeOZM7T-kj3Xrz5-TvwSkZ4hYXzTiyZMfhfl3hCsBiVwF7CskUrQkkAHYMmweltx-j7ozkBxDLwW_rit1kBhkcnh5Vf2vRyrWi9XrpbV21KuMSyPCO_D1l6GLPSGcVY2nnt1C3A8LAb29HoVuGtEfQUKAN_zSU-wGhc9g4c9zXu4B8oumwVnhCF_FJLuQB9vo4jjcufx_V5cyOP5QvnyxeRwCKKH5Uzi7p"/><div class="flex flex-col"><span class="font-title-md text-title-md text-on-surface tracking-tight leading-none">台製精工</span><span class="font-label-caption text-label-caption text-on-surface-variant leading-none mt-space-xs">ERP 智慧生產管理</span></div></div><button class="flex items-center justify-center p-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" title="收合導航欄"><span class="material-symbols-outlined text-[18px]">menu_open</span></button></div><div class="px-space-md py-space-sm"><div class="flex items-center justify-between px-space-sm py-space-xs rounded bg-surface-container text-on-surface-variant"><span class="font-label-caption text-label-caption uppercase tracking-wider font-semibold text-secondary">廠區工作區</span><span class="font-label-caption text-label-caption text-primary font-semibold">台中第一廠</span></div></div><nav class="flex-1 overflow-y-auto px-space-sm py-space-xs space-y-space-xs" data-active-classes="bg-primary-container text-on-primary font-semibold"><a class="flex items-center gap-space-md px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="首頁" href="#"><span class="material-symbols-outlined text-[18px]">dashboard</span><span class="font-body-dense text-body-dense">首頁</span></a><a class="flex items-center justify-between px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="我的待辦" href="#"><div class="flex items-center gap-space-md"><span class="material-symbols-outlined text-[18px]">assignment_late</span><span class="font-body-dense text-body-dense">我的待辦</span></div><span class="font-data-mono text-label-caption px-space-xs rounded bg-error-container text-on-error-container font-semibold">14</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="報價單" href="#"><span class="material-symbols-outlined text-[18px]">request_quote</span><span class="font-body-dense text-body-dense">報價單</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="採購申請" href="#"><span class="material-symbols-outlined text-[18px]">shopping_cart_checkout</span><span class="font-body-dense text-body-dense">採購申請</span></a><a aria-current="page" class="flex items-center justify-between px-space-md py-space-sm rounded transition-colors bg-primary-container text-on-primary font-semibold" data-path="設計器" href="#"><div class="flex items-center gap-space-md"><span class="material-symbols-outlined text-[18px]">architecture</span><span class="font-body-dense text-body-dense">設計器</span></div><span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="報表" href="#"><span class="material-symbols-outlined text-[18px]">bar_chart</span><span class="font-body-dense text-body-dense">報表</span></a><div class="my-space-sm pt-space-sm"><div class="px-space-md py-space-xs"><span class="font-label-caption text-label-caption uppercase tracking-wider text-outline">系統管理</span></div><a class="flex items-center gap-space-md px-space-md py-space-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="設定" href="#"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-body-dense text-body-dense">設定</span></a></div></nav><div class="p-space-sm bg-surface-container-low flex items-center justify-between text-on-surface-variant"><div class="flex items-center gap-space-xs"><span class="w-2 h-2 rounded-full bg-primary"></span><span class="font-label-caption text-label-caption">伺服器連線正常</span></div><span class="font-data-mono text-label-caption text-outline">v4.2.0</span></div></aside><div class="pl-60"><header class="fixed top-0 left-60 right-0 h-14 bg-surface-container-lowest/90 backdrop-blur-md shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg select-none"><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs text-on-surface-variant"><span class="material-symbols-outlined text-[18px]">precision_manufacturing</span><span class="font-label-caption text-label-caption font-semibold">生產控管</span><span class="material-symbols-outlined text-[14px] text-outline">chevron_right</span><span class="font-label-caption text-label-caption text-on-surface font-semibold">設計器模組</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-sm px-space-md py-space-xs bg-surface-container-low rounded text-on-surface-variant shadow-inner"><span class="material-symbols-outlined text-[16px] text-secondary">search</span><span class="font-body-dense text-body-dense text-on-surface-variant pr-space-lg">全局搜尋料號、表單...</span><span class="font-data-mono text-label-caption px-space-xs rounded bg-surface-container-high text-on-surface-variant">Ctrl K</span></div><div class="flex items-center gap-space-xs px-space-sm py-space-xs bg-surface-container-low rounded text-on-surface-variant"><span class="material-symbols-outlined text-[16px] text-primary">calendar_today</span><span class="font-data-mono text-label-caption text-on-surface font-medium">2025-05-20 (二)</span></div><div class="relative flex items-center"><button class="flex items-center justify-center p-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" title="系統通知"><span class="material-symbols-outlined text-[20px]">notifications</span></button><span class="absolute top-0 right-0 w-2 h-2 rounded-full bg-error ring-2 ring-surface-container-lowest"></span></div><div class="h-4 w-[1px] bg-surface-container-high"></div><div class="flex items-center gap-space-sm pl-space-xs"><div class="flex flex-col text-right"><span class="font-body-dense text-body-dense font-semibold text-on-surface leading-tight">陳建華</span><span class="font-label-caption text-label-caption text-on-surface-variant leading-none">產線主任 / 廠務部</span></div><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-1 ring-surface-container-high" src="https://lh3.googleusercontent.com/aida/AEtjO1UV7rzq_--8hakcK5PA7TGJ33ahrtYFhwpFX2tao3oBj_sgXoCh1iXhIFCHvK-_OtcOHY4LQm4ajfZ-pGUvHG0PN0qceDRQlkNmUin84p9BSf7oUlnWsKIGog6RXCb3SMMLRVlqgS_LQQh_jEK3kc6JbPqcerhXc4ec1fA-PpW4yS7Q8RA-GpAS6--csOnGAwfKO902pXK_yHp21LF84z4wOXKTijxyZhk56yEt5PkKJHUFUkNdQWHIjegH"/></div></div></header><main class="relative pt-14 w-full bg-background px-space-lg py-space-md"><div class="flex flex-col w-full relative select-none">
+<!-- BACKGROUND WORKSPACE: WYSIWYG Template Designer (Subtly Visible behind modal) -->
+<div class="w-full flex flex-col space-y-space-md opacity-35 pointer-events-none filter blur-[0.6px] transition-all">
+<!-- Top Designer Utility Bar -->
+<div class="flex items-center justify-between bg-surface-container-lowest p-space-md rounded shadow-sm">
+<div class="flex items-center gap-space-md">
+<span class="p-space-xs rounded bg-surface-container text-primary material-symbols-outlined text-[20px]">architecture</span>
+<div class="flex flex-col">
+<span class="font-headline-lg text-headline-lg text-on-surface">單據套版設計器</span>
+<span class="font-label-caption text-label-caption text-on-surface-variant">樣板代號: FM-SALES-QT01 (業務銷貨報價單套印規範)</span>
+</div>
+<span class="px-space-sm py-0.5 rounded bg-surface-container text-on-surface-variant font-label-caption text-label-caption font-semibold">編輯中</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<button class="px-space-md py-1.5 rounded bg-surface-container text-on-surface-variant font-body-dense text-body-dense flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[16px]">undo</span>還原
+        </button>
+<button class="px-space-md py-1.5 rounded bg-surface-container text-on-surface-variant font-body-dense text-body-dense flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[16px]">redo</span>重做
+        </button>
+<div class="h-4 w-px bg-surface-container-high mx-space-xs"></div>
+<button class="px-space-md py-1.5 rounded bg-surface-container text-on-surface-variant font-body-dense text-body-dense flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[16px]">grid_4x4</span>貼齊格線: 1mm
+        </button>
+<button class="px-space-lg py-1.5 rounded bg-primary-container text-on-primary font-body-dense text-body-dense flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[16px]">visibility</span>預覽與列印
+        </button>
+</div>
+</div>
+<!-- Designer Three-Column Canvas Frame -->
+<div class="grid grid-cols-12 gap-space-md h-[780px]">
+<!-- Left Panel: Component Library -->
+<div class="col-span-2 bg-surface-container-lowest p-space-md rounded shadow-sm flex flex-col space-y-space-md">
+<span class="font-label-header text-label-header uppercase text-secondary">動態欄位元件池</span>
+<div class="space-y-space-xs">
+<div class="p-space-sm bg-surface-container-low rounded font-body-dense text-body-dense flex items-center justify-between text-on-surface">
+<span class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-[16px] text-primary">text_fields</span>公司抬頭區塊</span>
+<span class="material-symbols-outlined text-[14px] text-outline">drag_indicator</span>
+</div>
+<div class="p-space-sm bg-surface-container-low rounded font-body-dense text-body-dense flex items-center justify-between text-on-surface">
+<span class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-[16px] text-primary">table_chart</span>明細項目表 (動態高度)</span>
+<span class="material-symbols-outlined text-[14px] text-outline">drag_indicator</span>
+</div>
+<div class="p-space-sm bg-surface-container-low rounded font-body-dense text-body-dense flex items-center justify-between text-on-surface">
+<span class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-[16px] text-primary">calculate</span>稅額合計彙整</span>
+<span class="material-symbols-outlined text-[14px] text-outline">drag_indicator</span>
+</div>
+<div class="p-space-sm bg-surface-container-low rounded font-body-dense text-body-dense flex items-center justify-between text-on-surface">
+<span class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-[16px] text-primary">draw</span>立約雙方印鑑欄</span>
+<span class="material-symbols-outlined text-[14px] text-outline">drag_indicator</span>
+</div>
+</div>
+</div>
+<!-- Center: Mock Paper Canvas -->
+<div class="col-span-7 bg-surface-container-low rounded shadow-inner flex flex-col items-center justify-start p-space-lg overflow-hidden">
+<div class="w-[520px] h-[720px] bg-surface-container-lowest shadow-md rounded-sm p-space-lg flex flex-col space-y-space-md">
+<div class="h-10 bg-surface-container rounded-sm flex items-center justify-center font-label-caption text-label-caption text-outline">頁首商標與公司資訊排版區</div>
+<div class="h-20 bg-surface-container-low rounded-sm flex items-center justify-center font-label-caption text-label-caption text-outline">買賣雙方資料對稱網格 (動態綁定)</div>
+<div class="flex-1 bg-surface-container rounded-sm flex items-center justify-center font-label-caption text-label-caption text-outline">高密度品號、規格、價格明細表格</div>
+<div class="h-24 bg-surface-container-low rounded-sm flex items-center justify-center font-label-caption text-label-caption text-outline">備註條款與雙方蓋章驗收簽章框</div>
+</div>
+</div>
+<!-- Right Panel: Attribute Inspector -->
+<div class="col-span-3 bg-surface-container-lowest p-space-md rounded shadow-sm flex flex-col space-y-space-md">
+<span class="font-label-header text-label-header uppercase text-secondary">屬性檢查器 (A4 Portrait)</span>
+<div class="space-y-space-sm">
+<div>
+<label class="block font-label-caption text-label-caption text-on-surface-variant mb-space-xs">紙張標準與邊界</label>
+<div class="p-space-xs bg-surface-container rounded font-body-dense text-body-dense text-on-surface">A4 (210mm × 297mm) / 邊距 12mm</div>
+</div>
+<div>
+<label class="block font-label-caption text-label-caption text-on-surface-variant mb-space-xs">預設字型族群</label>
+<div class="p-space-xs bg-surface-container rounded font-body-dense text-body-dense text-on-surface">Noto Sans TC / JetBrains Mono</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- MODAL BACKDROP OVERLAY -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-inverse-surface/65 backdrop-blur-sm p-space-md" id="pdf-preview-modal-root">
+<!-- HIGH FIDELITY 900PX PDF PREVIEW MODAL CONTAINER -->
+<div class="w-[900px] max-w-[96vw] max-h-[92vh] bg-surface-container-lowest rounded-xl shadow-2xl flex flex-col overflow-hidden ring-1 ring-outline-variant/40">
+<!-- 1. MODAL HEADER -->
+<div class="px-space-lg py-3.5 bg-surface-container-lowest flex items-center justify-between shadow-sm z-10">
+<!-- Left: Document Identity & Tag -->
+<div class="flex items-center gap-space-md min-w-0">
+<div class="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[20px]">picture_as_pdf</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-sm truncate">
+<span class="font-title-md text-title-md text-on-surface truncate">報價單 PDF 列印預覽</span>
+<span class="font-data-mono text-label-caption text-outline truncate">(FM-SALES-QT01_Preview.pdf)</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+<span class="font-label-caption text-label-caption text-on-surface-variant">v2 草稿即時套版 (帶入生產與報價示範數據)</span>
+</div>
+</div>
+</div>
+<!-- Center: Pager Navigation Controls -->
+<div class="flex items-center gap-space-xs bg-surface-container px-space-sm py-1 rounded">
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface flex items-center justify-center transition-colors" id="btn-prev-page" title="上一頁">
+<span class="material-symbols-outlined text-[16px]">chevron_left</span>
+</button>
+<span class="font-data-mono text-label-header text-on-surface px-space-xs">第 <span class="text-primary font-semibold">1</span> 頁 / 共 2 頁</span>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface flex items-center justify-center transition-colors" id="btn-next-page" title="下一頁">
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+<div class="h-3.5 w-px bg-outline-variant mx-1"></div>
+<div class="flex items-center gap-1 text-on-surface-variant font-data-mono text-label-caption">
+<span class="material-symbols-outlined text-[15px]">zoom_in</span>
+<select class="bg-transparent border-none py-0 pl-1 pr-4 font-data-mono text-label-caption text-on-surface cursor-pointer focus:outline-none">
+<option>100% 實際尺寸</option>
+<option>125% 局部放大</option>
+<option>75% 綜覽適應</option>
+<option>符合頁寬</option>
+</select>
+</div>
+</div>
+<!-- Right: Print / Download / Exit Actions -->
+<div class="flex items-center gap-space-xs shrink-0">
+<button class="px-space-md py-1.5 rounded bg-surface-container-low hover:bg-surface-container text-on-surface font-body-dense text-body-dense font-medium flex items-center gap-space-xs transition-colors shadow-sm" onclick="window.print()">
+<span class="material-symbols-outlined text-[17px] text-secondary">print</span>
+<span>列印</span>
+</button>
+<button class="px-space-md py-1.5 rounded bg-primary hover:bg-primary/90 text-on-primary font-body-dense text-body-dense font-medium flex items-center gap-space-xs transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[17px]">download</span>
+<span>下載 PDF</span>
+</button>
+<div class="h-4 w-px bg-surface-container-high mx-1"></div>
+<button class="w-8 h-8 rounded flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" id="close-modal-x" title="關閉預覽">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+<!-- 2. MODAL BODY: Realistic PDF Canvas Render Environment -->
+<div class="bg-[#38485d]/90 p-space-lg overflow-y-auto flex items-start justify-center min-h-[620px] max-h-[calc(90vh-125px)]">
+<!-- A4 PROPORTIONAL PRINT PAPER CANVAS (210mm x 297mm baseline) -->
+<div class="w-[794px] min-h-[1080px] bg-surface-container-lowest text-on-surface shadow-2xl p-[36px] flex flex-col justify-between font-body-default rounded-sm relative">
+<!-- TOP WATERMARK OR BINDER INDICATOR (Visual authentic detail) -->
+<div class="absolute top-2 right-4 font-data-mono text-[9px] text-outline/50 uppercase tracking-widest pointer-events-none">
+            FORM IDENTIFIER: QT-20250330-009 // PAGE 1 OF 2 // ENCRYPTED DIGITALLY
+          </div>
+<!-- TOP CONTENT AREA -->
+<div class="flex flex-col w-full space-y-space-md">
+<!-- Company Letterhead Header -->
+<div class="flex items-start justify-between pb-space-md bg-surface-container-lowest">
+<div class="flex items-start gap-space-md">
+<img alt="台製精工商標" class="h-12 w-auto object-contain shrink-0 mt-0.5" src="https://lh3.googleusercontent.com/aida/AEtjO1UDMT-K79FVuLNrOZa_mMQx5ExeOZM7T-kj3Xrz5-TvwSkZ4hYXzTiyZMfhfl3hCsBiVwF7CskUrQkkAHYMmweltx-j7ozkBxDLwW_rit1kBhkcnh5Vf2vRyrWi9XrpbV21KuMSyPCO_D1l6GLPSGcVY2nnt1C3A8LAb29HoVuGtEfQUKAN_zSU-wGhc9g4c9zXu4B8oumwVnhCF_FJLuQB9vo4jjcufx_V5cyOP5QvnyxeRwCKKH5Uzi7p"/>
+<div class="flex flex-col">
+<span class="font-headline-lg text-headline-lg font-bold tracking-tight text-on-surface">台製精工股份有限公司</span>
+<span class="font-data-mono text-[10px] uppercase tracking-wider text-secondary">TAIWAN PRECISION INDUSTRIAL CO., LTD.</span>
+<div class="flex items-center gap-x-space-md gap-y-0.5 flex-wrap mt-1 font-label-caption text-label-caption text-on-surface-variant">
+<span>統一編號：<strong class="font-data-mono text-on-surface font-semibold">84902113</strong></span>
+<span>TEL：<span class="font-data-mono">(04) 2568-9900</span></span>
+<span>FAX：<span class="font-data-mono">(04) 2568-9911</span></span>
+</div>
+<span class="font-label-caption text-label-caption text-on-surface-variant">廠址：台中市大雅區中部科學園區科雅路 18 號</span>
+</div>
+</div>
+<!-- Top Right Official Quotation Badge & Reference -->
+<div class="flex flex-col items-end text-right shrink-0">
+<div class="px-space-md py-1 bg-surface-container-high rounded text-on-surface flex flex-col items-end">
+<span class="font-headline-xl text-headline-xl font-bold tracking-wide text-primary leading-none">報 價 單</span>
+<span class="font-data-mono text-[11px] font-bold tracking-widest text-secondary uppercase">QUOTATION</span>
+</div>
+<div class="mt-space-sm space-y-0.5 text-right">
+<div class="font-body-dense text-body-dense">
+<span class="text-on-surface-variant">報價單號：</span>
+<strong class="font-data-mono text-on-surface font-bold text-[14px]">QT-20250330-009</strong>
+</div>
+<div class="font-label-caption text-label-caption">
+<span class="text-on-surface-variant">製單日期：</span>
+<span class="font-data-mono text-on-surface font-medium">2025年03月30日</span>
+</div>
+<div class="font-label-caption text-label-caption">
+<span class="text-on-surface-variant">有效期限：</span>
+<span class="font-data-mono text-error font-semibold">2025年04月29日 (30天)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Customer Details Formal Grid Block -->
+<div class="w-full bg-surface-container-low rounded p-space-md flex flex-col space-y-space-xs">
+<div class="grid grid-cols-12 gap-space-sm text-body-dense">
+<div class="col-span-7 flex items-start gap-space-xs">
+<span class="w-20 font-label-header text-label-header text-on-surface-variant shrink-0">買方客戶名稱</span>
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface font-bold">台灣松下精密機械股份有限公司</span>
+<span class="font-label-caption text-label-caption text-secondary">統一編號：<span class="font-data-mono font-medium text-on-surface">11093847</span></span>
+</div>
+</div>
+<div class="col-span-5 flex items-start gap-space-xs">
+<span class="w-20 font-label-header text-label-header text-on-surface-variant shrink-0">聯絡窗口</span>
+<div class="flex flex-col">
+<span class="font-body-dense text-body-dense text-on-surface font-semibold">王景榮 經理</span>
+<span class="font-data-mono text-label-caption text-on-surface-variant">TEL: 02-2798-8832 #302</span>
+</div>
+</div>
+</div>
+<div class="w-full h-px bg-surface-container-highest my-0.5"></div>
+<div class="grid grid-cols-12 gap-space-sm text-body-dense">
+<div class="col-span-7 flex items-start gap-space-xs">
+<span class="w-20 font-label-header text-label-header text-on-surface-variant shrink-0">交運地址</span>
+<span class="font-body-dense text-body-dense text-on-surface">桃園市蘆竹區南青路 88 號 (第二製造廠 收貨碼頭)</span>
+</div>
+<div class="col-span-5 flex items-start gap-space-xs">
+<span class="w-20 font-label-header text-label-header text-on-surface-variant shrink-0">承辦業務</span>
+<div class="flex flex-col">
+<span class="font-body-dense text-body-dense text-on-surface font-medium">陳雅婷 (業務一部)</span>
+<span class="font-data-mono text-label-caption text-on-surface-variant">分機: 205 / yating.c@tpe-precision.tw</span>
+</div>
+</div>
+</div>
+<div class="w-full h-px bg-surface-container-highest my-0.5"></div>
+<div class="grid grid-cols-12 gap-space-sm text-body-dense">
+<div class="col-span-7 flex items-center gap-space-xs">
+<span class="w-20 font-label-header text-label-header text-on-surface-variant shrink-0">交易條件</span>
+<span class="font-body-dense text-body-dense text-on-surface font-medium">月結 60 天 (TT 電匯付款) / 貨運含運點交</span>
+</div>
+<div class="col-span-5 flex items-center gap-space-xs">
+<span class="w-20 font-label-header text-label-header text-on-surface-variant shrink-0">幣別與稅制</span>
+<span class="font-body-dense text-body-dense text-on-surface font-medium">新台幣 (TWD) / 應稅外加 5%</span>
+</div>
+</div>
+</div>
+<!-- High-Density Quotation Line Items Table -->
+<div class="w-full overflow-hidden rounded shadow-sm bg-surface-container-lowest">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container text-on-surface-variant font-label-header text-label-header h-9">
+<th class="px-space-sm py-1 text-center w-12">項次</th>
+<th class="px-space-md py-1">品號與產品規格明細說明</th>
+<th class="px-space-sm py-1 text-right w-16">數量</th>
+<th class="px-space-xs py-1 text-center w-12">單位</th>
+<th class="px-space-sm py-1 text-right w-24">牌價(NT$)</th>
+<th class="px-space-xs py-1 text-center w-14">折扣</th>
+<th class="px-space-sm py-1 text-right w-24">結算單價</th>
+<th class="px-space-md py-1 text-right w-28">金額 (NT$)</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-high font-body-dense text-body-dense">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="px-space-sm py-2.5 text-center font-data-mono text-outline font-semibold">01</td>
+<td class="px-space-md py-2.5">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface font-semibold">SP-4402 高硬度淬火模具鋼定位銷</span>
+<span class="font-label-caption text-label-caption text-secondary">規格：Ø12mm x L85mm / 材質：SKD11 真空熱處理 HRC58-60 / 研磨公差 ±0.003mm</span>
+</div>
+</td>
+<td class="px-space-sm py-2.5 text-right font-data-mono text-on-surface font-medium">1,500</td>
+<td class="px-space-xs py-2.5 text-center font-label-caption text-label-caption text-on-surface-variant">PCS</td>
+<td class="px-space-sm py-2.5 text-right font-data-mono text-outline">158.00</td>
+<td class="px-space-xs py-2.5 text-center font-data-mono text-label-caption text-primary font-semibold">95%</td>
+<td class="px-space-sm py-2.5 text-right font-data-mono text-on-surface font-medium">150.10</td>
+<td class="px-space-md py-2.5 text-right font-data-mono text-on-surface font-bold">225,150</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors bg-surface-container-lowest">
+<td class="px-space-sm py-2.5 text-center font-data-mono text-outline font-semibold">02</td>
+<td class="px-space-md py-2.5">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface font-semibold">PL-8819 航空級輕量化伺服夾爪滑塊</span>
+<span class="font-label-caption text-label-caption text-secondary">規格：75x45x22mm / 材質：AL7075-T6 陽極硬化霧黑 / 輕量化掏空雙滑軌導槽結構</span>
+</div>
+</td>
+<td class="px-space-sm py-2.5 text-right font-data-mono text-on-surface font-medium">800</td>
+<td class="px-space-xs py-2.5 text-center font-label-caption text-label-caption text-on-surface-variant">PCS</td>
+<td class="px-space-sm py-2.5 text-right font-data-mono text-outline">380.00</td>
+<td class="px-space-xs py-2.5 text-center font-data-mono text-label-caption text-secondary font-semibold">100%</td>
+<td class="px-space-sm py-2.5 text-right font-data-mono text-on-surface font-medium">380.00</td>
+<td class="px-space-md py-2.5 text-right font-data-mono text-on-surface font-bold">304,000</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="px-space-sm py-2.5 text-center font-data-mono text-outline font-semibold">03</td>
+<td class="px-space-md py-2.5">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface font-semibold">BS-1044 耐磨合金同心軸承套筒</span>
+<span class="font-label-caption text-label-caption text-secondary">規格：外徑 Ø38mm / 內徑 Ø25mm x L40mm / 材質：SUS316L 固溶化酸洗鈍化處理</span>
+</div>
+</td>
+<td class="px-space-sm py-2.5 text-right font-data-mono text-on-surface font-medium">1,200</td>
+<td class="px-space-xs py-2.5 text-center font-label-caption text-label-caption text-on-surface-variant">PCS</td>
+<td class="px-space-sm py-2.5 text-right font-data-mono text-outline">135.00</td>
+<td class="px-space-xs py-2.5 text-center font-data-mono text-label-caption text-primary font-semibold">97.2%</td>
+<td class="px-space-sm py-2.5 text-right font-data-mono text-on-surface font-medium">131.22</td>
+<td class="px-space-md py-2.5 text-right font-data-mono text-on-surface font-bold">157,464</td>
+</tr>
+<!-- Fill blank line for realistic print density -->
+<tr class="h-6">
+<td class="text-center font-data-mono text-[10px] text-surface-container-high">-</td>
+<td class="text-[11px] text-outline italic">（以下空白，接續次頁條款規範說明）</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Financial Total Summary & Chinese Large Caps Section -->
+<div class="grid grid-cols-12 gap-space-md pt-space-xs items-start">
+<div class="col-span-7 bg-surface-container-low rounded p-space-md flex flex-col justify-between h-full">
+<div class="flex flex-col space-y-1">
+<span class="font-label-header text-label-header uppercase text-secondary">報價總計中文大寫 (新台幣)</span>
+<div class="py-1 px-2 rounded bg-surface-container-lowest font-headline-lg text-headline-lg text-on-surface font-bold tracking-wider">
+                    新台幣 柒拾貳萬零玖佰肆拾伍元整
+                  </div>
+</div>
+<div class="font-label-caption text-label-caption text-on-surface-variant mt-2 flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-primary">verified_user</span>
+<span>本單價已含品管檢驗證明書 (COC) 及標準包裝防銹處理。</span>
+</div>
+</div>
+<div class="col-span-5 bg-surface-container-lowest p-space-sm flex flex-col space-y-1.5 text-right">
+<div class="flex items-center justify-between text-body-dense">
+<span class="text-on-surface-variant font-label-header text-label-header">銷售合計 (未稅):</span>
+<span class="font-data-mono text-body-default font-medium text-on-surface">NT$ 686,614</span>
+</div>
+<div class="flex items-center justify-between text-body-dense">
+<span class="text-on-surface-variant font-label-header text-label-header">營業稅 (5%):</span>
+<span class="font-data-mono text-body-default font-medium text-on-surface">NT$ 34,331</span>
+</div>
+<div class="w-full h-px bg-outline-variant my-0.5"></div>
+<div class="flex items-baseline justify-between pt-0.5">
+<span class="font-headline-lg text-headline-lg font-bold text-on-surface">報價總計 (含稅):</span>
+<div class="flex flex-col items-end">
+<span class="font-data-mono text-headline-xl text-headline-xl font-bold text-primary underline decoration-double decoration-primary underline-offset-4">
+                      NT$ 720,945
+                    </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Quotation Terms & Standard Provisions -->
+<div class="w-full bg-surface-container-low rounded p-space-md space-y-1">
+<span class="font-label-header text-label-header text-secondary uppercase tracking-wider block font-bold">報價約定條款與備註事項：</span>
+<ol class="list-decimal list-inside font-label-caption text-label-caption text-on-surface-variant leading-relaxed space-y-0.5">
+<li>本報價單經雙方授權代表簽章用印回傳後即告正式生效，等同正式採購訂單法律效力。</li>
+<li>交貨期約於客戶正式確認 2D/3D 工程施工圖紙並簽回後 <strong class="text-on-surface">21 個工作天內</strong>完工並排程專車運交。</li>
+<li>進料檢驗驗收標準遵循台製精工 ISO 9001:2015 暨 JIS B 0405 精密級 (m) 工業公差規範。</li>
+</ol>
+</div>
+<!-- Signature & Corporate Stamp Block (Dual Seals) -->
+<div class="grid grid-cols-2 gap-space-lg pt-space-xs">
+<!-- Left: Vendor Seal -->
+<div class="rounded p-space-md bg-surface-container-low flex flex-col justify-between h-32 relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-header text-label-header font-bold text-on-surface">報價單位：台製精工股份有限公司</span>
+<span class="font-label-caption text-label-caption text-secondary">發章授權專用</span>
+</div>
+<!-- Red Electronic Stamp Simulation Overlay -->
+<div class="absolute right-6 top-5 w-24 h-24 rounded-full border-2 border-dashed border-error/50 flex flex-col items-center justify-center rotate-[-12deg] pointer-events-none select-none bg-error/5">
+<span class="font-data-mono text-[9px] text-error font-bold tracking-tighter">★ 業務合約專用章 ★</span>
+<span class="font-headline-lg text-[13px] text-error font-extrabold leading-none my-0.5">台製精工</span>
+<span class="font-data-mono text-[8px] text-error font-semibold">2025-03-30</span>
+</div>
+<div class="flex items-end justify-between font-label-caption text-label-caption text-on-surface-variant">
+<span>經辦業務：<span class="font-semibold text-on-surface">陳雅婷 (印)</span></span>
+<span>主管核決：<span class="font-semibold text-on-surface">張宏林 (副總經理)</span></span>
+</div>
+</div>
+<!-- Right: Customer Confirmation -->
+<div class="rounded p-space-md bg-surface-container-low flex flex-col justify-between h-32">
+<div class="flex items-center justify-between">
+<span class="font-label-header text-label-header font-bold text-on-surface">客戶確認簽回處 (用印或簽署)</span>
+<span class="font-label-caption text-label-caption text-outline">請簽章後掃描回傳</span>
+</div>
+<div class="w-full flex items-center justify-center text-outline-variant font-label-caption text-label-caption italic border-b border-outline-variant/60 pb-1">
+                  （買方授權代表簽章 / 公司發票章）
+                </div>
+<div class="flex items-center justify-between font-label-caption text-label-caption text-on-surface-variant">
+<span>簽署代表：___________________</span>
+<span>確認日期：年____月____日</span>
+</div>
+</div>
+</div>
+</div>
+<!-- BOTTOM A4 PAGE FOOTER -->
+<div class="pt-space-md mt-space-sm flex items-center justify-between font-data-mono text-label-caption text-outline">
+<span>TAIWAN PRECISION ERP FORM ENGINE // SHA256: 9e2a...c01f</span>
+<span class="font-medium text-on-surface-variant">第 1 頁，共 2 頁 (FM-SALES-QT01-V2)</span>
+<span>列印時間: 2025-05-20 14:32:10 CST</span>
+</div>
+</div>
+</div>
+<!-- 3. MODAL FOOTER -->
+<div class="px-space-lg py-3 bg-surface-container-lowest flex items-center justify-between shadow-sm z-10">
+<!-- System Hint -->
+<div class="flex items-center gap-space-xs text-secondary font-label-caption text-label-caption">
+<span class="material-symbols-outlined text-[18px] text-primary">info</span>
+<span>※ 此預覽畫面以範例資料即時渲染，實際列印輸出內容將自動綁定該筆報價單之即時資料庫數值。</span>
+</div>
+<!-- Action Trigger Buttons -->
+<div class="flex items-center gap-space-sm">
+<button class="px-space-lg py-1.5 rounded bg-surface-container-low hover:bg-surface-container text-on-surface font-body-dense text-body-dense font-medium transition-colors" id="close-modal-btn">
+            關閉預覽
+          </button>
+<button class="px-space-lg py-1.5 rounded bg-primary hover:bg-primary/90 text-on-primary font-body-dense text-body-dense font-medium flex items-center gap-space-xs transition-colors shadow-sm" id="publish-template-btn">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+<span>確認套版格式無誤並發布</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Interactive behavior script: close, page toggle simulation -->
+<script>
+    (function() {
+      const modalRoot = document.getElementById('pdf-preview-modal-root');
+      const closeBtn = document.getElementById('close-modal-btn');
+      const closeX = document.getElementById('close-modal-x');
+      const publishBtn = document.getElementById('publish-template-btn');
+
+      function hideModal() {
+        if (modalRoot) {
+          modalRoot.classList.add('hidden');
+        }
+      }
+
+      if (closeBtn) closeBtn.addEventListener('click', hideModal);
+      if (closeX) closeX.addEventListener('click', hideModal);
+      
+      if (publishBtn) {
+        publishBtn.addEventListener('click', function() {
+          const originalText = publishBtn.innerHTML;
+          publishBtn.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">refresh</span><span>套版發布中...</span>';
+          publishBtn.classList.add('opacity-80', 'pointer-events-none');
+          setTimeout(() => {
+            publishBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">done_all</span><span>已成功發布至所有廠區</span>';
+            publishBtn.classList.remove('bg-primary');
+            publishBtn.classList.add('bg-tertiary');
+            setTimeout(hideModal, 1200);
+          }, 900);
+        });
+      }
+
+      // Keyboard Esc to close
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modalRoot && !modalRoot.classList.contains('hidden')) {
+          hideModal();
+        }
+      });
+    })();
+  </script>
+</div></main></div></body></html>

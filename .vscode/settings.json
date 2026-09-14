@@ -1,0 +1,60 @@
+{
+  // ── Git ────────────────────────────────────────────────
+  // 只偵測工作區頂層的 repo，不掃子目錄。
+  // reference/ 下的參考專案即使含 .git 也不會出現在原始檔控制面板。
+  "git.autoRepositoryDetection": "openEditors",
+  "git.scanRepositories": [],
+  "git.detectSubmodules": false,
+  "git.openRepositoryInParentFolders": "never",
+
+  // ── 檔案總管 ────────────────────────────────────────────
+  // reference/ 保留顯示，方便隨時查閱參考碼。
+  // 只隱藏雜訊與依賴目錄。
+  "files.exclude": {
+    "**/.DS_Store": true,
+    "**/.planning": true,
+    "**/.venv": true,
+    "**/node_modules": true,
+    "**/__pycache__": true
+  },
+
+  // ── 搜尋 ───────────────────────────────────────────────
+  // 全域搜尋時排除參考碼，避免結果被他人程式碼淹沒
+  "search.exclude": {
+    "reference/**": true,
+    "**/.venv": true,
+    "**/node_modules": true,
+    "**/target": true,
+    "**/dist": true,
+    "poc/**/package-lock.json": true
+  },
+
+  // ── 檔案監看 ────────────────────────────────────────────
+  // reference/ 有數十萬個檔案，不監看可大幅降低 CPU 與記憶體
+  "files.watcherExclude": {
+    "reference/**": true,
+    "**/.venv/**": true,
+    "**/node_modules/**": true,
+    "**/target/**": true
+  },
+
+  // ── 編輯器 ──────────────────────────────────────────────
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "editor.rulers": [100],
+
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
+  "[rust]": {
+    "editor.formatOnSave": true
+  },
+  "[json]": {
+    "editor.tabSize": 2
+  },
+  "[markdown]": {
+    "editor.wordWrap": "on",
+    "files.trimTrailingWhitespace": false
+  }
+}

@@ -5,6 +5,7 @@ members = [
     "crates/persistence",
     "crates/http-public",
     "bin/api",
+    "bin/genhash",
 ]
 
 [workspace.package]

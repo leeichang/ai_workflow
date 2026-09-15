@@ -8,7 +8,9 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   server: {
-    port: 3000,
+    // 3000 是常見的預設埠，容易與其他專案衝突
+    port: 3040,
+    strictPort: true,
     proxy: {
       // 後端 API。前端以 /api 前綴呼叫，此處轉發並去掉前綴。
       '/api': {

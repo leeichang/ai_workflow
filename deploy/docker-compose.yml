@@ -67,7 +67,7 @@ services:
     depends_on: [temporal]
     environment:
       TEMPORAL_ADDRESS: temporal:7233
-      TEMPORAL_CORS_ORIGINS: http://localhost:3000
+      TEMPORAL_CORS_ORIGINS: http://localhost:3040
     ports:
       - "${TEMPORAL_UI_PORT:-8080}:8080"
 

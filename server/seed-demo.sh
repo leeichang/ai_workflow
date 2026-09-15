@@ -372,7 +372,7 @@ SQL
 
 cat <<'INFO'
 
-  登入：http://localhost:3000
+  登入：http://localhost:3040
   租戶代碼 demo，密碼統一 demo1234
 
   帳號                    姓名     角色

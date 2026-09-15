@@ -5,6 +5,7 @@
 pub mod auth;
 pub mod error;
 pub mod forms;
+pub mod permission_write;
 pub mod permissions;
 
 use axum::extract::FromRef;
@@ -36,6 +37,7 @@ pub fn router(state: AppState) -> Router {
         .route("/me", get(me))
         .merge(forms::routes())
         .merge(permissions::routes())
+        .merge(permission_write::routes())
         .with_state(state)
 }
 

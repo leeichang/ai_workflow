@@ -88,6 +88,41 @@ export function getMatrix(formKey: string, params: MatrixParams = {}): Promise<M
   )
 }
 
+// ── 儲存 ────────────────────────────────────────────────
+
+export interface CellChange {
+  field: string
+  node_id: string
+  role: string
+  permission: Permission
+}
+
+export interface SkippedChange {
+  field: string
+  reason: string
+}
+
+export interface SaveMatrixResponse {
+  applied: number
+  skipped?: SkippedChange[]
+}
+
+/**
+ * 儲存權限矩陣
+ *
+ * 只送修改過的格子，不送整份 content。矩陣只該改權限，
+ * 不該有能力改動欄位結構。
+ */
+export function saveMatrix(
+  formKey: string,
+  changes: CellChange[],
+): Promise<SaveMatrixResponse> {
+  return request<SaveMatrixResponse>(`/forms/${encodeURIComponent(formKey)}/permissions`, {
+    method: 'PUT',
+    body: { changes },
+  })
+}
+
 export interface PreviewParams {
   nodeId?: string
   roles?: string[]

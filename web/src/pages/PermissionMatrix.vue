@@ -13,7 +13,14 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import AppShell from '@/components/AppShell.vue'
 import PermissionCell from '@/components/PermissionCell.vue'
-import { getMatrix, type MatrixResponse, type Permission, type ViewMode } from '@/api/permissions'
+import {
+  getMatrix,
+  saveMatrix,
+  type CellChange,
+  type MatrixResponse,
+  type Permission,
+  type ViewMode,
+} from '@/api/permissions'
 import { listForms, type FormSummary } from '@/api/forms'
 import { ApiError } from '@/api/types'
 
@@ -116,6 +123,50 @@ function applyColumn(colKey: string, permission: Permission) {
 
 function discardChanges() {
   pending.value = new Map()
+}
+
+const saving = ref(false)
+const toast = ref<string | null>(null)
+
+function showToast(msg: string) {
+  toast.value = msg
+  setTimeout(() => (toast.value = null), 3000)
+}
+
+async function saveChanges() {
+  if (!matrix.value || pending.value.size === 0 || saving.value) return
+
+  // by_node 模式的列是角色，欄是欄位，與 by_role 相反。
+  // 轉成統一的 {field, node_id, role} 格式送給後端。
+  const changes: CellChange[] = []
+  for (const [key, permission] of pending.value) {
+    const [rowKey, colKey] = key.split(':')
+    changes.push(
+      mode.value === 'by_role'
+        ? { field: rowKey, node_id: colKey, role: selectedRole.value, permission }
+        : { field: colKey, node_id: selectedNode.value, role: rowKey, permission },
+    )
+  }
+
+  saving.value = true
+  error.value = null
+  try {
+    const result = await saveMatrix(selectedForm.value, changes)
+    const skipped = result.skipped ?? []
+
+    if (skipped.length > 0) {
+      // 略過的通常是計算欄位或已被刪除的欄位，需明確告知
+      showToast(`已套用 ${result.applied} 項，略過 ${skipped.length} 項：${skipped[0].reason}`)
+    } else {
+      showToast(`已儲存 ${result.applied} 項權限設定`)
+    }
+
+    await load()
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : '儲存失敗'
+  } finally {
+    saving.value = false
+  }
 }
 
 async function load() {
@@ -389,14 +440,35 @@ watch([selectedForm, mode, selectedRole, selectedNode], load)
           <button
             type="button"
             data-testid="save-changes"
-            disabled
-            title="儲存功能待表單定義寫回 API 完成"
-            class="h-8 px-4 rounded-lg bg-primary-container text-on-primary font-body-dense text-body-dense opacity-50 cursor-not-allowed"
+            :disabled="saving"
+            class="h-8 px-4 rounded-lg bg-primary-container text-on-primary font-body-dense text-body-dense hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+            @click="saveChanges"
           >
-            儲存權限矩陣
+            {{ saving ? '儲存中' : '儲存權限矩陣' }}
           </button>
         </div>
       </div>
     </div>
+
+    <Transition name="fade">
+      <div
+        v-if="toast"
+        class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg bg-inverse-surface text-inverse-on-surface font-body-dense text-body-dense shadow-lg z-50"
+        data-testid="toast"
+      >
+        {{ toast }}
+      </div>
+    </Transition>
   </AppShell>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

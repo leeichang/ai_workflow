@@ -147,8 +147,15 @@ fn readonly_or_editable(field: &Value, ctx: &Context) -> (Permission, &'static s
 
 /// 角色清單檢查
 ///
-/// 清單省略時代表「不限制」，這是刻意的預設。
-/// 若預設為「全部拒絕」，每個欄位都得列舉所有角色，實務上難以維護。
+/// 三種狀態語意不同，不可混淆：
+///   鍵不存在 → 不限制。手寫 schema 的常見情況，若預設為全部拒絕，
+///              每個欄位都得列舉所有角色，實務上難以維護。
+///   []       → 明確拒絕所有角色。權限矩陣把某欄位對所有人設為
+///              唯讀或隱藏時會產生此狀態。
+///   ["a"]    → 僅列出的角色。
+///
+/// 早期版本把 [] 也視為不限制，導致矩陣設定唯讀後重新查詢仍顯示
+/// 可編輯。整合測試 saved_permission_reflects_in_matrix 會守住這點。
 fn role_allowed(field: &Value, list_key: &str, ctx: &Context) -> bool {
     if ctx.is_admin() {
         return true;
@@ -159,9 +166,6 @@ fn role_allowed(field: &Value, list_key: &str, ctx: &Context) -> bool {
     else {
         return true;
     };
-    if list.is_empty() {
-        return true;
-    }
     list.iter()
         .filter_map(Value::as_str)
         .any(|r| ctx.has_role(r))

@@ -7,6 +7,7 @@ pub mod error;
 pub mod forms;
 pub mod permission_write;
 pub mod permissions;
+pub mod workflows;
 
 use axum::extract::FromRef;
 use axum::routing::get;
@@ -38,6 +39,7 @@ pub fn router(state: AppState) -> Router {
         .merge(forms::routes())
         .merge(permissions::routes())
         .merge(permission_write::routes())
+        .merge(workflows::routes())
         .with_state(state)
 }
 

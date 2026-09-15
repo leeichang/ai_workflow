@@ -8,6 +8,7 @@
 
 pub mod error;
 pub mod form;
+pub mod workflow;
 
 use sqlx::postgres::{PgPoolOptions, PgQueryResult};
 use sqlx::{PgPool, Postgres, Transaction};

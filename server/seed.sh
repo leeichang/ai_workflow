@@ -6,7 +6,7 @@
 # 產出一個租戶、三個使用者、一張依設計稿欄位的報價單表單。
 set -euo pipefail
 
-ADMIN_URL="${ADMIN_DATABASE_URL:-postgres://app:app_dev_only@localhost:5433/workflow}"
+ADMIN_URL="${ADMIN_DATABASE_URL:-postgres://localhost:5432/workflow}"
 API="${API_URL:-http://localhost:3001}"
 
 TENANT_ID="11111111-1111-1111-1111-111111111111"

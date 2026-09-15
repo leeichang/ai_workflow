@@ -20,13 +20,13 @@ const JWT_SECRET: &[u8] = b"integration-test-secret-32-bytes!!!!";
 
 fn database_url() -> String {
     std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
-        "postgres://workflow_app:app_dev_only@localhost:5433/workflow".into()
+        "postgres://workflow_app:app_dev_only@localhost:5432/workflow".into()
     })
 }
 
 fn admin_url() -> String {
     std::env::var("TEST_ADMIN_DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://app:app_dev_only@localhost:5433/workflow".into())
+        .unwrap_or_else(|_| "postgres://localhost:5432/workflow".into())
 }
 
 /// 測試情境：一個租戶、一個使用者、一組 token

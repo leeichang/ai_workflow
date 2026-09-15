@@ -11,8 +11,11 @@ set -uo pipefail
 HOST="${DB_HOST:-localhost}"
 PORT="${DB_PORT:-5433}"
 DB="${DB_NAME:-workflow}"
-ADMIN_URL="postgres://app:${ADMIN_PASSWORD:-app_dev_only}@${HOST}:${PORT}/${DB}"
-APP_URL="postgres://workflow_app:${APP_PASSWORD:-app_dev_only}@${HOST}:${PORT}/${DB}"
+
+# 管理連線。容器環境用 app，本機 Homebrew 安裝通常是作業系統帳號。
+# 可用 ADMIN_DATABASE_URL 完整覆寫。
+ADMIN_URL="${ADMIN_DATABASE_URL:-postgres://app:${ADMIN_PASSWORD:-app_dev_only}@${HOST}:${PORT}/${DB}}"
+APP_URL="${APP_DATABASE_URL:-postgres://workflow_app:${APP_PASSWORD:-app_dev_only}@${HOST}:${PORT}/${DB}}"
 
 A='aaaaaaaa-0000-0000-0000-000000000001'
 B='bbbbbbbb-0000-0000-0000-000000000002'

@@ -10,14 +10,21 @@
 name: workflow-platform
 
 services:
-  # ── 業務資料庫 ──────────────────────────────────────────
+  # ── 業務資料庫（選用）────────────────────────────────────
+  #
+  # 開發預設使用本機 PostgreSQL，此服務不會啟動。
+  # 需要與 On-premise 完全一致的環境時才啟用：
+  #   docker compose --profile full-stack up -d postgres
+  #
+  # 兩者的差異只在連線字串，schema 與 migration 完全相同。
   postgres:
     image: postgres:16-alpine
+    profiles: [full-stack]
     environment:
       POSTGRES_USER: app
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app_dev_only}
       POSTGRES_DB: workflow
-    # 預設 5433 避開本機既有的 PostgreSQL（常佔用 5432）
+    # 5433 避開本機既有的 PostgreSQL
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
     volumes:

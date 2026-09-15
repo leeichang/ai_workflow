@@ -1,0 +1,807 @@
+//! 流程 DSL 圖結構驗證
+//!
+//! JSON Schema 只能驗單一節點的結構，驗不了跨節點的語意。
+//! 本模組實作 WF-E001 到 E008，與 schemas/tools/graph-check.mjs
+//! 的參考實作必須對同一組 fixture 產生相同的錯誤碼集合。
+//!
+//! 最容易踩到的設計細節（見 schemas/README.md）：
+//!   流程有兩種控制流。edges 是正常前進路徑，on_reject 與 on_failure
+//!   的 goto 是退回路徑。
+//!
+//!   可達性分析（E002）必須包含兩者，否則只靠 goto 進入的節點
+//!   會被誤判為孤立。報價單的 revise 節點正是如此。
+//!
+//!   上游判斷（E004）只能看 edges，不能含 goto。否則 goto 會讓
+//!   目標自動成為上游，規則形同虛設。
+
+use serde::Serialize;
+use serde_json::Value;
+use std::collections::{HashMap, HashSet};
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct GraphError {
+    pub code: &'static str,
+    pub node_id: Option<String>,
+    pub message: String,
+}
+
+impl GraphError {
+    fn new(code: &'static str, node_id: Option<&str>, message: impl Into<String>) -> Self {
+        Self {
+            code,
+            node_id: node_id.map(str::to_owned),
+            message: message.into(),
+        }
+    }
+}
+
+/// 驗證所需的租戶資料
+///
+/// 正式使用時由呼叫端從資料庫載入。測試可直接建構。
+#[derive(Debug, Default)]
+pub struct ValidationContext {
+    pub known_roles: HashSet<String>,
+    pub known_actions: HashSet<String>,
+    /// 業務物件的合法資料路徑。空集合代表不檢查。
+    pub known_paths: HashSet<String>,
+}
+
+impl ValidationContext {
+    pub fn with_roles(roles: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        Self {
+            known_roles: roles.into_iter().map(Into::into).collect(),
+            ..Default::default()
+        }
+    }
+
+    pub fn with_actions(mut self, actions: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.known_actions = actions.into_iter().map(Into::into).collect();
+        self
+    }
+}
+
+/// 鄰接表
+///
+/// 兩組：一組含 goto 供可達性分析，一組僅 edges 供上游判斷。
+struct Graph<'a> {
+    /// 含 goto
+    out: HashMap<&'a str, Vec<Edge<'a>>>,
+    inn: HashMap<&'a str, Vec<&'a str>>,
+    /// 僅 edges
+    inn_fwd: HashMap<&'a str, Vec<&'a str>>,
+}
+
+struct Edge<'a> {
+    to: &'a str,
+    when: Option<bool>,
+}
+
+pub fn validate_graph(dsl: &Value, ctx: &ValidationContext) -> Vec<GraphError> {
+    let mut errors = Vec::new();
+
+    let Some(nodes) = dsl.get("nodes").and_then(Value::as_array) else {
+        errors.push(GraphError::new("WF-E001", None, "缺少 nodes"));
+        return errors;
+    };
+
+    let by_id: HashMap<&str, &Value> = nodes
+        .iter()
+        .filter_map(|n| n.get("id").and_then(Value::as_str).map(|id| (id, n)))
+        .collect();
+
+    let graph = build_graph(dsl, &by_id, &mut errors);
+
+    check_endpoints(nodes, &mut errors);
+    check_reachability(nodes, &by_id, &graph, &mut errors);
+    check_goto_targets(nodes, &by_id, &graph, &mut errors);
+
+    for node in nodes {
+        check_node(node, &graph, ctx, &mut errors);
+    }
+
+    errors
+}
+
+fn build_graph<'a>(
+    dsl: &'a Value,
+    by_id: &HashMap<&'a str, &'a Value>,
+    errors: &mut Vec<GraphError>,
+) -> Graph<'a> {
+    let mut out: HashMap<&str, Vec<Edge>> = by_id.keys().map(|k| (*k, Vec::new())).collect();
+    let mut inn: HashMap<&str, Vec<&str>> = by_id.keys().map(|k| (*k, Vec::new())).collect();
+    let mut inn_fwd: HashMap<&str, Vec<&str>> = by_id.keys().map(|k| (*k, Vec::new())).collect();
+
+    if let Some(edges) = dsl.get("edges").and_then(Value::as_array) {
+        for e in edges {
+            let Some(arr) = e.as_array() else { continue };
+            let (Some(from), Some(to)) = (
+                arr.first().and_then(Value::as_str),
+                arr.get(1).and_then(Value::as_str),
+            ) else {
+                continue;
+            };
+
+            if !by_id.contains_key(from) {
+                errors.push(GraphError::new(
+                    "WF-E002",
+                    Some(from),
+                    format!("邊的起點節點不存在：{from}"),
+                ));
+                continue;
+            }
+            if !by_id.contains_key(to) {
+                errors.push(GraphError::new(
+                    "WF-E002",
+                    Some(to),
+                    format!("邊的終點節點不存在：{to}"),
+                ));
+                continue;
+            }
+
+            let when = arr.get(2).and_then(|m| m.get("when")).and_then(Value::as_bool);
+            out.get_mut(from).expect("已檢查存在").push(Edge { to, when });
+            inn.get_mut(to).expect("已檢查存在").push(from);
+            inn_fwd.get_mut(to).expect("已檢查存在").push(from);
+        }
+    }
+
+    // goto 併入可達性用的鄰接表，但不進 inn_fwd
+    for (id, node) in by_id {
+        for key in ["on_reject", "on_failure"] {
+            let Some(p) = node.get(key) else { continue };
+            if p.get("action").and_then(Value::as_str) != Some("goto") {
+                continue;
+            }
+            let Some(target) = p.get("node").and_then(Value::as_str) else {
+                continue;
+            };
+            if !by_id.contains_key(target) {
+                continue; // 由 E004 回報
+            }
+            out.get_mut(id).expect("節點存在").push(Edge {
+                to: target,
+                when: None,
+            });
+            inn.get_mut(target).expect("已檢查存在").push(id);
+        }
+    }
+
+    Graph { out, inn, inn_fwd }
+}
+
+fn check_endpoints(nodes: &[Value], errors: &mut Vec<GraphError>) {
+    let count = |t: &str| {
+        nodes
+            .iter()
+            .filter(|n| n.get("type").and_then(Value::as_str) == Some(t))
+            .count()
+    };
+
+    let triggers = count("trigger");
+    if triggers != 1 {
+        errors.push(GraphError::new(
+            "WF-E001",
+            None,
+            format!("trigger 節點應恰有 1 個，實際 {triggers} 個"),
+        ));
+    }
+    if count("end") < 1 {
+        errors.push(GraphError::new("WF-E001", None, "end 節點至少需 1 個"));
+    }
+}
+
+fn check_reachability(
+    nodes: &[Value],
+    by_id: &HashMap<&str, &Value>,
+    graph: &Graph,
+    errors: &mut Vec<GraphError>,
+) {
+    let trigger = nodes
+        .iter()
+        .find(|n| n.get("type").and_then(Value::as_str) == Some("trigger"))
+        .and_then(|n| n.get("id"))
+        .and_then(Value::as_str);
+    let Some(start) = trigger else { return };
+
+    let ends: Vec<&str> = nodes
+        .iter()
+        .filter(|n| n.get("type").and_then(Value::as_str) == Some("end"))
+        .filter_map(|n| n.get("id").and_then(Value::as_str))
+        .collect();
+    if ends.is_empty() {
+        return;
+    }
+
+    let forward = reachable(start, |id| {
+        graph
+            .out
+            .get(id)
+            .map(|v| v.iter().map(|e| e.to).collect::<Vec<_>>())
+            .unwrap_or_default()
+    });
+
+    let mut backward = HashSet::new();
+    for e in &ends {
+        for id in reachable(e, |id| graph.inn.get(id).cloned().unwrap_or_default()) {
+            backward.insert(id);
+        }
+    }
+
+    for id in by_id.keys() {
+        if !forward.contains(id) {
+            errors.push(GraphError::new(
+                "WF-E002",
+                Some(id),
+                format!("節點無法從 trigger 到達：{id}"),
+            ));
+        } else if !backward.contains(id) {
+            errors.push(GraphError::new(
+                "WF-E002",
+                Some(id),
+                format!("節點無法到達任何 end：{id}"),
+            ));
+        }
+    }
+}
+
+fn check_goto_targets(
+    nodes: &[Value],
+    by_id: &HashMap<&str, &Value>,
+    graph: &Graph,
+    errors: &mut Vec<GraphError>,
+) {
+    for node in nodes {
+        let Some(id) = node.get("id").and_then(Value::as_str) else {
+            continue;
+        };
+
+        for key in ["on_reject", "on_failure"] {
+            let Some(p) = node.get(key) else { continue };
+            if p.get("action").and_then(Value::as_str) != Some("goto") {
+                continue;
+            }
+
+            let Some(target) = p.get("node").and_then(Value::as_str) else {
+                errors.push(GraphError::new(
+                    "WF-E004",
+                    Some(id),
+                    format!("{key} 為 goto 但未指定 node"),
+                ));
+                continue;
+            };
+
+            if !by_id.contains_key(target) {
+                errors.push(GraphError::new(
+                    "WF-E004",
+                    Some(id),
+                    format!("{key} 目標節點不存在：{target}"),
+                ));
+                continue;
+            }
+
+            // 上游判斷只看正向 edges。含 goto 會讓目標自己變成上游。
+            let upstream = reachable(id, |n| graph.inn_fwd.get(n).cloned().unwrap_or_default());
+            if !upstream.contains(target) {
+                errors.push(GraphError::new(
+                    "WF-E004",
+                    Some(id),
+                    format!("{key} 目標「{target}」不在節點「{id}」的上游路徑"),
+                ));
+            }
+        }
+    }
+}
+
+fn check_node(
+    node: &Value,
+    graph: &Graph,
+    ctx: &ValidationContext,
+    errors: &mut Vec<GraphError>,
+) {
+    let Some(id) = node.get("id").and_then(Value::as_str) else {
+        return;
+    };
+    let node_type = node.get("type").and_then(Value::as_str).unwrap_or("");
+
+    // E003：condition 需要 true 與 false 兩條出邊
+    if node_type == "condition" {
+        let outs = graph.out.get(id).map(Vec::as_slice).unwrap_or(&[]);
+        let has_true = outs.iter().any(|e| e.when == Some(true));
+        let has_false = outs.iter().any(|e| e.when == Some(false));
+
+        if !has_true || !has_false {
+            let missing = match (has_true, has_false) {
+                (false, false) => "when=true 與 when=false",
+                (false, true) => "when=true",
+                _ => "when=false",
+            };
+            errors.push(GraphError::new(
+                "WF-E003",
+                Some(id),
+                format!("condition 節點「{id}」缺少 {missing} 分支"),
+            ));
+        }
+    }
+
+    // E005：角色存在
+    if !ctx.known_roles.is_empty() {
+        for role in collect_roles(node) {
+            if !ctx.known_roles.contains(&role) {
+                errors.push(GraphError::new(
+                    "WF-E005",
+                    Some(id),
+                    format!("角色不存在：{role}"),
+                ));
+            }
+        }
+    }
+
+    // E006：表達式可解析
+    for expr in collect_expressions(node) {
+        if !expression_parses(&expr) {
+            errors.push(GraphError::new(
+                "WF-E006",
+                Some(id),
+                format!("表達式無法解析：{expr}"),
+            ));
+        }
+    }
+
+    // E007：action 已註冊，且寫入外部系統者需 idempotency_key
+    if node_type == "action" {
+        let action = node.get("action").and_then(Value::as_str).unwrap_or("");
+
+        if !ctx.known_actions.is_empty() && !ctx.known_actions.contains(action) {
+            errors.push(GraphError::new(
+                "WF-E007",
+                Some(id),
+                format!("action 不存在於 Registry：{action}"),
+            ));
+        }
+
+        let writes_external = action.starts_with("odoo.") || action.starts_with("erp.");
+        if writes_external && node.get("idempotency_key").is_none() {
+            errors.push(GraphError::new(
+                "WF-E007",
+                Some(id),
+                format!("寫入外部系統的 action「{action}」缺少 idempotency_key"),
+            ));
+        }
+    }
+
+    // E008：外部參與者的 resolver 型別
+    if node.get("participant").and_then(Value::as_str) == Some("external") {
+        let resolver_type = node
+            .get("resolver")
+            .or_else(|| node.get("assignee"))
+            .and_then(|r| r.get("type"))
+            .and_then(Value::as_str)
+            .unwrap_or("(未指定)");
+
+        if resolver_type != "external_contacts" {
+            errors.push(GraphError::new(
+                "WF-E008",
+                Some(id),
+                format!(
+                    "participant=external 的 resolver 必須是 external_contacts，實際為 {resolver_type}"
+                ),
+            ));
+        }
+    }
+}
+
+// ── 輔助 ────────────────────────────────────────────────
+
+fn reachable<'a, F>(start: &'a str, neighbors: F) -> HashSet<&'a str>
+where
+    F: Fn(&str) -> Vec<&'a str>,
+{
+    let mut seen = HashSet::new();
+    let mut stack = vec![start];
+    while let Some(cur) = stack.pop() {
+        if !seen.insert(cur) {
+            continue;
+        }
+        stack.extend(neighbors(cur));
+    }
+    seen
+}
+
+/// 收集節點內所有 role 值，含 composite 遞迴
+fn collect_roles(node: &Value) -> Vec<String> {
+    let mut acc = Vec::new();
+    for key in ["resolver", "assignee"] {
+        walk_resolver_roles(node.get(key), &mut acc);
+    }
+    walk_resolver_roles(node.pointer("/timeout/to"), &mut acc);
+    acc
+}
+
+fn walk_resolver_roles(r: Option<&Value>, acc: &mut Vec<String>) {
+    let Some(r) = r else { return };
+
+    match r.get("type").and_then(Value::as_str) {
+        Some("role") => {
+            if let Some(v) = r.get("value").and_then(Value::as_str) {
+                acc.push(v.to_string());
+            }
+        }
+        Some("composite") => {
+            if let Some(items) = r.get("of").and_then(Value::as_array) {
+                for item in items {
+                    walk_resolver_roles(item.get("spec"), acc);
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+fn collect_expressions(node: &Value) -> Vec<String> {
+    let mut acc = Vec::new();
+
+    if node.get("type").and_then(Value::as_str) == Some("condition") {
+        if let Some(e) = node.get("expression").and_then(Value::as_str) {
+            acc.push(e.to_string());
+        }
+    }
+
+    for key in ["resolver", "assignee"] {
+        walk_resolver_expressions(node.get(key), &mut acc);
+    }
+    walk_resolver_expressions(node.pointer("/timeout/to"), &mut acc);
+
+    acc
+}
+
+fn walk_resolver_expressions(r: Option<&Value>, acc: &mut Vec<String>) {
+    let Some(r) = r else { return };
+
+    match r.get("type").and_then(Value::as_str) {
+        Some("expression") => {
+            if let Some(cel) = r.get("cel").and_then(Value::as_str) {
+                acc.push(cel.to_string());
+            }
+        }
+        Some("composite") => {
+            if let Some(items) = r.get("of").and_then(Value::as_array) {
+                for item in items {
+                    if let Some(w) = item.get("when").and_then(Value::as_str) {
+                        acc.push(w.to_string());
+                    }
+                    walk_resolver_expressions(item.get("spec"), acc);
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+/// 粗略的表達式語法檢查
+///
+/// 完整 CEL 解析排在任務 2.2。此處只擋明顯錯誤：
+/// 括號不對稱、單等號比較。看不懂的一律放行，
+/// 避免誤擋合法但複雜的表達式。
+fn expression_parses(expr: &str) -> bool {
+    let e = expr.trim();
+    if e.is_empty() {
+        return false;
+    }
+
+    let mut depth = 0i32;
+    for c in e.chars() {
+        match c {
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth < 0 {
+                    return false;
+                }
+            }
+            _ => {}
+        }
+    }
+    if depth != 0 {
+        return false;
+    }
+
+    // 單等號比較是常見筆誤。== != <= >= 都是合法的。
+    let bytes = e.as_bytes();
+    for i in 0..bytes.len() {
+        if bytes[i] != b'=' {
+            continue;
+        }
+        let prev_ok = i > 0 && matches!(bytes[i - 1], b'=' | b'!' | b'<' | b'>');
+        let next_ok = i + 1 < bytes.len() && bytes[i + 1] == b'=';
+        if !prev_ok && !next_ok {
+            return false;
+        }
+    }
+
+    true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn ctx() -> ValidationContext {
+        ValidationContext::with_roles([
+            "admin", "designer", "approver", "requester", "viewer",
+            "finance_manager", "sales_director", "cfo",
+        ])
+        .with_actions([
+            "quotation.publish",
+            "odoo.create_sale_order",
+            "odoo.create_purchase_order",
+        ])
+    }
+
+    fn quotation_dsl() -> Value {
+        let raw = include_str!("../../../../schemas/fixtures/quotation_approval_v1.json");
+        serde_json::from_str(raw).expect("fixture 應為合法 JSON")
+    }
+
+    fn purchase_dsl() -> Value {
+        let raw = include_str!("../../../../schemas/fixtures/purchase_approval_v1.json");
+        serde_json::from_str(raw).expect("fixture 應為合法 JSON")
+    }
+
+    fn codes(errors: &[GraphError]) -> Vec<&str> {
+        errors.iter().map(|e| e.code).collect()
+    }
+
+    // ── 正向 ────────────────────────────────────────────
+
+    #[test]
+    fn quotation_fixture_passes() {
+        let errors = validate_graph(&quotation_dsl(), &ctx());
+        assert!(errors.is_empty(), "報價單 fixture 不該有錯誤：{errors:?}");
+    }
+
+    #[test]
+    fn purchase_fixture_passes() {
+        let errors = validate_graph(&purchase_dsl(), &ctx());
+        assert!(errors.is_empty(), "採購 fixture 不該有錯誤：{errors:?}");
+    }
+
+    #[test]
+    fn revise_node_reachable_via_goto_only() {
+        // revise 沒有任何 edges 指向它，只靠 on_reject 的 goto 進入。
+        // 可達性分析必須含 goto，否則會誤判為孤立節點。
+        let errors = validate_graph(&quotation_dsl(), &ctx());
+        assert!(
+            !errors.iter().any(|e| e.node_id.as_deref() == Some("revise")),
+            "revise 靠 goto 進入，不應被判定孤立：{errors:?}"
+        );
+    }
+
+    // ── 負向 ────────────────────────────────────────────
+
+    #[test]
+    fn missing_end_node() {
+        let mut d = quotation_dsl();
+        let nodes: Vec<Value> = d["nodes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|n| n["type"] != "end")
+            .cloned()
+            .collect();
+        d["nodes"] = json!(nodes);
+
+        assert!(codes(&validate_graph(&d, &ctx())).contains(&"WF-E001"));
+    }
+
+    #[test]
+    fn two_triggers() {
+        let mut d = quotation_dsl();
+        d["nodes"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({ "id": "start2", "type": "trigger" }));
+
+        assert!(codes(&validate_graph(&d, &ctx())).contains(&"WF-E001"));
+    }
+
+    #[test]
+    fn orphan_node() {
+        let mut d = quotation_dsl();
+        d["nodes"].as_array_mut().unwrap().push(json!({
+            "id": "orphan", "type": "human_task",
+            "participant": "internal", "assignee": { "type": "initiator" }
+        }));
+
+        let errors = validate_graph(&d, &ctx());
+        assert!(errors
+            .iter()
+            .any(|e| e.code == "WF-E002" && e.node_id.as_deref() == Some("orphan")));
+    }
+
+    #[test]
+    fn edge_to_nonexistent_node() {
+        let mut d = quotation_dsl();
+        d["edges"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!(["manager_approval", "ghost"]));
+
+        assert!(codes(&validate_graph(&d, &ctx())).contains(&"WF-E002"));
+    }
+
+    #[test]
+    fn condition_missing_branch() {
+        let mut d = quotation_dsl();
+        let edges: Vec<Value> = d["edges"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|e| {
+                let a = e.as_array().unwrap();
+                !(a[0] == "discount_gate" && a.get(2).map(|m| m["when"] == false).unwrap_or(false))
+            })
+            .cloned()
+            .collect();
+        d["edges"] = json!(edges);
+
+        let errors = validate_graph(&d, &ctx());
+        assert!(errors
+            .iter()
+            .any(|e| e.code == "WF-E003" && e.node_id.as_deref() == Some("discount_gate")));
+    }
+
+    #[test]
+    fn goto_pointing_downstream() {
+        let mut d = quotation_dsl();
+        let nodes = d["nodes"].as_array_mut().unwrap();
+        let n = nodes
+            .iter_mut()
+            .find(|n| n["id"] == "manager_approval")
+            .unwrap();
+        n["on_reject"] = json!({ "action": "goto", "node": "create_order" });
+
+        let errors = validate_graph(&d, &ctx());
+        assert!(
+            errors.iter().any(|e| e.code == "WF-E004"),
+            "goto 指向下游應被擋下：{errors:?}"
+        );
+    }
+
+    #[test]
+    fn goto_to_nonexistent_node() {
+        let mut d = quotation_dsl();
+        let nodes = d["nodes"].as_array_mut().unwrap();
+        nodes
+            .iter_mut()
+            .find(|n| n["id"] == "manager_approval")
+            .unwrap()["on_reject"] = json!({ "action": "goto", "node": "nowhere" });
+
+        assert!(codes(&validate_graph(&d, &ctx())).contains(&"WF-E004"));
+    }
+
+    #[test]
+    fn unknown_role() {
+        let mut d = quotation_dsl();
+        d["nodes"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|n| n["id"] == "finance_approval")
+            .unwrap()["resolver"] = json!({ "type": "role", "value": "chief_wizard" });
+
+        assert!(codes(&validate_graph(&d, &ctx())).contains(&"WF-E005"));
+    }
+
+    #[test]
+    fn unknown_role_inside_composite() {
+        let mut d = purchase_dsl();
+        d["nodes"].as_array_mut().unwrap()[1]["resolver"]["of"][2]["spec"]["value"] =
+            json!("nonexistent_role");
+
+        let errors = validate_graph(&d, &ctx());
+        assert!(
+            codes(&errors).contains(&"WF-E005"),
+            "composite 內的角色也要檢查：{errors:?}"
+        );
+    }
+
+    #[test]
+    fn unbalanced_parentheses() {
+        let mut d = quotation_dsl();
+        d["nodes"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|n| n["id"] == "discount_gate")
+            .unwrap()["expression"] = json!("(quotation.discount_rate > 0.15");
+
+        assert!(codes(&validate_graph(&d, &ctx())).contains(&"WF-E006"));
+    }
+
+    #[test]
+    fn single_equals_is_typo() {
+        let mut d = quotation_dsl();
+        d["nodes"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|n| n["id"] == "discount_gate")
+            .unwrap()["expression"] = json!("quotation.status = 'draft'");
+
+        assert!(codes(&validate_graph(&d, &ctx())).contains(&"WF-E006"));
+    }
+
+    #[test]
+    fn comparison_operators_are_valid() {
+        for expr in [
+            "a == b", "a != b", "a >= b", "a <= b", "a > b", "a < b",
+            "(a > 1) && (b < 2)",
+        ] {
+            assert!(expression_parses(expr), "{expr} 應為合法");
+        }
+    }
+
+    #[test]
+    fn unregistered_action() {
+        let mut d = quotation_dsl();
+        d["nodes"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|n| n["id"] == "create_order")
+            .unwrap()["action"] = json!("odoo.launch_rocket");
+
+        assert!(codes(&validate_graph(&d, &ctx())).contains(&"WF-E007"));
+    }
+
+    #[test]
+    fn erp_write_without_idempotency_key() {
+        let mut d = quotation_dsl();
+        d["nodes"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|n| n["id"] == "create_order")
+            .unwrap()
+            .as_object_mut()
+            .unwrap()
+            .remove("idempotency_key");
+
+        let errors = validate_graph(&d, &ctx());
+        assert!(
+            errors.iter().any(|e| e.code == "WF-E007"
+                && e.message.contains("idempotency_key")),
+            "ERP 寫入缺 idempotency_key 應被擋：{errors:?}"
+        );
+    }
+
+    #[test]
+    fn external_participant_with_role_resolver() {
+        let mut d = quotation_dsl();
+        d["nodes"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|n| n["id"] == "customer_review")
+            .unwrap()["resolver"] = json!({ "type": "role", "value": "approver" });
+
+        assert!(codes(&validate_graph(&d, &ctx())).contains(&"WF-E008"));
+    }
+
+    #[test]
+    fn empty_context_skips_role_and_action_checks() {
+        // 未提供租戶資料時不檢查，避免測試或預覽情境誤報
+        let empty = ValidationContext::default();
+        let mut d = quotation_dsl();
+        d["nodes"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|n| n["id"] == "finance_approval")
+            .unwrap()["resolver"] = json!({ "type": "role", "value": "whatever" });
+
+        let errors = validate_graph(&d, &empty);
+        assert!(!codes(&errors).contains(&"WF-E005"));
+    }
+}

@@ -11,7 +11,7 @@
 #   ./server/seed-demo.sh   # 再疊加展示資料
 set -euo pipefail
 
-ADMIN_URL="${ADMIN_DATABASE_URL:-postgres://app:app_dev_only@localhost:5433/workflow}"
+ADMIN_URL="${ADMIN_DATABASE_URL:-postgres://localhost:5432/workflow}"
 API="${API_URL:-http://localhost:3001}"
 TENANT_ID="11111111-1111-1111-1111-111111111111"
 TENANT_CODE="demo"
@@ -74,8 +74,9 @@ where d.tenant_id = '$TENANT_ID' and u.tenant_id = '$TENANT_ID'
 
 -- 補充角色
 insert into role (tenant_id, code, name, is_system) values
-  ('$TENANT_ID', 'finance_manager', '財務主管', false),
-  ('$TENANT_ID', 'cfo',             '財務長',   false)
+  ('$TENANT_ID', 'finance_manager', '財務主管',   false),
+  ('$TENANT_ID', 'cfo',             '財務長',     false),
+  ('$TENANT_ID', 'sales_director',  '業務總監',   false)
 on conflict (tenant_id, code) do nothing;
 
 -- 角色指派

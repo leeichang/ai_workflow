@@ -69,7 +69,14 @@ impl Ctx {
             .unwrap();
 
         Self {
-            state: AppState { db, jwt },
+            state: AppState {
+                db,
+                jwt,
+                temporal: None,
+                internal_token: Some("test-token".into()),
+                // 測試不寄信
+                mailer: http_public::Mailer::disabled(),
+            },
             token,
         }
     }

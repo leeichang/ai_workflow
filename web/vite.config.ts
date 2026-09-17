@@ -13,6 +13,12 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       // 後端 API。前端以 /api 前綴呼叫，此處轉發並去掉前綴。
+      // PDF 渲染服務（Node）。與 Rust API 不同埠，預覽時直接打。
+      '/pdf': {
+        target: 'http://localhost:3002',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/pdf/, ''),
+      },
       '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,

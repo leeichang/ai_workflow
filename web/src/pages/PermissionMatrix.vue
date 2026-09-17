@@ -22,6 +22,8 @@ import {
   type ViewMode,
 } from '@/api/permissions'
 import { listForms, type FormSummary } from '@/api/forms'
+import { listWorkflows } from '@/api/workflows'
+import { ROLES } from '@/designer/roles'
 import { ApiError } from '@/api/types'
 
 const forms = ref<FormSummary[]>([])
@@ -38,13 +40,8 @@ const filter = ref('')
 /** 未儲存的修改。key 為 `${rowKey}:${colKey}`。 */
 const pending = ref<Map<string, Permission>>(new Map())
 
-const roles = [
-  { code: 'admin', label: '系統管理員' },
-  { code: 'designer', label: '流程設計者' },
-  { code: 'approver', label: '簽核人員' },
-  { code: 'requester', label: '申請人' },
-  { code: 'viewer', label: '檢視者' },
-]
+// 與表單設計器共用同一份角色清單，避免兩處各自維護而漂移
+const roles = ROLES
 
 const modifiedCount = computed(() => pending.value.size)
 
@@ -169,12 +166,35 @@ async function saveChanges() {
   }
 }
 
+/**
+ * 找出表單對應的流程
+ *
+ * 兩者以 business_object 關聯，沒有直接的外鍵。
+ * 找不到時回 undefined，矩陣只顯示「開始」一欄，
+ * 仍可用於設定申請階段的權限。
+ */
+async function resolveWorkflowKey(formKey: string): Promise<string | undefined> {
+  const form = forms.value.find((f) => f.form_key === formKey)
+  if (!form) return undefined
+
+  try {
+    const all = await listWorkflows()
+    return all.find((w) => w.business_object === form.business_object)?.workflow_key
+  } catch {
+    // 流程載不到不該讓權限矩陣整個打不開
+    return undefined
+  }
+}
+
 async function load() {
   if (!selectedForm.value) return
   loading.value = true
   error.value = null
   try {
+    const workflowKey = await resolveWorkflowKey(selectedForm.value)
+
     matrix.value = await getMatrix(selectedForm.value, {
+      workflowKey,
       mode: mode.value,
       role: mode.value === 'by_role' ? selectedRole.value : undefined,
       nodeId: mode.value === 'by_node' ? selectedNode.value : undefined,

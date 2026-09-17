@@ -152,6 +152,36 @@ describe('欄位操作', () => {
     expect(f.workflow?.readonly_when, 'workflow 不該被洗掉').toBeTruthy()
   })
 
+  it('workflow 為整組取代，刪掉的鍵不會被補回來', () => {
+    // 角色清單的「鍵不存在」本身帶有語意（不限制）。
+    // 若 workflow 用展開合併，呼叫端刪掉的鍵會從 base 補回，
+    // 使用者把「指定角色」改成「不限制」就永遠沒有效果。
+    d.updateField('discount_rate', {
+      workflow: { editable_roles: ['approver'] },
+    })
+    expect(
+      d.content.value!.fields.find((f) => f.key === 'discount_rate')!.workflow
+        ?.editable_roles,
+    ).toEqual(['approver'])
+
+    // 送出不含 editable_roles 的完整 workflow，等同「改為不限制」
+    d.updateField('discount_rate', {
+      workflow: { readonly_when: "node.id != 'start'" },
+    })
+
+    const f = d.content.value!.fields.find((x) => x.key === 'discount_rate')!
+    expect(f.workflow?.editable_roles, '刪掉的鍵不該被補回').toBeUndefined()
+    expect(f.workflow?.readonly_when, '其他規則仍在').toBeTruthy()
+  })
+
+  it('空陣列的角色清單會被保留，不可視同未設定', () => {
+    // [] 代表拒絕所有角色，與鍵不存在（不限制）語意相反
+    d.updateField('customer_name', { workflow: { editable_roles: [] } })
+
+    const f = d.content.value!.fields.find((x) => x.key === 'customer_name')!
+    expect(f.workflow?.editable_roles).toEqual([])
+  })
+
   it('複製欄位時同時改 key 與資料路徑', () => {
     d.duplicateField('discount_rate')
 

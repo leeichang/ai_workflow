@@ -9,6 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 http-public.workspace = true
+temporal-client.workspace = true
 persistence.workspace = true
 tokio.workspace = true
 axum.workspace = true

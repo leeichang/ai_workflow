@@ -216,15 +216,68 @@ impl NodeInfo {
 /// 從流程定義取出會顯示表單的節點
 ///
 /// 只有 human_approval 與 human_task 會顯示表單，
-/// condition、action 這些節點沒有使用者介面。
+/// condition、action 這些節點沒有使用者介面，列進矩陣只是雜訊。
+///
+/// 一律從草稿優先讀取。設計者調整流程後，權限矩陣要立刻反映新節點，
+/// 否則得先發布流程才能設定權限，順序上說不通。
 async fn load_workflow_nodes(
     tx: &mut persistence::TenantTx<'_>,
     workflow_key: &str,
 ) -> ApiResult<Vec<NodeInfo>> {
-    // 流程定義表在任務 4.1 建立。目前先回初始節點，
-    // 讓矩陣在流程模組完成前仍可用於單一情境。
-    let _ = (tx, workflow_key);
-    Ok(vec![NodeInfo::initial()])
+    let definition = persistence::workflow::find_by_key(tx, workflow_key).await?;
+
+    let source = match persistence::workflow::get_draft(tx, definition.id).await? {
+        Some(d) => d,
+        None => persistence::workflow::get_latest_published(tx, definition.id)
+            .await?
+            .ok_or_else(|| ApiError::Conflict("流程尚無任何版本".into()))?,
+    };
+
+    Ok(form_bearing_nodes(&source.content))
+}
+
+/// 挑出會顯示表單的節點
+///
+/// 與資料庫無關，單獨一個函式以便測試。
+fn form_bearing_nodes(content: &Value) -> Vec<NodeInfo> {
+    // 起始節點永遠在最前面：申請人填寫表單的情境不對應任何流程節點，
+    // 但它是權限設定中最常用的一欄。
+    let mut nodes = vec![NodeInfo::initial()];
+
+    let Some(items) = content.get("nodes").and_then(Value::as_array) else {
+        return nodes;
+    };
+
+    for node in items {
+        let node_type = node.get("type").and_then(Value::as_str).unwrap_or_default();
+        if !matches!(node_type, "human_approval" | "human_task") {
+            continue;
+        }
+
+        let id = node.get("id").and_then(Value::as_str).unwrap_or_default();
+        if id.is_empty() {
+            continue;
+        }
+
+        let label = node
+            .get("label")
+            .and_then(Value::as_str)
+            .filter(|s| !s.is_empty())
+            .unwrap_or(id);
+
+        let participant_kind = node
+            .get("participant")
+            .and_then(Value::as_str)
+            .unwrap_or("internal");
+
+        nodes.push(NodeInfo {
+            id: id.to_string(),
+            label: label.to_string(),
+            participant_kind: participant_kind.to_string(),
+        });
+    }
+
+    nodes
 }
 
 fn build_by_role(
@@ -430,5 +483,104 @@ fn role_label(code: &str) -> &str {
         "requester" => "申請人",
         "viewer" => "檢視者",
         other => other,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn content() -> Value {
+        json!({
+            "nodes": [
+                { "id": "start", "type": "trigger", "label": "業務送出報價單" },
+                { "id": "mgr", "type": "human_approval", "label": "主管簽核",
+                  "participant": "internal" },
+                { "id": "gate", "type": "condition", "expression": "a > 1" },
+                { "id": "revise", "type": "human_task", "label": "業務修改報價",
+                  "participant": "internal" },
+                { "id": "publish", "type": "action", "action": "quotation.publish" },
+                { "id": "customer", "type": "human_approval", "label": "客戶簽核",
+                  "participant": "external" },
+                { "id": "notify", "type": "notification" },
+                { "id": "end", "type": "end" }
+            ]
+        })
+    }
+
+    #[test]
+    fn 只取會顯示表單的節點() {
+        // condition、action、notification 沒有使用者介面，
+        // 列進矩陣只會讓設計者困惑「這一欄要設定什麼」。
+        let nodes = form_bearing_nodes(&content());
+        let ids: Vec<&str> = nodes.iter().map(|n| n.id.as_str()).collect();
+
+        assert_eq!(ids, vec!["start", "mgr", "revise", "customer"]);
+    }
+
+    #[test]
+    fn 起始節點永遠在最前面() {
+        let nodes = form_bearing_nodes(&content());
+        assert_eq!(nodes[0].id, "start");
+        assert_eq!(nodes[0].label, "開始");
+    }
+
+    #[test]
+    fn 保留外部參與者標記() {
+        // participant_kind 決定 resolve_field 是否套用「外部一律唯讀」，
+        // 漏帶會讓客戶簽核那一欄顯示成可編輯。
+        let nodes = form_bearing_nodes(&content());
+        let customer = nodes.iter().find(|n| n.id == "customer").unwrap();
+
+        assert_eq!(customer.participant_kind, "external");
+    }
+
+    #[test]
+    fn 內部節點預設為內部參與者() {
+        let c = json!({
+            "nodes": [{ "id": "a", "type": "human_task", "label": "處理" }]
+        });
+        let nodes = form_bearing_nodes(&c);
+
+        assert_eq!(nodes[1].participant_kind, "internal");
+    }
+
+    #[test]
+    fn 沒有標籤時以節點代碼代替() {
+        let c = json!({
+            "nodes": [{ "id": "mgr", "type": "human_approval" }]
+        });
+        let nodes = form_bearing_nodes(&c);
+
+        assert_eq!(nodes[1].label, "mgr");
+    }
+
+    #[test]
+    fn 空標籤視同沒有標籤() {
+        let c = json!({
+            "nodes": [{ "id": "mgr", "type": "human_approval", "label": "" }]
+        });
+        let nodes = form_bearing_nodes(&c);
+
+        assert_eq!(nodes[1].label, "mgr");
+    }
+
+    #[test]
+    fn 缺少節點清單時仍回傳起始節點() {
+        // 流程內容損壞不該讓整個權限矩陣打不開
+        let nodes = form_bearing_nodes(&json!({}));
+        assert_eq!(nodes.len(), 1);
+        assert_eq!(nodes[0].id, "start");
+    }
+
+    #[test]
+    fn 忽略沒有代碼的節點() {
+        let c = json!({
+            "nodes": [{ "type": "human_approval", "label": "壞掉的節點" }]
+        });
+        let nodes = form_bearing_nodes(&c);
+
+        assert_eq!(nodes.len(), 1, "只剩起始節點");
     }
 }

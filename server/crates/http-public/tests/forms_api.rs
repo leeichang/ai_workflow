@@ -109,7 +109,14 @@ impl Ctx {
         tx.commit().await.expect("提交失敗");
 
         Self {
-            state: AppState { db, jwt },
+            state: AppState {
+                db,
+                jwt,
+                temporal: None,
+                internal_token: Some("test-token".into()),
+                // 測試不寄信
+                mailer: http_public::Mailer::disabled(),
+            },
             tenant_id,
             designer_token: tokens[0].clone(),
             viewer_token: tokens[1].clone(),

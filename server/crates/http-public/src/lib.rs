@@ -5,8 +5,12 @@
 pub mod auth;
 pub mod error;
 pub mod forms;
+pub mod instances;
+pub mod internal;
+pub mod mailer;
 pub mod permission_write;
 pub mod permissions;
+pub mod tasks;
 pub mod workflows;
 
 use axum::extract::FromRef;
@@ -17,12 +21,34 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub use auth::{Actor, JwtKeys};
+pub use mailer::Mailer;
 pub use error::{ApiError, ApiResult};
 
 #[derive(Clone)]
 pub struct AppState {
     pub db: Db,
     pub jwt: JwtKeys,
+    /// Temporal 連線。None 代表未設定或連不上。
+    ///
+    /// 刻意做成 Option 而非啟動時強制要求：表單設計、權限矩陣
+    /// 這些功能不需要 Temporal，為了它讓整個 API 起不來並不合理。
+    /// 真正需要的端點各自檢查，回 503 並說明原因。
+    pub temporal: Option<TemporalHandle>,
+    /// internal API 的共享密鑰。None 時整組 /internal 端點回 403。
+    ///
+    /// 預設停用而非給一組預設密鑰：忘了設定時應該是「不能用」，
+    /// 不該是「用一組大家都知道的密鑰在跑」。
+    pub internal_token: Option<String>,
+    /// 郵件寄送。未設定 SMTP 時為停用狀態，通知仍記稽核但不送出。
+    pub mailer: Mailer,
+}
+
+/// Temporal 連線與其設定
+#[derive(Clone)]
+pub struct TemporalHandle {
+    pub client: temporal_client::TemporalClient,
+    /// Python Worker 監聽的佇列
+    pub task_queue: String,
 }
 
 impl FromRef<AppState> for JwtKeys {
@@ -40,6 +66,9 @@ pub fn router(state: AppState) -> Router {
         .merge(permissions::routes())
         .merge(permission_write::routes())
         .merge(workflows::routes())
+        .merge(instances::routes())
+        .merge(tasks::routes())
+        .merge(internal::routes())
         .with_state(state)
 }
 

@@ -94,6 +94,7 @@ pub fn validate_graph(dsl: &Value, ctx: &ValidationContext) -> Vec<GraphError> {
     check_endpoints(nodes, &mut errors);
     check_reachability(nodes, &by_id, &graph, &mut errors);
     check_goto_targets(nodes, &by_id, &graph, &mut errors);
+    check_parallel(nodes, &by_id, &graph, &mut errors);
 
     for node in nodes {
         check_node(node, &graph, ctx, &mut errors);
@@ -187,6 +188,196 @@ fn check_endpoints(nodes: &[Value], errors: &mut Vec<GraphError>) {
     }
     if count("end") < 1 {
         errors.push(GraphError::new("WF-E001", None, "end 節點至少需 1 個"));
+    }
+}
+
+/// WF-E009：parallel 節點與 join 策略的合法性
+/// WF-E010：分支必須匯合，join 必須有對應的 parallel
+///
+/// 執行期也會檢查這些（interpreter 的 NoBranches / NoJoinNode），
+/// 但那時使用者可能已經簽了一半。設計器就該擋下來。
+fn check_parallel(
+    nodes: &[Value],
+    by_id: &HashMap<&str, &Value>,
+    graph: &Graph<'_>,
+    errors: &mut Vec<GraphError>,
+) {
+    let parallels: Vec<&str> = nodes
+        .iter()
+        .filter(|n| n.get("type").and_then(Value::as_str) == Some("parallel"))
+        .filter_map(|n| n.get("id").and_then(Value::as_str))
+        .collect();
+
+    let joins: Vec<&str> = nodes
+        .iter()
+        .filter(|n| n.get("type").and_then(Value::as_str) == Some("join"))
+        .filter_map(|n| n.get("id").and_then(Value::as_str))
+        .collect();
+
+    let mut matched_joins: HashSet<&str> = HashSet::new();
+
+    for pid in &parallels {
+        let branches: Vec<&str> = graph
+            .out
+            .get(pid)
+            .map(|es| es.iter().map(|e| e.to).collect())
+            .unwrap_or_default();
+
+        // 單一分支的 parallel 沒有意義，多半是設計時漏接了。
+        if branches.len() < 2 {
+            errors.push(GraphError::new(
+                "WF-E009",
+                Some(pid),
+                format!("parallel 需要至少 2 個分支，目前有 {}", branches.len()),
+            ));
+            continue;
+        }
+
+        // 每個分支都要走到同一個 join
+        let mut join_ids: Vec<&str> = Vec::new();
+        for b in &branches {
+            match find_join_from(b, by_id, graph) {
+                Some(j) => join_ids.push(j),
+                None => errors.push(GraphError::new(
+                    "WF-E010",
+                    Some(b),
+                    format!("分支 {b} 沒有匯合到 join 節點"),
+                )),
+            }
+        }
+
+        if join_ids.is_empty() {
+            continue;
+        }
+
+        let first = join_ids[0];
+        if join_ids.iter().any(|j| *j != first) {
+            errors.push(GraphError::new(
+                "WF-E010",
+                Some(pid),
+                "各分支匯合到不同的 join 節點".to_string(),
+            ));
+            continue;
+        }
+        matched_joins.insert(first);
+
+        // join 策略的合法性
+        if let Some(join_node) = by_id.get(first) {
+            check_join_policy(first, join_node, branches.len(), errors);
+            check_join_timeout(first, join_node, errors);
+        }
+    }
+
+    // 沒有 parallel 卻有 join
+    for jid in joins {
+        if !matched_joins.contains(jid) {
+            errors.push(GraphError::new(
+                "WF-E010",
+                Some(jid),
+                format!("join 節點 {jid} 沒有對應的 parallel"),
+            ));
+        }
+    }
+}
+
+/// 從分支起點往下找 join，廣度優先
+fn find_join_from<'a>(
+    start: &'a str,
+    by_id: &HashMap<&'a str, &'a Value>,
+    graph: &Graph<'a>,
+) -> Option<&'a str> {
+    let mut seen: HashSet<&str> = HashSet::new();
+    let mut queue: Vec<&str> = vec![start];
+
+    while let Some(current) = queue.pop() {
+        if !seen.insert(current) {
+            continue;
+        }
+        if let Some(node) = by_id.get(current) {
+            if node.get("type").and_then(Value::as_str) == Some("join") {
+                return by_id.get_key_value(current).map(|(k, _)| *k);
+            }
+        }
+        if let Some(edges) = graph.out.get(current) {
+            queue.extend(edges.iter().map(|e| e.to));
+        }
+    }
+    None
+}
+
+fn check_join_policy(
+    join_id: &str,
+    node: &Value,
+    branch_count: usize,
+    errors: &mut Vec<GraphError>,
+) {
+    let Some(join) = node.get("join") else {
+        errors.push(GraphError::new(
+            "WF-E009",
+            Some(join_id),
+            "join 節點缺少 join 策略",
+        ));
+        return;
+    };
+
+    let completion = join.get("completion").and_then(Value::as_str).unwrap_or("ALL");
+    if completion != "N_OF_M" {
+        return;
+    }
+
+    let Some(n) = join.get("n").and_then(Value::as_u64) else {
+        errors.push(GraphError::new(
+            "WF-E009",
+            Some(join_id),
+            "completion=N_OF_M 時必須指定 n",
+        ));
+        return;
+    };
+
+    // n 大於分支數的話條件永遠滿足不了，流程會永久卡住
+    if n as usize > branch_count {
+        errors.push(GraphError::new(
+            "WF-E009",
+            Some(join_id),
+            format!("n={n} 大於分支數 {branch_count}，條件永遠無法滿足"),
+        ));
+    }
+}
+
+/// WF-E009：join 的逾時策略
+///
+/// join 不支援 ESCALATE——分支各有自己的簽核人，加簽給誰沒有明確語意。
+/// 猜一個對象比明確失敗更糟：使用者以為設好了，實際上加簽給了不預期的人。
+fn check_join_timeout(join_id: &str, node: &Value, errors: &mut Vec<GraphError>) {
+    let Some(timeout) = node.get("timeout") else {
+        return;
+    };
+    if timeout.get("policy").and_then(Value::as_str) == Some("ESCALATE") {
+        errors.push(GraphError::new(
+            "WF-E009",
+            Some(join_id),
+            "join 不支援 ESCALATE，請改在各分支的簽核節點設定",
+        ));
+    }
+}
+
+/// WF-E011：ESCALATE 必須指定加簽對象
+///
+/// 缺 to 的話執行期才會失敗，而那時使用者已經等了設定的天數。
+fn check_escalate_target(node: &Value, errors: &mut Vec<GraphError>) {
+    let Some(timeout) = node.get("timeout") else {
+        return;
+    };
+    if timeout.get("policy").and_then(Value::as_str) != Some("ESCALATE") {
+        return;
+    }
+    if timeout.get("to").is_none() {
+        let id = node.get("id").and_then(Value::as_str);
+        errors.push(GraphError::new(
+            "WF-E011",
+            id,
+            "timeout policy 為 ESCALATE 時必須指定加簽對象 to",
+        ));
     }
 }
 
@@ -302,6 +493,12 @@ fn check_node(
         return;
     };
     let node_type = node.get("type").and_then(Value::as_str).unwrap_or("");
+
+    // E011：ESCALATE 必須有加簽對象。join 的 ESCALATE 由 check_join_timeout
+    // 擋下（不支援），這裡管的是簽核節點。
+    if node_type != "join" {
+        check_escalate_target(node, errors);
+    }
 
     // E003：condition 需要 true 與 false 兩條出邊
     if node_type == "condition" {
@@ -804,4 +1001,188 @@ mod tests {
         let errors = validate_graph(&d, &empty);
         assert!(!codes(&errors).contains(&"WF-E005"));
     }
+
+    // ── 並行與匯合（WF-E009 / WF-E010）────────────────────
+
+    fn parallel_dsl(edges: Value) -> Value {
+        json!({
+            "nodes": [
+                { "id": "start", "type": "trigger" },
+                { "id": "split", "type": "parallel" },
+                { "id": "a", "type": "human_approval",
+                  "resolver": { "type": "role", "value": "approver" } },
+                { "id": "b", "type": "human_approval",
+                  "resolver": { "type": "role", "value": "finance_manager" } },
+                { "id": "merge", "type": "join",
+                  "join": { "completion": "ALL", "result": "ALL_SUCCESS" } },
+                { "id": "end", "type": "end", "result": "completed" }
+            ],
+            "edges": edges
+        })
+    }
+
+    #[test]
+    fn parallel_with_join_passes() {
+        let dsl = parallel_dsl(json!([
+            ["start", "split"],
+            ["split", "a"], ["split", "b"],
+            ["a", "merge"], ["b", "merge"],
+            ["merge", "end"]
+        ]));
+        let errors = validate_graph(&dsl, &ctx());
+        assert!(errors.is_empty(), "合法的並行不該有錯誤：{errors:?}");
+    }
+
+    #[test]
+    fn parallel_without_branches_is_error() {
+        // split 沒有出邊
+        let dsl = parallel_dsl(json!([
+            ["start", "split"],
+            ["a", "merge"], ["b", "merge"],
+            ["merge", "end"]
+        ]));
+        let errors = validate_graph(&dsl, &ctx());
+        assert!(
+            codes(&errors).contains(&"WF-E009"),
+            "parallel 沒有分支應回 WF-E009：{errors:?}"
+        );
+    }
+
+    #[test]
+    fn parallel_with_single_branch_is_error() {
+        // 只有一個分支，用 parallel 沒有意義
+        let dsl = parallel_dsl(json!([
+            ["start", "split"],
+            ["split", "a"],
+            ["a", "merge"],
+            ["merge", "end"]
+        ]));
+        let errors = validate_graph(&dsl, &ctx());
+        assert!(
+            codes(&errors).contains(&"WF-E009"),
+            "parallel 只有一個分支應回 WF-E009：{errors:?}"
+        );
+    }
+
+    #[test]
+    fn branch_not_reaching_join_is_error() {
+        // b 直接到 end，沒有匯合
+        let dsl = parallel_dsl(json!([
+            ["start", "split"],
+            ["split", "a"], ["split", "b"],
+            ["a", "merge"], ["b", "end"],
+            ["merge", "end"]
+        ]));
+        let errors = validate_graph(&dsl, &ctx());
+        assert!(
+            codes(&errors).contains(&"WF-E010"),
+            "分支未匯合應回 WF-E010：{errors:?}"
+        );
+    }
+
+    #[test]
+    fn join_without_parallel_is_error() {
+        let dsl = json!({
+            "nodes": [
+                { "id": "start", "type": "trigger" },
+                { "id": "a", "type": "human_approval",
+                  "resolver": { "type": "role", "value": "approver" } },
+                { "id": "merge", "type": "join",
+                  "join": { "completion": "ALL" } },
+                { "id": "end", "type": "end", "result": "completed" }
+            ],
+            "edges": [["start", "a"], ["a", "merge"], ["merge", "end"]]
+        });
+        let errors = validate_graph(&dsl, &ctx());
+        assert!(
+            codes(&errors).contains(&"WF-E010"),
+            "join 沒有對應的 parallel 應回 WF-E010：{errors:?}"
+        );
+    }
+
+    #[test]
+    fn n_of_m_without_n_is_error() {
+        let mut dsl = parallel_dsl(json!([
+            ["start", "split"],
+            ["split", "a"], ["split", "b"],
+            ["a", "merge"], ["b", "merge"],
+            ["merge", "end"]
+        ]));
+        dsl["nodes"][4]["join"] = json!({ "completion": "N_OF_M" });
+        let errors = validate_graph(&dsl, &ctx());
+        assert!(
+            codes(&errors).contains(&"WF-E009"),
+            "N_OF_M 缺 n 應回 WF-E009：{errors:?}"
+        );
+    }
+
+    #[test]
+    fn n_greater_than_branch_count_is_error() {
+        // 兩個分支卻要求三個核准，永遠滿足不了
+        let mut dsl = parallel_dsl(json!([
+            ["start", "split"],
+            ["split", "a"], ["split", "b"],
+            ["a", "merge"], ["b", "merge"],
+            ["merge", "end"]
+        ]));
+        dsl["nodes"][4]["join"] = json!({ "completion": "N_OF_M", "n": 3 });
+        let errors = validate_graph(&dsl, &ctx());
+        assert!(
+            codes(&errors).contains(&"WF-E009"),
+            "n 大於分支數應回 WF-E009：{errors:?}"
+        );
+    }
+
+
+    #[test]
+    fn join_escalate_is_rejected() {
+        // 分支各有自己的簽核人，加簽給誰沒有明確語意
+        let mut dsl = parallel_dsl(json!([
+            ["start", "split"],
+            ["split", "a"], ["split", "b"],
+            ["a", "merge"], ["b", "merge"],
+            ["merge", "end"]
+        ]));
+        dsl["nodes"][4]["timeout"] =
+            json!({ "after": "P1D", "policy": "ESCALATE",
+                    "to": { "type": "role", "value": "cfo" } });
+        let errors = validate_graph(&dsl, &ctx());
+        assert!(
+            codes(&errors).contains(&"WF-E009"),
+            "join 的 ESCALATE 應回 WF-E009：{errors:?}"
+        );
+    }
+
+    #[test]
+    fn join_auto_approve_passes() {
+        let mut dsl = parallel_dsl(json!([
+            ["start", "split"],
+            ["split", "a"], ["split", "b"],
+            ["a", "merge"], ["b", "merge"],
+            ["merge", "end"]
+        ]));
+        dsl["nodes"][4]["timeout"] = json!({ "after": "P2D", "policy": "AUTO_APPROVE" });
+        let errors = validate_graph(&dsl, &ctx());
+        assert!(errors.is_empty(), "join 的逾時放行不該有錯誤：{errors:?}");
+    }
+
+    #[test]
+    fn escalate_without_to_is_error() {
+        let dsl = json!({
+            "nodes": [
+                { "id": "start", "type": "trigger" },
+                { "id": "a", "type": "human_approval",
+                  "resolver": { "type": "role", "value": "approver" },
+                  "timeout": { "after": "P1D", "policy": "ESCALATE" } },
+                { "id": "end", "type": "end", "result": "completed" }
+            ],
+            "edges": [["start", "a"], ["a", "end"]]
+        });
+        let errors = validate_graph(&dsl, &ctx());
+        assert!(
+            codes(&errors).contains(&"WF-E011"),
+            "ESCALATE 缺 to 應回 WF-E011：{errors:?}"
+        );
+    }
+
 }

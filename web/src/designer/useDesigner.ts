@@ -232,15 +232,23 @@ export function useDesigner(formKey: string) {
   }
 }
 
-/** 深層合併欄位設定，避免 patch 只帶部分 ui 屬性時把其他屬性洗掉 */
+/**
+ * 深層合併欄位設定，避免 patch 只帶部分 ui 屬性時把其他屬性洗掉
+ *
+ * workflow 例外，是整組取代而非合併。這一區塊的鍵「存在與否」本身
+ * 帶有語意：editable_roles 不存在代表不限制，空陣列代表拒絕所有角色。
+ * 用展開合併時，呼叫端刪掉的鍵會從 base 補回來，
+ * 於是「改為不限制」這個操作永遠沒有效果。
+ *
+ * 呼叫端（PropertyPanel.patchWorkflow）本來就會送出完整的 workflow，
+ * 取代不會遺失其他規則。
+ */
 function mergeField(base: FormField, patch: Partial<FormField>): FormField {
   return {
     ...base,
     ...patch,
     ui: { ...base.ui, ...patch.ui },
     data: { ...base.data, ...patch.data },
-    workflow: patch.workflow
-      ? { ...base.workflow, ...patch.workflow }
-      : base.workflow,
+    workflow: patch.workflow ?? base.workflow,
   }
 }

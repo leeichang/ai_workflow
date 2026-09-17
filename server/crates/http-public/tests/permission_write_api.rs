@@ -79,7 +79,14 @@ impl Ctx {
         tx.commit().await.unwrap();
 
         Self {
-            state: AppState { db, jwt },
+            state: AppState {
+                db,
+                jwt,
+                temporal: None,
+                internal_token: Some("test-token".into()),
+                // 測試不寄信
+                mailer: http_public::Mailer::disabled(),
+            },
             designer: tokens[0].clone(),
             viewer: tokens[1].clone(),
         }

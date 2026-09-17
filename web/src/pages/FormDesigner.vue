@@ -7,22 +7,30 @@
  *   中 畫布（12 欄網格預覽）
  *   右 屬性面板（基本／資料／規則三頁籤）
  */
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppShell from '@/components/AppShell.vue'
 import FieldCard from '@/designer/FieldCard.vue'
 import PropertyPanel from '@/designer/PropertyPanel.vue'
+import PermissionPreview from '@/designer/PermissionPreview.vue'
 import { filterPalette, PALETTE_COUNT, type PaletteItem } from '@/designer/palette'
 import { useDesigner } from '@/designer/useDesigner'
+import { usePermissionPreview, type PreviewScenario } from '@/designer/usePermissionPreview'
+import { listWorkflows, getWorkflow } from '@/api/workflows'
 
 const route = useRoute()
 const formKey = (route.params.formKey as string) ?? 'quotation_form'
 
 const d = useDesigner(formKey)
+const preview = usePermissionPreview(formKey)
 const search = ref('')
 const collapsed = ref<Set<string>>(new Set())
 const publishing = ref(false)
 const toast = ref<string | null>(null)
+const showPreview = ref(false)
+
+/** 預覽用的流程節點。以 business_object 找到對應流程。 */
+const previewNodes = ref<{ id: string; label: string }[]>([])
 
 const groups = computed(() => filterPalette(search.value))
 
@@ -49,8 +57,59 @@ async function handleSave() {
   try {
     await d.save()
     showToast('草稿已儲存')
+    // 預覽由後端依草稿計算，存檔後結果才會反映最新修改
+    if (showPreview.value) void preview.run(lastScenario.value)
   } catch {
     /* 錯誤已記於 d.error */
+  }
+}
+
+/**
+ * 載入預覽用的流程節點
+ *
+ * 表單與流程透過 business_object 關聯，沒有直接的外鍵。
+ * 找不到對應流程時節點選單不顯示，預覽仍可用於「不指定節點」的情境。
+ */
+async function loadPreviewNodes() {
+  const businessObject = d.content.value?.business_object
+  if (!businessObject) return
+
+  try {
+    const all = await listWorkflows()
+    const match = all.find((w) => w.business_object === businessObject)
+    if (!match) return
+
+    const detail = await getWorkflow(match.workflow_key)
+    const source = detail.draft ?? detail.published
+    if (!source) return
+
+    // 只有人工節點會顯示表單，與後端 form_bearing_nodes() 一致
+    previewNodes.value = source.content.nodes
+      .filter((n) => n.type === 'human_approval' || n.type === 'human_task')
+      .map((n) => ({ id: n.id, label: n.label || n.id }))
+  } catch {
+    // 預覽是輔助功能，載不到流程不該影響表單設計
+    previewNodes.value = []
+  }
+}
+
+/** 記住最後一次的預覽情境，存檔後用它重新查詢 */
+const lastScenario = ref<PreviewScenario>({
+  roles: ['requester'],
+  participantKind: 'internal',
+})
+
+function runPreview(scenario: PreviewScenario) {
+  lastScenario.value = scenario
+  void preview.run(scenario)
+}
+
+function togglePreview() {
+  showPreview.value = !showPreview.value
+  if (showPreview.value) {
+    void loadPreviewNodes()
+  } else {
+    preview.clear()
   }
 }
 
@@ -79,6 +138,14 @@ function onKeydown(e: KeyboardEvent) {
     void handleSave()
   }
 }
+
+// 草稿一有未存檔的修改，預覽結果就不再對應畫面上的內容
+watch(
+  () => d.dirty.value,
+  (dirty) => {
+    if (dirty) preview.markStale()
+  },
+)
 
 onMounted(() => {
   void d.load()
@@ -113,8 +180,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       </span>
     </template>
 
-    <div class="flex flex-col -m-space-xl h-[calc(100vh-56px)]">
-      <!-- 工具列。sticky 避免捲動時被頂部列蓋住。 -->
+    <!--
+      抵銷 AppShell 主內容區的 padding，讓設計器佔滿整個視窗。
+      上方不抵銷：main 的 padding-top 正好避開固定的 56px 頂部列，
+      拉掉會讓工具列被頂部列蓋住。
+    -->
+    <div class="flex flex-col -mx-space-xl -mb-space-xl h-[calc(100vh-56px)]">
+      <!-- 工具列 -->
       <div class="sticky top-0 z-30 flex items-center justify-end gap-2 px-space-xl py-2 bg-surface-container-lowest border-b border-outline-variant shrink-0">
         <div class="flex items-center gap-0.5 mr-2">
           <button
@@ -138,6 +210,20 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <span class="material-symbols-outlined text-[18px]">redo</span>
           </button>
         </div>
+
+        <button
+          type="button"
+          data-testid="toggle-preview"
+          :aria-pressed="showPreview"
+          class="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg font-body-dense text-body-dense"
+          :class="showPreview
+            ? 'bg-surface-container-low text-primary font-semibold'
+            : 'text-secondary hover:bg-surface-container-low'"
+          @click="togglePreview"
+        >
+          <span class="material-symbols-outlined text-[16px]">preview</span>
+          權限預覽
+        </button>
 
         <button
           type="button"
@@ -322,6 +408,17 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           @remove="d.selectedKey.value && d.removeField(d.selectedKey.value)"
         />
       </div>
+
+      <PermissionPreview
+        v-if="showPreview && d.content.value"
+        :fields="d.content.value.fields"
+        :result="preview.result.value"
+        :loading="preview.loading.value"
+        :error="preview.error.value"
+        :stale="preview.stale.value"
+        :nodes="previewNodes"
+        @run="runPreview"
+      />
     </div>
 
     <!-- 提示 -->

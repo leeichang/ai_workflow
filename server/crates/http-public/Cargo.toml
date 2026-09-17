@@ -6,6 +6,7 @@ edition.workspace = true
 [dependencies]
 domain.workspace = true
 persistence.workspace = true
+temporal-client.workspace = true
 axum.workspace = true
 tower.workspace = true
 tower-http.workspace = true
@@ -19,7 +20,10 @@ tracing.workspace = true
 jsonwebtoken.workspace = true
 argon2.workspace = true
 sqlx.workspace = true
+async-trait = "0.1.92"
+lettre = { version = "0.11.23", default-features = false, features = ["smtp-transport", "tokio1-rustls-tls", "ring", "rustls-native-certs", "builder", "hostname"] }
 
 [dev-dependencies]
+temp-env = "0.3.6"
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 tower = { workspace = true, features = ["util"] }

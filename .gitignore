@@ -8,6 +8,7 @@
 
 # 工具自動產生的暫存檔
 .planning/
+.playwright-mcp/
 
 # macOS
 .DS_Store
@@ -48,3 +49,12 @@ tmp/
 
 # 本機環境設定
 .env
+
+# Python 虛擬環境與測試快取
+/python-ai/.venv/
+/python-ai/**/__pycache__/
+/python-ai/.pytest_cache/
+
+# 服務啟動腳本產生的日誌與 PID
+.logs/
+.pids/

@@ -10,6 +10,8 @@
  */
 import { computed, ref } from 'vue'
 import type { FormField } from '@/api/types'
+import RoleListEditor from './RoleListEditor.vue'
+import { ROLES } from './roles'
 
 const props = defineProps<{ field: FormField | null }>()
 const emit = defineEmits<{
@@ -390,36 +392,41 @@ function widthLabel(w: number) {
           </div>
 
           <div class="pt-2 border-t border-outline-variant">
-            <span class="block font-label-header text-label-header text-secondary mb-1">
-              可編輯角色
-            </span>
-            <input
-              :value="(field.workflow?.editable_roles ?? []).join(', ')"
-              placeholder="留空代表不限制"
-              data-testid="prop-editable-roles"
-              class="w-full h-9 px-2 bg-surface-container-low border border-outline-variant rounded-lg font-body-dense text-body-dense"
-              @input="patchWorkflow(
-                'editable_roles',
-                ($event.target as HTMLInputElement).value.split(',').map(s => s.trim()).filter(Boolean),
-              )"
+            <RoleListEditor
+              label="可編輯角色"
+              testid="prop-editable-roles"
+              :value="field.workflow?.editable_roles"
+              :roles="ROLES"
+              @change="patchWorkflow('editable_roles', $event)"
             />
           </div>
 
-          <div>
-            <span class="block font-label-header text-label-header text-secondary mb-1">
-              可檢視角色
-            </span>
-            <input
-              :value="(field.workflow?.readable_roles ?? []).join(', ')"
-              placeholder="留空代表全體人員"
-              data-testid="prop-readable-roles"
-              class="w-full h-9 px-2 bg-surface-container-low border border-outline-variant rounded-lg font-body-dense text-body-dense"
-              @input="patchWorkflow(
-                'readable_roles',
-                ($event.target as HTMLInputElement).value.split(',').map(s => s.trim()).filter(Boolean),
-              )"
-            />
-          </div>
+          <RoleListEditor
+            label="可檢視角色"
+            testid="prop-readable-roles"
+            :value="field.workflow?.readable_roles"
+            :roles="ROLES"
+            @change="patchWorkflow('readable_roles', $event)"
+          />
+
+          <!--
+            判定順序會推翻個別設定，設計者常誤以為規則沒生效。
+            直接把後端 compute() 的優先序列出來。
+          -->
+          <details class="pt-2 border-t border-outline-variant" data-testid="prop-precedence">
+            <summary class="font-label-header text-label-header text-secondary cursor-pointer">
+              判定順序
+            </summary>
+            <ol class="mt-1.5 space-y-1 font-label-caption text-label-caption text-outline">
+              <li>1. 外部參與者遇到「客戶 Portal 不可見」的欄位 → 隱藏</li>
+              <li>2. 有計算連動公式 → 唯讀（管理員也不例外）</li>
+              <li>3. 角色不在可檢視清單 → 隱藏</li>
+              <li>4. 不符合顯示條件 → 隱藏</li>
+              <li>5. 管理員 → 可編輯（不受以下限制）</li>
+              <li>6. 外部參與者 → 唯讀</li>
+              <li>7. 角色不在可編輯清單，或符合唯讀條件 → 唯讀</li>
+            </ol>
+          </details>
         </template>
       </div>
 

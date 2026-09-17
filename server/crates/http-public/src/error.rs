@@ -35,6 +35,13 @@ pub enum ApiError {
     #[error("已發布的版本不可修改")]
     ImmutablePublished,
 
+    /// 外部依賴（Temporal）不可用。
+    ///
+    /// 與 Internal 分開：這是暫時性的，呼叫端重試有意義，
+    /// 而 500 通常代表程式錯誤，重試沒用。
+    #[error("{0}")]
+    ServiceUnavailable(String),
+
     #[error("{0}")]
     Internal(String),
 }
@@ -64,6 +71,7 @@ impl ApiError {
             Self::BadRequest(_) => "BAD_REQUEST",
             Self::ValidationFailed(_) => "VALIDATION_FAILED",
             Self::ImmutablePublished => "IMMUTABLE_PUBLISHED",
+            Self::ServiceUnavailable(_) => "SERVICE_UNAVAILABLE",
             Self::Internal(_) => "INTERNAL_ERROR",
         }
     }
@@ -76,6 +84,7 @@ impl ApiError {
             Self::Conflict(_) | Self::ImmutablePublished => StatusCode::CONFLICT,
             Self::BadRequest(_) => StatusCode::BAD_REQUEST,
             Self::ValidationFailed(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::ServiceUnavailable(_) => StatusCode::SERVICE_UNAVAILABLE,
             Self::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

@@ -13,8 +13,13 @@ import { ApiError, type ApiErrorBody } from './types'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
-/** token 存取。抽成函式以便測試替換。 */
-let tokenGetter: () => string | null = () => localStorage.getItem('access_token')
+/**
+ * token 存取
+ *
+ * 預設回傳 null。實際的來源由 auth/useSession.ts 在模組載入時
+ * 用 setTokenGetter 接上——client 不該知道 token 存在哪裡。
+ */
+let tokenGetter: () => string | null = () => null
 
 export function setTokenGetter(fn: () => string | null): void {
   tokenGetter = fn

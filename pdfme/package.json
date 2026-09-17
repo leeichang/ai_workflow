@@ -1,0 +1,26 @@
+{
+  "name": "pdf-render",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "單據 PDF 渲染服務。模板 + 資料 → PDF bytes，不碰資料庫。",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node --experimental-strip-types src/server.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pdfme/common": "^5.4.2",
+    "@pdfme/generator": "^5.4.2",
+    "@pdfme/schemas": "^5.4.2",
+    "fastify": "^5.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "~5.7.0",
+    "vitest": "^3.2.0"
+  }
+}

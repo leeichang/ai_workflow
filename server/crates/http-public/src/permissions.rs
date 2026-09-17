@@ -154,6 +154,12 @@ pub struct PreviewQuery {
     roles: String,
     #[serde(default = "default_kind")]
     participant_kind: String,
+    /// 帶入真實單據的業務資料，供條件式權限求值
+    ///
+    /// 設計器預覽沒有實際單據，不傳即可（`data` 為空物件，行為與先前相同）。
+    /// 模擬簽核有真實單據，不傳的話 `visibility.when` 依賴欄位值的欄位
+    /// 全部會判錯——而沙箱的整個價值就是「看到的畫面與那個人會看到的一樣」。
+    instance_id: Option<uuid::Uuid>,
 }
 
 fn default_kind() -> String {
@@ -175,6 +181,18 @@ async fn preview(
             .await?
             .ok_or_else(|| ApiError::Conflict("表單尚無任何版本".into()))?,
     };
+
+    // 有帶 instance_id 就用該實例的業務資料求值條件式。
+    //
+    // 查不到時讓 find_by_id 的 NotFound 往上冒（回 404），
+    // 不要默默退回空物件——默默退回會讓模擬畫面判錯而無人察覺，
+    // 正是本專案一再踩到的靜默失敗類型。
+    // 跨租戶的 id 同樣落在這裡：RLS 讓查詢查不到，回 404。
+    let data = match q.instance_id {
+        Some(id) => persistence::instance::find_by_id(&mut tx, id).await?.input,
+        None => Value::Object(Default::default()),
+    };
+
     tx.commit().await?;
 
     // 未指定角色時用當前使用者的角色
@@ -184,12 +202,11 @@ async fn preview(
         q.roles.split(',').map(|s| s.trim().to_string()).collect()
     };
 
-    let empty = Value::Object(Default::default());
     let ctx = Context {
         node_id: q.node_id.as_deref(),
         roles: &roles,
         participant_kind: &q.participant_kind,
-        data: &empty,
+        data: &data,
     };
 
     Ok(Json(permission::resolve_form(&source.content, &ctx)))

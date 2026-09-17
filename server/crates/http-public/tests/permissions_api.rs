@@ -26,6 +26,9 @@ fn admin_url() -> String {
 struct Ctx {
     state: AppState,
     token: String,
+    /// 建立流程實例時需要（預覽 API 的 instance_id 測試）
+    tenant_id: Uuid,
+    user_id: Uuid,
 }
 
 impl Ctx {
@@ -78,7 +81,91 @@ impl Ctx {
                 mailer: http_public::Mailer::disabled(),
             },
             token,
+            tenant_id,
+            user_id: uid,
         }
+    }
+
+    /// 建立一個帶指定業務資料的流程實例
+    ///
+    /// 預覽 API 帶 instance_id 時要用這筆資料求值條件式。
+    async fn seed_instance(&self, input: Value) -> Uuid {
+        let mut tx = self.state.db.tenant_tx(self.tenant_id).await.unwrap();
+
+        let wf_id: Uuid = sqlx::query_scalar(
+            "insert into workflow_definition
+                (tenant_id, workflow_key, business_object, name)
+             values ($1, 'perm_preview_flow', 'quotation', '預覽測試流程')
+             returning id",
+        )
+        .bind(self.tenant_id)
+        .fetch_one(tx.executor())
+        .await
+        .unwrap();
+
+        // PUBLISHED 需同時有 version 與 published_at
+        // （wf_published_has_version 約束，0004:51）
+        let version_id: Uuid = sqlx::query_scalar(
+            "insert into workflow_definition_version
+                (tenant_id, workflow_id, version, content, status, published_at)
+             values ($1, $2, 1, '{}'::jsonb, 'PUBLISHED', now()) returning id",
+        )
+        .bind(self.tenant_id)
+        .bind(wf_id)
+        .fetch_one(tx.executor())
+        .await
+        .unwrap();
+
+        let instance_id: Uuid = sqlx::query_scalar(
+            "insert into workflow_instance
+                (tenant_id, workflow_version_id, business_object, business_key,
+                 temporal_workflow_id, started_by, input)
+             values ($1, $2, 'quotation', 'QT-PREVIEW-1', $3, $4, $5) returning id",
+        )
+        .bind(self.tenant_id)
+        .bind(version_id)
+        .bind(format!("{}:quotation:QT-PREVIEW-1", self.tenant_id))
+        .bind(self.user_id)
+        .bind(&input)
+        .fetch_one(tx.executor())
+        .await
+        .unwrap();
+
+        tx.commit().await.unwrap();
+        instance_id
+    }
+
+    /// 建立一張含「依業務資料決定顯示」欄位的表單
+    ///
+    /// 這正是預覽 API 傳空 data 時會判錯的情境：
+    /// eval_bool 取不到 quotation.total 就當成 false，欄位被隱藏。
+    async fn seed_form_with_data_condition(&self, key: &str) {
+        let content = json!({
+            "form_key": key,
+            "version": 1,
+            "business_object": "quotation",
+            "sections": [{ "key": "main", "title": "主要" }],
+            "fields": [
+                {
+                    "key": "big_deal_note",
+                    "section": "main",
+                    "ui": { "component": "textarea", "label": "大額交易說明" },
+                    "data": { "path": "quotation.big_deal_note", "type": "text" },
+                    "workflow": { "visible_when": "quotation.total > 1000000" }
+                }
+            ]
+        });
+
+        self.post(
+            "/forms",
+            json!({
+                "form_key": key,
+                "business_object": "quotation",
+                "name": "條件顯示測試表單",
+                "content": content,
+            }),
+        )
+        .await;
     }
 
     async fn get(&self, path: &str) -> (StatusCode, Value) {
@@ -433,4 +520,113 @@ async fn matrix_requires_authentication() {
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+}
+
+// ── 預覽 API 的 instance_id（模擬簽核的前置）──────────────
+
+#[tokio::test]
+async fn preview_without_instance_id_keeps_empty_data() {
+    // 回歸：設計器預覽不傳 instance_id，行為必須與先前完全相同。
+    // data 為空物件時 eval_bool 取不到 quotation.total，
+    // visible_when 求值為 false，欄位隱藏。
+    let ctx = Ctx::new().await;
+    ctx.seed_form_with_data_condition("pv_nodata").await;
+
+    let (status, fields) = ctx
+        .get("/forms/pv_nodata/permissions/preview?roles=designer")
+        .await;
+    assert_eq!(status, StatusCode::OK, "{fields}");
+
+    let note = fields
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["key"] == "big_deal_note")
+        .unwrap();
+    assert_eq!(
+        note["permission"], "HIDDEN",
+        "沒有業務資料時條件不成立，欄位應隱藏"
+    );
+}
+
+#[tokio::test]
+async fn preview_with_instance_id_uses_real_data() {
+    // 模擬簽核的核心：帶真實單據時條件式要用該單據的值求值。
+    // 不修這個的話，凡是 visible_when 依賴欄位值的欄位在模擬畫面全部判錯，
+    // 而沙箱的整個價值就是「看到的畫面與那個人會看到的一樣」。
+    let ctx = Ctx::new().await;
+    ctx.seed_form_with_data_condition("pv_withdata").await;
+
+    let instance_id = ctx
+        .seed_instance(json!({ "quotation": { "total": 2_000_000 } }))
+        .await;
+
+    let (status, fields) = ctx
+        .get(&format!(
+            "/forms/pv_withdata/permissions/preview?roles=designer&instance_id={instance_id}"
+        ))
+        .await;
+    assert_eq!(status, StatusCode::OK, "{fields}");
+
+    let note = fields
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["key"] == "big_deal_note")
+        .unwrap();
+    assert_ne!(
+        note["permission"], "HIDDEN",
+        "總計 200 萬 > 100 萬，條件成立，欄位不該隱藏"
+    );
+}
+
+#[tokio::test]
+async fn preview_with_instance_below_threshold_hides_field() {
+    // 同一張表單、同一個角色，只因單據金額不同而顯示不同——
+    // 這是條件式權限真的吃到資料的證據。
+    let ctx = Ctx::new().await;
+    ctx.seed_form_with_data_condition("pv_small").await;
+
+    let instance_id = ctx
+        .seed_instance(json!({ "quotation": { "total": 500 } }))
+        .await;
+
+    let (_, fields) = ctx
+        .get(&format!(
+            "/forms/pv_small/permissions/preview?roles=designer&instance_id={instance_id}"
+        ))
+        .await;
+
+    let note = fields
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["key"] == "big_deal_note")
+        .unwrap();
+    assert_eq!(
+        note["permission"], "HIDDEN",
+        "總計 500 未達門檻，欄位應隱藏"
+    );
+}
+
+#[tokio::test]
+async fn preview_with_unknown_instance_id_returns_404() {
+    // 查不到就要回 404，不可默默退回空物件——
+    // 默默退回會讓模擬畫面判錯而無人察覺。
+    // 他租戶的 id 也落在這裡：RLS 讓查詢查不到。
+    let ctx = Ctx::new().await;
+    ctx.seed_form_with_data_condition("pv_404").await;
+
+    let (status, _) = ctx
+        .get(&format!(
+            "/forms/pv_404/permissions/preview?roles=designer&instance_id={}",
+            Uuid::new_v4()
+        ))
+        .await;
+
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "不存在的 instance_id 應回 404 而非空物件"
+    );
 }

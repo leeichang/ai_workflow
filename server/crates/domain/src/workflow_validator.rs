@@ -58,6 +58,17 @@ impl ValidationContext {
         self.known_actions = actions.into_iter().map(Into::into).collect();
         self
     }
+
+    /// 業務物件的合法資料路徑，來源為 `schemas/business-objects/*.json`
+    ///
+    /// 刻意不從表單定義推導：同一個 business_object 可以有多張表單，
+    /// 而實測顯示它們的詞彙互不相容（一張叫 `quotation.total`、
+    /// 另一張叫 `quotation.total_amount`）。取聯集會讓拼錯字合法，
+    /// 而拼錯字正是 E012 要擋的東西。
+    pub fn with_paths(mut self, paths: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.known_paths = paths.into_iter().map(Into::into).collect();
+        self
+    }
 }
 
 /// 鄰接表
@@ -544,6 +555,30 @@ fn check_node(
         }
     }
 
+    // E012：引用的資料路徑存在於業務物件定義
+    //
+    // 擋的是「靜默跳過簽核」：條件式路徑打錯時求值取不到值，
+    // 被當成 false，流程照跑只是少走一段簽核而無任何錯誤訊息。
+    // 人工編輯時使用者至少會看 JSON，AI 產生時不會。
+    //
+    // 沿用 known_roles / known_actions 的慣例：空集合代表不檢查。
+    if !ctx.known_paths.is_empty() {
+        let from_expr = collect_expressions(node)
+            .iter()
+            .flat_map(|e| extract_paths_from_expression(e))
+            .collect::<Vec<_>>();
+
+        for path in from_expr.into_iter().chain(collect_data_paths(node)) {
+            if !ctx.known_paths.contains(&path) {
+                errors.push(GraphError::new(
+                    "WF-E012",
+                    Some(id),
+                    format!("資料路徑不存在於業務物件定義：{path}"),
+                ));
+            }
+        }
+    }
+
     // E007：action 已註冊，且寫入外部系統者需 idempotency_key
     if node_type == "action" {
         let action = node.get("action").and_then(Value::as_str).unwrap_or("");
@@ -632,6 +667,126 @@ fn walk_resolver_roles(r: Option<&Value>, acc: &mut Vec<String>) {
         }
         _ => {}
     }
+}
+
+/// resolver 直接以 `path` 指定資料位置者（如 external_contacts）
+///
+/// 與 `collect_expressions` 分開：那支收的是表達式字串，
+/// 這支收的是直接當成路徑用的欄位值，兩者的取用方式不同。
+fn collect_data_paths(node: &Value) -> Vec<String> {
+    let mut acc = Vec::new();
+
+    for key in ["resolver", "assignee"] {
+        walk_resolver_paths(node.get(key), &mut acc);
+    }
+    walk_resolver_paths(node.pointer("/timeout/to"), &mut acc);
+
+    acc
+}
+
+fn walk_resolver_paths(r: Option<&Value>, acc: &mut Vec<String>) {
+    let Some(r) = r else { return };
+
+    if let Some(p) = r.get("path").and_then(Value::as_str) {
+        acc.push(p.to_string());
+    }
+
+    // composite 的子項也可能各自帶 path
+    if r.get("type").and_then(Value::as_str) == Some("composite") {
+        if let Some(items) = r.get("of").and_then(Value::as_array) {
+            for item in items {
+                walk_resolver_paths(item.get("spec"), acc);
+            }
+        }
+    }
+}
+
+/// 從 CEL 表達式抽出資料路徑
+///
+/// 刻意不做完整 CEL 解析，理由與 `expression_parses` 相同：
+/// 看不懂的一律放行。誤擋會讓使用者無法發布正確的流程，
+/// 比漏擋更快失去信任。
+///
+/// 只認「識別字.識別字(.識別字)*」的形態，並排除：
+///   - 字串字面值內的內容（先把引號內的段落挖掉）
+///   - 後面緊接 `(` 的識別字（CEL 內建函式如 has()、size()）
+///   - 純數字開頭的 token（0.15 這類小數）
+fn extract_paths_from_expression(expr: &str) -> Vec<String> {
+    let stripped = strip_string_literals(expr);
+    let bytes = stripped.as_bytes();
+    let mut acc = Vec::new();
+    let mut i = 0usize;
+
+    while i < bytes.len() {
+        let c = bytes[i] as char;
+
+        if c.is_ascii_alphabetic() || c == '_' {
+            let start = i;
+            while i < bytes.len() {
+                let ch = bytes[i] as char;
+                if ch.is_ascii_alphanumeric() || ch == '_' || ch == '.' {
+                    i += 1;
+                } else {
+                    break;
+                }
+            }
+            let token = stripped[start..i].trim_end_matches('.');
+
+            // 後面緊接 ( 的是函式呼叫，不是路徑
+            let is_call = stripped[i..].trim_start().starts_with('(');
+
+            if !is_call && token.contains('.') {
+                acc.push(token.to_string());
+            }
+            continue;
+        }
+
+        // 數字開頭的 token 整段跳過，避免 0.15 被拆出 .15
+        if c.is_ascii_digit() {
+            while i < bytes.len() {
+                let ch = bytes[i] as char;
+                if ch.is_ascii_alphanumeric() || ch == '.' {
+                    i += 1;
+                } else {
+                    break;
+                }
+            }
+            continue;
+        }
+
+        i += 1;
+    }
+
+    acc
+}
+
+/// 把單引號與雙引號內的內容換成空白
+///
+/// 字串字面值裡的 `TWD.dollar` 不是資料路徑。
+fn strip_string_literals(expr: &str) -> String {
+    let mut out = String::with_capacity(expr.len());
+    let mut quote: Option<char> = None;
+
+    for c in expr.chars() {
+        match quote {
+            Some(q) => {
+                if c == q {
+                    quote = None;
+                }
+                out.push(' ');
+            }
+            None => {
+                if c == '\'' || c == '"' {
+                    quote = Some(c);
+                    out.push(' ');
+                } else {
+                    out.push(c);
+                }
+            }
+        }
+    }
+
+    out
 }
 
 fn collect_expressions(node: &Value) -> Vec<String> {
@@ -1185,4 +1340,123 @@ mod tests {
         );
     }
 
+    // ── E012：資料路徑存在性 ────────────────────────────
+    //
+    // 這條規則擋的是「靜默跳過簽核」：條件式引用不存在的路徑時
+    // 求值取不到值，被當成 false，流程照跑只是少走一段簽核，
+    // 沒有任何錯誤訊息。高折扣的報價單會不經財務核准就發給客戶。
+
+    /// 帶路徑的 context。未帶路徑的 ctx() 代表不檢查，見 known_paths 的註解。
+    fn ctx_with_paths() -> ValidationContext {
+        ctx().with_paths([
+            "quotation.discount_rate",
+            "quotation.customer_contact_ids",
+            "quotation.total",
+            "quotation.lines",
+            "quotation.currency",
+        ])
+    }
+
+    #[test]
+    fn empty_known_paths_skips_check() {
+        // 回歸：known_paths 為空時不檢查。
+        // 既有呼叫端（與既有的 29 個測試）都沒有提供路徑，
+        // 若改成「空集合等於沒有合法路徑」會讓它們全部爆掉。
+        let mut dsl = quotation_dsl();
+        dsl["nodes"][2]["expression"] = json!("quotation.不存在的欄位 > 0.15");
+        let errors = validate_graph(&dsl, &ctx());
+        assert!(
+            !codes(&errors).contains(&"WF-E012"),
+            "known_paths 為空時不該檢查路徑：{errors:?}"
+        );
+    }
+
+    #[test]
+    fn known_path_in_expression_passes() {
+        let errors = validate_graph(&quotation_dsl(), &ctx_with_paths());
+        assert!(
+            !codes(&errors).contains(&"WF-E012"),
+            "fixture 引用的路徑都已宣告，不該回 WF-E012：{errors:?}"
+        );
+    }
+
+    #[test]
+    fn unknown_path_in_expression_is_error() {
+        let mut dsl = quotation_dsl();
+        dsl["nodes"][2]["expression"] = json!("quotation.nonexistent > 0.15");
+        let errors = validate_graph(&dsl, &ctx_with_paths());
+        assert!(
+            codes(&errors).contains(&"WF-E012"),
+            "條件式引用不存在的路徑應回 WF-E012：{errors:?}"
+        );
+    }
+
+    #[test]
+    fn typo_path_is_error() {
+        // 最危險的情境：少一個字母。discount_rat 取不到值 → 當成 false
+        // → 高折扣報價單靜默跳過財務簽核。
+        let mut dsl = quotation_dsl();
+        dsl["nodes"][2]["expression"] = json!("quotation.discount_rat > 0.15");
+        let errors = validate_graph(&dsl, &ctx_with_paths());
+        assert!(
+            codes(&errors).contains(&"WF-E012"),
+            "打錯字的路徑應回 WF-E012：{errors:?}"
+        );
+    }
+
+    #[test]
+    fn unknown_resolver_path_is_error() {
+        // resolver 的 path 不在 collect_expressions 的涵蓋範圍，
+        // 要另外收集。取不到值會讓流程 NoParticipants → FAILED。
+        let mut dsl = quotation_dsl();
+        let nodes = dsl["nodes"].as_array_mut().unwrap();
+        for node in nodes.iter_mut() {
+            if node.pointer("/resolver/path").is_some() {
+                node["resolver"]["path"] = json!("quotation.wrong_contacts");
+            }
+        }
+        let errors = validate_graph(&dsl, &ctx_with_paths());
+        assert!(
+            codes(&errors).contains(&"WF-E012"),
+            "resolver path 引用不存在的路徑應回 WF-E012：{errors:?}"
+        );
+    }
+
+    #[test]
+    fn cel_builtins_are_not_paths() {
+        // has() / size() 是 CEL 內建函式，不是資料路徑。
+        // 誤判會讓合法的流程無法發布——誤擋比漏擋更快失去信任。
+        let mut dsl = quotation_dsl();
+        dsl["nodes"][2]["expression"] =
+            json!("has(quotation.discount_rate) && size(quotation.lines) > 0");
+        let errors = validate_graph(&dsl, &ctx_with_paths());
+        assert!(
+            !codes(&errors).contains(&"WF-E012"),
+            "CEL 內建函式不該被當成路徑：{errors:?}"
+        );
+    }
+
+    #[test]
+    fn numeric_literals_are_not_paths() {
+        // 0.15 的形態是「識別字.識別字」以外的東西，但小數點容易誤判
+        let mut dsl = quotation_dsl();
+        dsl["nodes"][2]["expression"] = json!("quotation.discount_rate > 0.15");
+        let errors = validate_graph(&dsl, &ctx_with_paths());
+        assert!(
+            !codes(&errors).contains(&"WF-E012"),
+            "數字字面值不該被當成路徑：{errors:?}"
+        );
+    }
+
+    #[test]
+    fn string_literals_are_not_paths() {
+        // 字串內的內容不是路徑
+        let mut dsl = quotation_dsl();
+        dsl["nodes"][2]["expression"] = json!("quotation.currency == 'TWD.dollar'");
+        let errors = validate_graph(&dsl, &ctx_with_paths());
+        assert!(
+            !codes(&errors).contains(&"WF-E012"),
+            "字串字面值不該被當成路徑：{errors:?}"
+        );
+    }
 }

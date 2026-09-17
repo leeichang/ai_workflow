@@ -1,0 +1,27 @@
+{
+  "business_object": "quotation",
+  "name": "報價單",
+  "description": "業務物件的正式欄位定義。流程 DSL 的條件式與 resolver 只能引用此處宣告的路徑（WF-E012）。",
+  "version": 1,
+  "fields": {
+    "quotation.number": { "type": "string", "label": "報價單號" },
+    "quotation.customer_party_id": { "type": "uuid", "label": "客戶" },
+    "quotation.customer_contact_ids": { "type": "array", "item": "external_contact", "label": "客戶聯絡人" },
+    "quotation.valid_until": { "type": "date", "label": "有效期限" },
+    "quotation.currency": { "type": "string", "label": "幣別" },
+    "quotation.payment_terms": { "type": "string", "label": "付款條件" },
+    "quotation.lines": { "type": "array", "item": "quotation_line", "label": "報價明細" },
+    "quotation.discount_rate": { "type": "decimal", "label": "折扣率" },
+    "quotation.subtotal": { "type": "decimal", "label": "小計" },
+    "quotation.total": { "type": "decimal", "label": "總計" },
+    "quotation.margin_rate": { "type": "decimal", "label": "毛利率" },
+    "quotation.internal_note": { "type": "text", "label": "內部備註" },
+    "quotation.attachments": { "type": "array", "item": "file", "label": "附件" }
+  },
+  "notes": [
+    "「總計」的正式名稱是 quotation.total。server/seed.sh 內嵌的示範表單使用 quotation.total_amount，那是舊名稱，不是正式欄位。",
+    "「內部備註」是單數的 quotation.internal_note。seed.sh 的 internal_notes（複數）同為舊名稱。",
+    "「毛利率」是 quotation.margin_rate。seed.sh 的 gross_margin 同為舊名稱。",
+    "此處刻意不收錄舊名稱：收錄的話 WF-E012 就擋不住拼錯字，而拼錯字正是它要擋的東西。"
+  ]
+}

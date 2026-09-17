@@ -1,0 +1,20 @@
+{
+  "business_object": "purchase_request",
+  "name": "採購申請",
+  "description": "業務物件的正式欄位定義。流程 DSL 的條件式與 resolver 只能引用此處宣告的路徑（WF-E012）。",
+  "version": 1,
+  "fields": {
+    "purchase_request.number": { "type": "string", "label": "申請單號" },
+    "purchase_request.department_id": { "type": "uuid", "label": "申請部門" },
+    "purchase_request.supplier_party_id": { "type": "uuid", "label": "供應商" },
+    "purchase_request.need_by_date": { "type": "date", "label": "需求日期" },
+    "purchase_request.currency": { "type": "string", "label": "幣別" },
+    "purchase_request.lines": { "type": "array", "item": "purchase_request_line", "label": "採購明細" },
+    "purchase_request.subtotal": { "type": "decimal", "label": "小計" },
+    "purchase_request.tax": { "type": "decimal", "label": "稅額" },
+    "purchase_request.total": { "type": "decimal", "label": "總計" },
+    "purchase_request.reason": { "type": "text", "label": "申請事由" },
+    "purchase_request.budget_note": { "type": "text", "label": "預算說明" },
+    "purchase_request.attachments": { "type": "array", "item": "file", "label": "附件" }
+  }
+}

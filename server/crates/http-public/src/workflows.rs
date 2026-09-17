@@ -177,7 +177,11 @@ async fn validate_draft(
     let (roles, actions) = persistence::workflow::load_validation_data(&mut tx).await?;
     tx.commit().await?;
 
-    let ctx = ValidationContext::with_roles(roles).with_actions(actions);
+    // 路徑名單取自業務物件定義，不從表單推導——
+    // 同一個 business_object 的多張表單詞彙互不相容，取聯集會讓拼錯字合法。
+    let ctx = ValidationContext::with_roles(roles)
+        .with_actions(actions)
+        .with_paths(domain::business_object::paths_for(&wf.business_object));
     let errors = workflow_validator::validate_graph(&draft.content, &ctx);
 
     Ok(Json(ValidationResult {
@@ -205,7 +209,11 @@ async fn publish(
         .ok_or_else(|| ApiError::Conflict("沒有可發布的草稿".into()))?;
 
     let (roles, actions) = persistence::workflow::load_validation_data(&mut tx).await?;
-    let ctx = ValidationContext::with_roles(roles).with_actions(actions);
+    // 路徑名單取自業務物件定義，不從表單推導——
+    // 同一個 business_object 的多張表單詞彙互不相容，取聯集會讓拼錯字合法。
+    let ctx = ValidationContext::with_roles(roles)
+        .with_actions(actions)
+        .with_paths(domain::business_object::paths_for(&wf.business_object));
     let errors = workflow_validator::validate_graph(&draft.content, &ctx);
 
     if !errors.is_empty() {

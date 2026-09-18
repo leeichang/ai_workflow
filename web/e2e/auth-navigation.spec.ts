@@ -153,18 +153,22 @@ test.describe('選單導覽', () => {
     await shot(page, '11a-設計器子選單')
   })
 
-  test('表單設計器', async ({ page }) => {
+  // 選單進的是清單頁（/designer/forms）而非直接開某一張
+  // （/designer/forms/quotation_form）。正規式不能要求結尾的斜線。
+  test('表單清單', async ({ page }) => {
     await page.getByTestId('nav-designer-toggle').click()
     await page.getByTestId('nav-designer-forms').click()
-    await expect(page).toHaveURL(/\/designer\/forms\//)
-    await shot(page, '11b-表單設計器')
+    await expect(page).toHaveURL(/\/designer\/forms$/)
+    await expect(page.getByTestId('form-create')).toBeVisible()
+    await shot(page, '11b-表單清單')
   })
 
-  test('流程設計器', async ({ page }) => {
+  test('流程清單', async ({ page }) => {
     await page.getByTestId('nav-designer-toggle').click()
     await page.getByTestId('nav-designer-workflows').click()
-    await expect(page).toHaveURL(/\/designer\/workflows\//)
-    await shot(page, '11c-流程設計器')
+    await expect(page).toHaveURL(/\/designer\/workflows$/)
+    await expect(page.getByTestId('workflow-create')).toBeVisible()
+    await shot(page, '11c-流程清單')
   })
 
   test('單據套版設計器', async ({ page }) => {
@@ -212,9 +216,10 @@ test.describe('選單導覽', () => {
 
     // 四個設計器
     await page.getByTestId('nav-designer-toggle').click()
+    // 表單與流程進清單頁，網址結尾沒有斜線
     const designers = [
-      ['nav-designer-forms', '/designer/forms/'],
-      ['nav-designer-workflows', '/designer/workflows/'],
+      ['nav-designer-forms', '/designer/forms'],
+      ['nav-designer-workflows', '/designer/workflows'],
       ['nav-designer-templates', '/designer/templates'],
       ['nav-designer-permissions', '/designer/permissions'],
     ] as const

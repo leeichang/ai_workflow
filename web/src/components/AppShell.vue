@@ -263,12 +263,12 @@ const today = computed(() => {
         </RouterLink>
 
         <!--
-          設計器：四個子項目。側邊欄收合時退化成單一連結指向表單設計器，
+          設計器：四個子項目。側邊欄收合時退化成單一連結指向表單清單，
           因為 56px 寬放不下子選單。
         -->
         <RouterLink
           v-if="collapsed"
-          to="/designer/forms/quotation_form"
+          to="/designer/forms"
           title="設計器"
           data-testid="nav-designer"
           class="relative flex items-center justify-center py-space-sm rounded-lg transition-colors"

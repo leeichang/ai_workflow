@@ -4,11 +4,14 @@
 #
 # 與 seed.sh 的差別：
 #   seed.sh      最小資料，讓 API 能跑起來
-#   seed-demo.sh 完整情境，含多個表單、多角色、多部門，供畫面展示
+#   seed-demo.sh 完整情境，含多個表單、流程、多角色、多部門，供畫面展示
 #
-# 用法：
-#   ./server/seed.sh        # 先建基礎資料
-#   ./server/seed-demo.sh   # 再疊加展示資料
+# 用法（順序不可顛倒）：
+#   ./start_service.sh      # 1. 先起服務——本腳本會 curl 打 API
+#   ./server/seed.sh        # 2. 基礎資料
+#   ./server/seed-demo.sh   # 3. 展示資料（含流程定義）
+#
+# 服務沒起來時 curl 會回 HTTP 000，登入取不到 token 而中止。
 set -euo pipefail
 
 ADMIN_URL="${ADMIN_DATABASE_URL:-postgres://localhost:5432/workflow}"
@@ -357,7 +360,70 @@ cat > /tmp/form-supplier.json <<'JSON'
 JSON
 create_form "supplier_review_form" "供應商評鑑表" /tmp/form-supplier.json
 
-rm -f /tmp/form-purchase.json /tmp/form-supplier.json /tmp/seed-resp.json
+rm -f /tmp/form-purchase.json /tmp/form-supplier.json
+
+# ── 流程定義 ────────────────────────────────────────────
+#
+# 先前 seed 只建表單不建流程，導致 task-approval.spec.ts 的 6 個測試
+# 全部回 404（POST /instances 找不到 quotation_approval）。
+# 錯誤訊息是「啟動流程失敗」，看起來像服務沒起來，實際六個服務都正常——
+# 這種誤導性讓新接手的人會在這裡卡很久。
+#
+# 流程與表單不同，要兩步：建立（草稿）之後還要發布。
+# 只建不發布的話 POST /instances 一樣找不到——它只認 PUBLISHED 版本。
+
+create_workflow() {
+    local key="$1" name="$2" object="$3" fixture="$4"
+    printf '  %-22s' "$key"
+
+    # fixture 本身就是 content。API 要的是外層包 workflow_key 等欄位的結構，
+    # 用 python 組裝比在 shell 裡拼 JSON 安全。
+    python3 - "$fixture" "$key" "$name" "$object" > /tmp/seed-wf.json <<'PY'
+import json, sys
+fixture, key, name, object_ = sys.argv[1:5]
+with open(fixture, encoding='utf-8') as f:
+    content = json.load(f)
+print(json.dumps({
+    'workflow_key': key,
+    'business_object': object_,
+    'name': name,
+    'description': content.get('description', ''),
+    'content': content,
+}, ensure_ascii=False))
+PY
+
+    local code
+    code=$(curl -s -o /tmp/seed-resp.json -w '%{http_code}' -X POST "$API/workflows" \
+        -H "Authorization: Bearer $TOKEN" \
+        -H 'Content-Type: application/json' \
+        -d @/tmp/seed-wf.json)
+
+    case "$code" in
+        201) printf '已建立 ' ;;
+        409) printf '已存在 ' ;;
+        *)   echo "失敗 HTTP $code"; head -c 300 /tmp/seed-resp.json; echo; return ;;
+    esac
+
+    # 發布。已發布過會回 409，視為正常。
+    local pub
+    pub=$(curl -s -o /tmp/seed-resp.json -w '%{http_code}' -X POST \
+        "$API/workflows/$key/draft/publish" \
+        -H "Authorization: Bearer $TOKEN")
+
+    case "$pub" in
+        200|201) echo "已發布" ;;
+        409)     echo "（已是發布狀態）" ;;
+        *)       echo "發布失敗 HTTP $pub"; head -c 300 /tmp/seed-resp.json; echo ;;
+    esac
+}
+
+echo "── 建立流程 ──"
+create_workflow "quotation_approval" "報價單簽核流程" "quotation" \
+    "$(dirname "$0")/../schemas/fixtures/quotation_approval_v1.json"
+create_workflow "purchase_approval" "採購申請簽核流程" "purchase_request" \
+    "$(dirname "$0")/../schemas/fixtures/purchase_approval_v1.json"
+
+rm -f /tmp/seed-wf.json /tmp/seed-resp.json
 
 echo
 echo "── 完成 ──"
@@ -368,6 +434,12 @@ select '  使用者 ' || count(*) || ' 人' from app_user where tenant_id = '$TE
 select '  部門 '   || count(*) || ' 個' from department where tenant_id = '$TENANT_ID';
 select '  角色 '   || count(*) || ' 種' from role where tenant_id = '$TENANT_ID';
 select '  表單 '   || count(*) || ' 張' from form_definition where tenant_id = '$TENANT_ID';
+select '  流程 '   || count(*) || ' 個（已發布 '
+       || (select count(*) from workflow_definition_version v
+           join workflow_definition d2 on d2.id = v.workflow_id
+           where d2.tenant_id = '$TENANT_ID' and v.status = 'PUBLISHED')
+       || ' 版）'
+  from workflow_definition where tenant_id = '$TENANT_ID';
 commit;
 SQL
 

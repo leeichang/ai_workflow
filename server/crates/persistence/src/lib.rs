@@ -11,6 +11,7 @@ pub mod form;
 pub mod human_task;
 pub mod instance;
 pub mod participant;
+pub mod sandbox;
 pub mod workflow;
 
 use sqlx::postgres::{PgPoolOptions, PgQueryResult};
@@ -26,7 +27,7 @@ pub use error::{Error, Result};
 /// superuser 會完全繞過 RLS，連 `FORCE ROW LEVEL SECURITY` 都擋不住。
 #[derive(Clone, Debug)]
 pub struct Db {
-    pool: PgPool,
+    pub(crate) pool: PgPool,
 }
 
 impl Db {

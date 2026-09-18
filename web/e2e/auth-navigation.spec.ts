@@ -153,17 +153,22 @@ test.describe('選單導覽', () => {
     await shot(page, '11a-設計器子選單')
   })
 
+  // 表單與流程的選單改為指向清單頁（0→1 入口），不再直接開某一張定義。
+  // 舊的斷言帶結尾斜線，是在釘「直接開 quotation_form」那個行為——
+  // 固定指向某一張會讓使用者以為系統只能編輯那一張。
   test('表單設計器', async ({ page }) => {
     await page.getByTestId('nav-designer-toggle').click()
     await page.getByTestId('nav-designer-forms').click()
-    await expect(page).toHaveURL(/\/designer\/forms\//)
+    await expect(page).toHaveURL(/\/designer\/forms$/)
+    await expect(page.getByTestId('form-create')).toBeVisible()
     await shot(page, '11b-表單設計器')
   })
 
   test('流程設計器', async ({ page }) => {
     await page.getByTestId('nav-designer-toggle').click()
     await page.getByTestId('nav-designer-workflows').click()
-    await expect(page).toHaveURL(/\/designer\/workflows\//)
+    await expect(page).toHaveURL(/\/designer\/workflows$/)
+    await expect(page.getByTestId('workflow-create')).toBeVisible()
     await shot(page, '11c-流程設計器')
   })
 
@@ -213,8 +218,8 @@ test.describe('選單導覽', () => {
     // 四個設計器
     await page.getByTestId('nav-designer-toggle').click()
     const designers = [
-      ['nav-designer-forms', '/designer/forms/'],
-      ['nav-designer-workflows', '/designer/workflows/'],
+      ['nav-designer-forms', '/designer/forms'],
+      ['nav-designer-workflows', '/designer/workflows'],
       ['nav-designer-templates', '/designer/templates'],
       ['nav-designer-permissions', '/designer/permissions'],
     ] as const

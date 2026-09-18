@@ -26,6 +26,7 @@ import {
 import { mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { cancelByBusinessKey } from './support/instances'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const SHOTS = resolve(HERE, '../../docs/操作手冊/screenshots/04-端到端')
@@ -91,6 +92,13 @@ async function waitForTask(
 
 /** 單號帶時間戳。Temporal 以 workflow_id 去重，重複的單號會被拒絕 */
 const KEY = `QT-${Date.now()}`
+
+// 這張單從畫面建立，走不到最後一關（客戶簽核沒有登入管道），
+// 不收掉的話會永遠留在 Temporal 輪詢。見 support/instances.ts。
+test.afterAll(async ({ request }) => {
+  const jwt = await token(request, 'designer@demo.local')
+  await cancelByBusinessKey(request, jwt, KEY)
+})
 
 test.describe('操作手冊：端到端', () => {
   test.setTimeout(240_000)

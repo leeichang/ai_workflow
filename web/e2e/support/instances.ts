@@ -66,3 +66,39 @@ export async function cancelTrackedInstances(
   tracked.length = 0
   return cancelled
 }
+
+/**
+ * 依單號取消實例
+ *
+ * 給「從畫面建單」的測試用——那些測試拿不到 instance id，
+ * 只知道自己填進去的單號。`manual-04-endtoend` 就是這種，
+ * 先前每跑一次漏掉一個。
+ *
+ * 用 list 再比對而不是查詢參數，因為 `GET /instances` 目前
+ * 沒有依 business_key 過濾的能力。
+ */
+export async function cancelByBusinessKey(
+  request: APIRequestContext,
+  jwt: string,
+  businessKey: string,
+): Promise<boolean> {
+  try {
+    const res = await request.get(`${API}/instances?limit=200`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    })
+    if (!res.ok()) return false
+
+    const rows = (await res.json()) as { id: string; business_key: string }[]
+    const hit = rows.find((r) => r.business_key === businessKey)
+    if (hit === undefined) return false
+
+    const cancel = await request.post(`${API}/instances/${hit.id}/cancel`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+      data: { reason: 'E2E 清理' },
+    })
+    return cancel.ok()
+  } catch {
+    // 與 cancelTrackedInstances 同樣的理由：清理失敗不影響測試結果
+    return false
+  }
+}

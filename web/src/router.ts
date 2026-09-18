@@ -54,10 +54,20 @@ export const router = createRouter({
       name: 'settings',
       component: () => import('./pages/NotBuiltPage.vue'),
     },
-    // 側邊欄的「設計器」指向這裡，進表單設計器
+    // 側邊欄的「設計器」指向這裡，進表單清單
+    //
+    // 先前 redirect 寫死成 /designer/forms/quotation_form——
+    // 那讓設計器看起來只能編輯那一張既有表單，使用者無從建立新的。
     {
       path: '/designer',
-      redirect: '/designer/forms/quotation_form',
+      redirect: '/designer/forms',
+    },
+    // 清單要排在 :formKey 之前，否則 'forms' 之後的路徑段
+    // 會被當成 formKey 吃掉
+    {
+      path: '/designer/forms',
+      name: 'form-list',
+      component: () => import('./pages/FormList.vue'),
     },
     {
       path: '/designer/forms/:formKey',

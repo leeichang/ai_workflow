@@ -116,13 +116,14 @@ onMounted(async () => {
  * 四個設計器都已實作，但先前「設計器」只是 redirect 到表單設計器，
  * 另外三個沒有入口——使用者無從得知它們存在。
  *
- * 表單與流程設計器需要一個 key 才能開啟。這裡先固定指向報價單，
- * 因為目前只有這一組定義。之後應該改成先進清單頁再選。
+ * 表單改為先進清單頁再選——固定指向報價單會讓使用者
+ * 以為系統只能編輯那一張，無從建立自己的表單。
+ * 流程設計器待補清單頁後比照辦理。
  */
 const DESIGNER_SUB_ITEMS: SubNavItem[] = [
   {
     key: 'forms',
-    path: '/designer/forms/quotation_form',
+    path: '/designer/forms',
     label: '表單設計器',
     icon: 'dashboard_customize',
   },

@@ -22,7 +22,7 @@ async function shot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: `${SHOTS}/${name}.png` })
 }
 
-const WF_KEY = `quote_review_${Date.now()}`
+const WF_KEY = `leave_approval_${Date.now()}`
 
 test.describe('操作手冊：從零建立流程', () => {
   test.setTimeout(180_000)
@@ -57,11 +57,11 @@ test.describe('操作手冊：從零建立流程', () => {
     await expect(page.getByTestId('create-dialog')).toBeVisible()
     await shot(page, '05-建立流程對話框')
 
-    await page.getByTestId('new-workflow-name').fill('報價單簽核流程')
+    await page.getByTestId('new-workflow-name').fill('請假簽核流程')
     await page.getByTestId('new-workflow-key').fill(WF_KEY)
-    // 業務物件用 quotation——它有 schemas/business-objects/quotation.json
-    // 定義，條件式才引用得到路徑。沒有定義的業務物件會被 WF-E012 擋下。
-    await page.getByTestId('new-business-object').fill('quotation')
+    // 業務物件必須有 schemas/business-objects/*.json 定義，
+    // 條件式才引用得到路徑。沒有定義的話會被 WF-E012 擋下。
+    await page.getByTestId('new-business-object').fill('leave_request')
     await shot(page, '06-填寫流程資訊')
 
     await page.getByTestId('create-confirm').click()
@@ -127,14 +127,14 @@ test.describe('操作手冊：從零建立流程', () => {
 
     await page.getByTestId('node-palette-condition').click()
     await expect(page.getByTestId('node-property-panel')).toBeVisible()
-    await page.getByTestId('node-prop-label').fill('折扣率判斷')
+    await page.getByTestId('node-prop-label').fill('請假天數判斷')
     await shot(page, '17-加入條件節點')
 
     // 條件式引用的路徑必須存在於業務物件定義，否則發布時
     // WF-E012 會擋下——路徑打錯會讓流程靜默跳過簽核。
     await page
       .getByTestId('node-prop-expression')
-      .fill('quotation.discount_rate > 0.15')
+      .fill('leave_request.days > 3')
     await shot(page, '18-設定條件式')
 
     // ══ 驗證與存檔 ══════════════════════════════════

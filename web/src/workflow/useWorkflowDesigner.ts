@@ -34,6 +34,13 @@ export function useWorkflowDesigner(workflowKey: string) {
   const saving = ref(false)
   const error = ref<string | null>(null)
   const graphErrors = ref<GraphError[]>([])
+  /**
+   * 不影響發布的提醒
+   *
+   * 目前只有一種——業務物件未定義，該流程的路徑不會被 WF-E012 檢查。
+   * 與 graphErrors 分開：警告不擋下發布，但使用者要看得到。
+   */
+  const warnings = ref<string[]>([])
   const validatedAt = ref<Date | null>(null)
 
   const lastSavedAt = ref<Date | null>(null)
@@ -506,6 +513,7 @@ export function useWorkflowDesigner(workflowKey: string) {
       if (dirty.value) await save()
       const result = await validateWorkflowDraft(workflowKey)
       graphErrors.value = result.errors ?? []
+      warnings.value = result.warnings ?? []
       validatedAt.value = new Date()
       return result.valid
     } catch (e) {
@@ -520,6 +528,8 @@ export function useWorkflowDesigner(workflowKey: string) {
     try {
       if (dirty.value) await save()
       const version = await publishWorkflowDraft(workflowKey)
+      // 發布可能帶著警告成功——業務物件未定義時仍會發布
+      warnings.value = version.warnings ?? []
       publishedVersion.value = version.version
       dirty.value = false
       await load()
@@ -550,6 +560,7 @@ export function useWorkflowDesigner(workflowKey: string) {
     saving,
     error,
     graphErrors,
+    warnings,
     errorNodeIds,
     validatedAt,
     lastSavedAt,

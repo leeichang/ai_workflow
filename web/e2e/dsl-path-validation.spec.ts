@@ -223,3 +223,88 @@ test.describe('權限預覽帶真實單據', () => {
     expect(fields.length, '應回傳欄位權限清單').toBeGreaterThan(0)
   })
 })
+
+/**
+ * 未定義的業務物件要明確警告
+ *
+ * `paths_for()` 查無業務物件時回空集合，而空集合在 WF-E012 代表
+ * 「不檢查」（沿用 known_roles 的既有慣例）。所以建一個業務物件是
+ * expense_claim 的流程，條件式打錯字也不會被擋——而畫面上沒有
+ * 任何提示，使用者以為自己受 E012 保護。
+ *
+ * 這是 E012 本身要擋的那類靜默失敗，只是換了一層。
+ */
+test.describe('未定義的業務物件', () => {
+  /** 建立業務物件為 unknown_object 的流程 */
+  async function createWithUnknownObject(
+    request: APIRequestContext,
+    jwt: string,
+    key: string,
+  ): Promise<void> {
+    const dsl = fixtureDsl()
+    const res = await request.post(`${API}/workflows`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+      data: {
+        workflow_key: key,
+        business_object: 'expense_claim',
+        name: `未定義業務物件測試 ${key}`,
+        content: { ...dsl, workflow_key: key, business_object: 'expense_claim' },
+      },
+    })
+    expect(res.status(), '建立流程定義失敗').toBe(201)
+  }
+
+  test('驗證時回報警告', async ({ request }) => {
+    const jwt = await token(request, 'designer@demo.local')
+    const key = `unknown_bo_validate_${Date.now()}`
+    await createWithUnknownObject(request, jwt, key)
+
+    const res = await request.post(
+      `${API}/workflows/${key}/draft/validate`,
+      { headers: { Authorization: `Bearer ${jwt}` } },
+    )
+
+    expect(res.status()).toBe(200)
+    const body = await res.json()
+
+    // 警告與錯誤要分開：警告不影響 valid，使用者仍可發布
+    expect(body.warnings, '應回報警告').toBeDefined()
+    expect(JSON.stringify(body.warnings)).toContain('expense_claim')
+  })
+
+  test('發布成功但回報警告', async ({ request }) => {
+    const jwt = await token(request, 'designer@demo.local')
+    const key = `unknown_bo_publish_${Date.now()}`
+    await createWithUnknownObject(request, jwt, key)
+
+    const res = await request.post(`${API}/workflows/${key}/draft/publish`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    })
+
+    // 不擋下發布——新業務物件尚未定義時仍應可用，
+    // 否則使用者要先請人幫他建 JSON 定義才能做事
+    expect(res.status(), '未定義的業務物件不該擋下發布').toBe(200)
+
+    const body = await res.json()
+    expect(body.warnings, '應回報警告').toBeDefined()
+    expect(JSON.stringify(body.warnings)).toContain('expense_claim')
+  })
+
+  test('已定義的業務物件不產生警告', async ({ request }) => {
+    const jwt = await token(request, 'designer@demo.local')
+    const key = `known_bo_${Date.now()}`
+    await createWorkflow(request, jwt, key, fixtureDsl())
+
+    const res = await request.post(
+      `${API}/workflows/${key}/draft/validate`,
+      { headers: { Authorization: `Bearer ${jwt}` } },
+    )
+
+    expect(res.status()).toBe(200)
+    const body = await res.json()
+    expect(
+      body.warnings === undefined || body.warnings.length === 0,
+      'quotation 有定義，不該有警告',
+    ).toBeTruthy()
+  })
+})

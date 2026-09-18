@@ -40,6 +40,49 @@ pub struct ValidationResult {
     valid: bool,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     errors: Vec<GraphError>,
+    /// 不影響 `valid` 的提醒
+    ///
+    /// 與 errors 分開的理由：警告不該擋下發布，但使用者要看得到。
+    /// 目前只有一種——業務物件未定義（見 `business_object_warnings`）。
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    warnings: Vec<String>,
+}
+
+/// 發布成功的回應
+///
+/// 比 `WorkflowVersion` 多一個 warnings。發布可能帶著警告成功，
+/// 呼叫端要能拿到那些警告顯示給使用者。
+#[derive(Serialize)]
+pub struct PublishResult {
+    #[serde(flatten)]
+    version: persistence::workflow::WorkflowVersion,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    warnings: Vec<String>,
+}
+
+/// 業務物件未定義時的警告
+///
+/// `paths_for()` 查無業務物件時回空集合，而空集合在 WF-E012 代表
+/// 「不檢查」（沿用 known_roles 的既有慣例）。所以業務物件沒有定義時，
+/// 該流程的所有條件式與 resolver 路徑都不會被檢查——打錯字不會被擋，
+/// 而畫面上沒有任何提示。
+///
+/// 這是 E012 本身要擋的那類靜默失敗，只是換了一層。
+///
+/// 不擋下發布：新業務物件尚未定義時仍應可用，否則使用者要先請人
+/// 幫他建 JSON 定義才能做事——與「使用者自己是 Owner」的定位衝突。
+fn business_object_warnings(business_object: &str) -> Vec<String> {
+    if domain::business_object::is_known(business_object) {
+        return Vec::new();
+    }
+
+    let known = domain::business_object::known_business_objects().join("、");
+    vec![format!(
+        "業務物件「{business_object}」尚未定義，\
+         此流程的條件式與簽核人路徑不會被檢查（WF-E012 需要業務物件定義才能運作）。\
+         打錯字的路徑會讓流程靜默跳過簽核。\
+         已定義的業務物件：{known}"
+    )]
 }
 
 #[derive(Deserialize)]
@@ -187,6 +230,7 @@ async fn validate_draft(
     Ok(Json(ValidationResult {
         valid: errors.is_empty(),
         errors,
+        warnings: business_object_warnings(&wf.business_object),
     }))
 }
 
@@ -198,7 +242,7 @@ async fn publish(
     State(state): State<AppState>,
     actor: Actor,
     Path(key): Path<String>,
-) -> ApiResult<Json<persistence::workflow::WorkflowVersion>> {
+) -> ApiResult<Json<PublishResult>> {
     actor.require_any(&["designer"])?;
 
     let mut tx = state.db.tenant_tx(actor.tenant_id).await?;
@@ -226,6 +270,7 @@ async fn publish(
     }
 
     let published = persistence::workflow::publish(&mut tx, wf.id, actor.user_id).await?;
+    let warnings = business_object_warnings(&wf.business_object);
 
     tx.audit(
         persistence::AuditEvent::new(
@@ -238,12 +283,18 @@ async fn publish(
         .payload(serde_json::json!({
             "workflow_key": key,
             "version": published.version,
+            // 警告也要記——事後查得到哪些流程是在沒有 E012 保護的
+            // 狀態下發布的
+            "warnings": warnings,
         })),
     )
     .await?;
 
     tx.commit().await?;
-    Ok(Json(published))
+    Ok(Json(PublishResult {
+        version: published,
+        warnings,
+    }))
 }
 
 async fn list_versions(

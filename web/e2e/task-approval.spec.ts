@@ -18,6 +18,7 @@ import { expect, test, type Page, type APIRequestContext } from '@playwright/tes
 import { mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { cancelTrackedInstances, trackInstance } from './support/instances'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const SHOTS = resolve(
@@ -78,6 +79,10 @@ async function startQuotation(
     },
   })
   expect(res.status(), '啟動流程失敗').toBe(201)
+
+  // 這些流程沒有人會去簽完，不收掉的話會永遠留在 Temporal 輪詢。
+  // 見 support/instances.ts 的說明。
+  trackInstance((await res.json()).id)
 }
 
 /**
@@ -132,6 +137,18 @@ async function login(page: Page, email: string): Promise<void> {
 function uniqueKey(prefix: string): string {
   return `${prefix}-${Date.now()}`
 }
+
+/**
+ * 收掉本檔啟動的所有流程
+ *
+ * 這個檔案是實例的主要來源——每跑一次會啟動六到七個
+ * 停在人工節點、沒有人會簽完的流程。不收掉的話它們會永遠
+ * 留在 Temporal 輪詢，讓後續每次執行都更慢。
+ */
+test.afterAll(async ({ request }) => {
+  const jwt = await token(request, 'designer@demo.local')
+  await cancelTrackedInstances(request, jwt)
+})
 
 test.describe('核准', () => {
   // 這條走完整往返：啟動、等 Worker 建待辦、登入、核准、

@@ -17,6 +17,7 @@ import { expect, test, type APIRequestContext } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { cancelTrackedInstances, trackInstance } from './support/instances'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 
@@ -63,6 +64,13 @@ async function createWorkflow(
   })
   expect(res.status(), '建立流程定義失敗').toBe(201)
 }
+
+// 本檔只啟動一張單（權限預覽那條），但同樣要收掉——
+// 累積是逐次發生的，一次一張也會累積。
+test.afterAll(async ({ request }) => {
+  const jwt = await token(request, 'designer@demo.local')
+  await cancelTrackedInstances(request, jwt)
+})
 
 test.describe('WF-E012 資料路徑存在性', () => {
   test('條件式路徑打錯字時，發布被擋下', async ({ request }) => {
@@ -210,6 +218,9 @@ test.describe('權限預覽帶真實單據', () => {
     })
     expect(started.status(), '啟動流程失敗').toBe(201)
     const instanceId = (await started.json()).id
+
+    // 這張單不會被簽完，收掉它——見 support/instances.ts
+    trackInstance(instanceId)
 
     const res = await request.get(
       `${API}/forms/quotation_form/permissions/preview` +

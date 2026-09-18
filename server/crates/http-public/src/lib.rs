@@ -7,6 +7,7 @@ pub mod error;
 pub mod forms;
 pub mod instances;
 pub mod internal;
+pub mod lookup;
 pub mod mailer;
 pub mod permission_write;
 pub mod permissions;
@@ -68,6 +69,7 @@ pub fn router(state: AppState) -> Router {
         .merge(workflows::routes())
         .merge(instances::routes())
         .merge(tasks::routes())
+        .merge(lookup::routes())
         .merge(internal::routes())
         .with_state(state)
 }
@@ -133,15 +135,33 @@ async fn login(
     // 切回綁定租戶，後續查詢受 RLS 保護
     let mut tx = state.db.tenant_tx(tenant_id).await?;
 
-    let row: Option<(Uuid, String, String, String, String)> = sqlx::query_as(
-        "select id, name, email, password_hash, status from app_user where email = $1",
+    // password_hash 可為 NULL——組織同步進來的人員（產線作業員、
+    // 不用電腦的主管）存在於 app_user 但沒有登入權限。
+    // 見 migrations/0006_organization.sql 與需求 07 §2。
+    let row: Option<(Uuid, String, String, Option<String>, String, bool)> = sqlx::query_as(
+        "select id, name, email, password_hash, status, can_login \
+         from app_user where email = $1",
     )
     .bind(&body.email)
     .fetch_optional(tx.executor())
     .await
     .map_err(|e| ApiError::Internal(format!("查詢使用者失敗：{e}")))?;
 
-    let Some((user_id, name, email, password_hash, user_status)) = row else {
+    let Some((user_id, name, email, password_hash, user_status, can_login)) = row else {
+        return Err(ApiError::Unauthorized("帳號或密碼錯誤".into()));
+    };
+
+    // 顯式檢查 can_login，不依賴「有 hash 就能登入」的隱含假設。
+    // 資料庫有 app_user_login_needs_password 約束擋住不一致狀態，
+    // 但應用層仍要自己檢查——約束是最後防線，不是唯一防線。
+    //
+    // 回「帳號或密碼錯誤」而非「此帳號不可登入」：後者會讓攻擊者
+    // 得知某個 email 存在於系統中。
+    if !can_login {
+        return Err(ApiError::Unauthorized("帳號或密碼錯誤".into()));
+    }
+
+    let Some(password_hash) = password_hash else {
         return Err(ApiError::Unauthorized("帳號或密碼錯誤".into()));
     };
 

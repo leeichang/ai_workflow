@@ -46,6 +46,42 @@ const pathValid = computed(() => {
   return /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(p)
 })
 
+/**
+ * 可綁定的基本資料來源
+ *
+ * 與後端 lookup.rs 的 SOURCES 白名單一致。寫死而非查 API，
+ * 因為這是設計時的選項——設計器開啟時多打一次 API 不划算，
+ * 而來源本身是 API 契約的一部分，不會動態增減。
+ */
+const LOOKUP_SOURCES = [
+  { value: 'employee', label: '員工' },
+  { value: 'department', label: '部門' },
+  { value: 'role', label: '角色' },
+] as const
+
+/** 只有這幾種元件有選項的概念 */
+const OPTION_COMPONENTS = new Set(['select', 'multi_select', 'radio'])
+
+const isOptionField = computed(() =>
+  props.field ? OPTION_COMPONENTS.has(props.field.ui.component) : false,
+)
+
+/**
+ * 切換選項來源
+ *
+ * 選空字串時移除 option_source 而非設成空物件——
+ * schema 要求 option_source 必填 source，空物件驗證不過。
+ */
+function patchOptionSource(source: string) {
+  if (source === '') {
+    const ui = { ...props.field!.ui }
+    delete (ui as Record<string, unknown>).option_source
+    emit('update', { ui: ui as FormField['ui'] })
+    return
+  }
+  patchUi('option_source', { source })
+}
+
 function patchUi(key: string, value: unknown) {
   emit('update', { ui: { ...props.field!.ui, [key]: value } as FormField['ui'] })
 }
@@ -233,6 +269,39 @@ function widthLabel(w: number) {
                 @input="patchUi('suffix', ($event.target as HTMLInputElement).value)"
               />
             </label>
+          </div>
+
+          <!--
+            選項來源（select / multi_select / radio）
+
+            寫死的 options 維護不了組織異動——有人到職、部門改組時
+            要回頭改每一張表單。綁資料來源才能跟著變。
+          -->
+          <div
+            v-if="isOptionField"
+            class="pt-2 border-t border-outline-variant"
+          >
+            <span class="block font-label-header text-label-header text-secondary mb-1">
+              選項來源
+            </span>
+            <select
+              :value="field.ui.option_source?.source ?? ''"
+              data-testid="prop-option-source"
+              class="w-full h-9 px-2 bg-surface-container-low border border-outline-variant rounded-lg font-body-dense text-body-dense"
+              @change="patchOptionSource(($event.target as HTMLSelectElement).value)"
+            >
+              <option value="">固定選項（自行輸入）</option>
+              <option v-for="s in LOOKUP_SOURCES" :key="s.value" :value="s.value">
+                {{ s.label }}
+              </option>
+            </select>
+            <span class="block font-label-caption text-label-caption text-outline mt-1">
+              {{
+                field.ui.option_source?.source
+                  ? '選項由系統即時查詢，組織異動自動反映'
+                  : '選項寫在表單定義裡，組織異動時要手動維護'
+              }}
+            </span>
           </div>
 
           <!-- 客戶 Portal 可見 -->

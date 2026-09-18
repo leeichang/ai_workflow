@@ -178,10 +178,26 @@ export interface FieldUi {
   prefix?: string
   suffix?: string
   options?: SelectOption[]
+  /**
+   * 選項綁定基本資料。與 options 二擇一
+   *
+   * 寫死的 options 維護不了組織異動——有人到職、部門改組時
+   * 要回頭改每一張表單。
+   */
+  option_source?: OptionSourceSpec
   columns?: TableColumn[]
   reference?: ReferenceSpec
   /** false 時客戶 Portal 不顯示此欄位，例如成本與毛利 */
   external_visible?: boolean
+}
+
+/** 選項的資料來源。對應 GET /lookup/{source} */
+export interface OptionSourceSpec {
+  source: 'employee' | 'department' | 'role'
+  /** 額外過濾條件，例如只列某部門的人 */
+  filter?: Record<string, string>
+  /** 選定後自動填入其他欄位。key 為目標欄位 key，value 為 extra 的屬性名 */
+  fill?: Record<string, string>
 }
 
 export interface FieldData {

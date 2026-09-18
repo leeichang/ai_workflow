@@ -23,3 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 .vitest/
+
+# Playwright 的執行產物。失敗時的截圖、trace、影片都在這裡，
+# 每次執行都會重寫，不該進版控（曾累積到 13MB）。
+test-results/

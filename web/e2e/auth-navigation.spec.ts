@@ -39,11 +39,44 @@ async function shot(page: Page, name: string): Promise<void> {
 
 const CFO = { tenant: 'demo', email: 'cfo@demo.local', password: 'demo1234' }
 
+/**
+ * 送出登入表單
+ *
+ * 刻意不等導頁——密碼錯誤的測試要停在原頁看錯誤訊息。
+ * 成功路徑請用 loginAndWait()。
+ */
 async function login(page: Page, who = CFO): Promise<void> {
   await page.getByTestId('login-tenant').fill(who.tenant)
   await page.getByTestId('login-email').fill(who.email)
   await page.getByTestId('login-password').fill(who.password)
   await page.getByTestId('login-submit').click()
+}
+
+/**
+ * 登入並等到真的進了首頁
+ *
+ * 為什麼要自己指定 timeout：登入的密碼雜湊是 argon2，**刻意很慢**。
+ * 實測 /auth/login 穩定落在 2.0～2.5 秒，而 Playwright 的 expect
+ * 預設只等 5 秒——扣掉往返與重繪幾乎沒有餘裕。
+ *
+ * 全量執行時最常紅的就是登入後的第一個斷言，而且每次紅的是
+ * 不同測試。那是餘裕不足的特徵，不是競態。
+ *
+ * 只放寬登入這一段而不調高全域 expect timeout：後者會讓每個
+ * 真正失敗的斷言都慢 3 倍才回報。
+ */
+const LOGIN_TIMEOUT = 15_000
+
+/**
+ * @param landsOn 登入後應該到的位址。帶 redirect 參數進來時不是首頁。
+ */
+async function loginAndWait(
+  page: Page,
+  who = CFO,
+  landsOn: string | RegExp = 'http://localhost:3040/',
+): Promise<void> {
+  await login(page, who)
+  await expect(page).toHaveURL(landsOn, { timeout: LOGIN_TIMEOUT })
 }
 
 test.describe('登入', () => {
@@ -74,7 +107,7 @@ test.describe('登入', () => {
 
   test('登入成功進入首頁，顯示真實使用者', async ({ page }) => {
     await page.goto('/login')
-    await login(page)
+    await loginAndWait(page)
 
     await expect(page).toHaveURL('http://localhost:3040/')
     // 原本這裡寫死「林建志 協理」，現在必須是實際登入的張文華
@@ -84,8 +117,8 @@ test.describe('登入', () => {
 
   test('登入後回到原本要去的頁面', async ({ page }) => {
     await page.goto('/designer/permissions')
-    await login(page)
-    await expect(page).toHaveURL(/\/designer\/permissions/)
+    // 這條的重點就是「不會落在首頁」，所以要明確告訴 helper 預期的落點
+    await loginAndWait(page, CFO, /\/designer\/permissions/)
     // 等畫面真的換過去，而不只是 URL 變了
     await expect(page.getByTestId('user-name')).toBeVisible()
     await shot(page, '05-登入後回原頁')
@@ -93,7 +126,7 @@ test.describe('登入', () => {
 
   test('重新整理保持登入', async ({ page }) => {
     await page.goto('/login')
-    await login(page)
+    await loginAndWait(page)
     await expect(page).toHaveURL('http://localhost:3040/')
 
     await page.reload()
@@ -106,7 +139,7 @@ test.describe('登入', () => {
 test.describe('選單導覽', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/login')
-    await login(page)
+    await loginAndWait(page)
     await expect(page).toHaveURL('http://localhost:3040/')
   })
 
@@ -234,7 +267,7 @@ test.describe('選單導覽', () => {
 test.describe('登出', () => {
   test('選單展開顯示帳號資訊', async ({ page }) => {
     await page.goto('/login')
-    await login(page)
+    await loginAndWait(page)
     await page.getByTestId('user-menu-toggle').click()
 
     await expect(page.getByTestId('user-menu-panel')).toContainText('cfo@demo.local')
@@ -243,7 +276,7 @@ test.describe('登出', () => {
 
   test('登出清除狀態並導向登入頁', async ({ page }) => {
     await page.goto('/login')
-    await login(page)
+    await loginAndWait(page)
     await page.getByTestId('user-menu-toggle').click()
     await page.getByTestId('logout-button').click()
 
@@ -257,7 +290,7 @@ test.describe('登出', () => {
 
   test('登出後原本可進的頁面需重新登入', async ({ page }) => {
     await page.goto('/login')
-    await login(page)
+    await loginAndWait(page)
     await page.getByTestId('user-menu-toggle').click()
     await page.getByTestId('logout-button').click()
     await expect(page).toHaveURL(/\/login/)
@@ -271,12 +304,22 @@ test.describe('登出', () => {
 test.describe('不同使用者', () => {
   test('切換帳號後顯示對應的人與角色', async ({ page }) => {
     await page.goto('/login')
-    await login(page, {
+    await loginAndWait(page, {
       tenant: 'demo',
       email: 'designer@demo.local',
       password: 'demo1234',
     })
 
+    // 先等導頁完成再查 shell 的元素。
+    //
+    // login() 只按下送出，不等導頁。直接查 user-name 等於同時賭
+    // 「登入成功」與「畫面已重繪」兩件事都在 expect 的 5 秒內完成，
+    // 而這支測試先前就是全量執行時最常紅的一個。
+    //
+    // 分成兩段不是為了多等，是為了失敗時看得出是哪一段出問題——
+    // 停在 /login 代表登入本身失敗，到了首頁但沒有 user-name
+    // 才是渲染問題。其餘的 describe 在 beforeEach 都是這樣做的。
+    await expect(page).toHaveURL('http://localhost:3040/')
     await expect(page.getByTestId('user-name')).toHaveText('陳雅婷')
     await shot(page, '17-切換為設計者')
   })

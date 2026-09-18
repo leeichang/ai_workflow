@@ -239,6 +239,10 @@ async fn simulation_allowed(state: &AppState, actor: &Actor) -> ApiResult<bool> 
         return Ok(false);
     }
 
+    // 比對 created_by_in_sandbox 而非 created_by：
+    // 登入沙箱後 JWT 帶的是沙箱租戶的 user id，與正式租戶的 id 不同
+    // （app_user.id 是全域主鍵，複製主檔時必須重新產生）。
+    // 用 created_by 比對的話條件永遠不成立，建立者反而進不了自己的沙箱。
     let session = persistence::sandbox::active_session_of(&state.db, actor.tenant_id).await?;
-    Ok(session.is_some_and(|s| s.created_by == actor.user_id))
+    Ok(session.is_some_and(|s| s.created_by_in_sandbox == Some(actor.user_id)))
 }

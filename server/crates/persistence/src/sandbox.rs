@@ -25,6 +25,11 @@ pub struct SandboxSession {
     pub sandbox_tenant_id: Option<Uuid>,
     pub change_request_id: Option<Uuid>,
     pub created_by: Uuid,
+    /// 建立者在沙箱租戶內的 user id
+    ///
+    /// 授權開洞比對的是這個——登入沙箱後 JWT 帶的是沙箱的 id，
+    /// 與 created_by（正式租戶的 id）不同。
+    pub created_by_in_sandbox: Option<Uuid>,
     pub status: String,
     pub created_at: DateTime<Utc>,
     pub expires_at: DateTime<Utc>,
@@ -44,7 +49,7 @@ pub struct TenantFlags {
 /// 用 admin 連線讀而非 tenant_tx：這是 tenant_tx 自己要用的，
 /// 會造成循環。且 tenant 表沒有 RLS policy（它是租戶清單本身）。
 pub async fn flags_of(db: &Db, tenant_id: Uuid) -> Result<TenantFlags> {
-    let pool = &db.pool;
+    let pool = db.pool_without_tenant_isolation();
     let row: Option<(bool,)> = sqlx::query_as("select is_sandbox from tenant where id = $1")
         .bind(tenant_id)
         .fetch_optional(pool)
@@ -64,7 +69,7 @@ pub async fn active_session_of(
     db: &Db,
     sandbox_tenant_id: Uuid,
 ) -> Result<Option<SandboxSession>> {
-    let pool = &db.pool;
+    let pool = db.pool_without_tenant_isolation();
     sqlx::query_as::<_, SandboxSession>(
         "select * from sandbox_session
          where sandbox_tenant_id = $1 and status = 'ACTIVE'
@@ -92,7 +97,7 @@ pub async fn create(
     parent_tenant_id: Uuid,
     created_by: Uuid,
 ) -> Result<(Uuid, SandboxSession)> {
-    let mut tx = db.pool.begin().await.map_err(Error::from_db)?;
+    let mut tx = db.pool_without_tenant_isolation().begin().await.map_err(Error::from_db)?;
 
     let sandbox_id = Uuid::new_v4();
     let expires_at = Utc::now() + Duration::days(DEFAULT_TTL_DAYS);
@@ -121,20 +126,6 @@ pub async fn create(
     .map_err(Error::from_db)?;
 
 
-    let session = sqlx::query_as::<_, SandboxSession>(
-        "insert into sandbox_session
-            (tenant_id, sandbox_tenant_id, created_by, expires_at)
-         values ($1, $2, $3, $4)
-         returning *",
-    )
-    .bind(parent_tenant_id)
-    .bind(sandbox_id)
-    .bind(created_by)
-    .bind(expires_at)
-    .fetch_one(&mut *tx)
-    .await
-    .map_err(Error::from_db)?;
-
     tx.commit().await.map_err(Error::from_db)?;
 
     // 主檔複製走 tenant_tx 而非原始連線。
@@ -147,7 +138,24 @@ pub async fn create(
     // 分兩段讀寫的代價是不在同一個交易裡。沙箱建到一半失敗會留下
     // 空的沙箱租戶，那是可回收的垃圾；反過來若為了原子性而繞過 RLS，
     // 換來的是跨租戶寫入的能力。寧可留垃圾。
-    copy_master_data(db, parent_tenant_id, sandbox_id).await?;
+    let creator_in_sandbox =
+        copy_master_data(db, parent_tenant_id, sandbox_id, created_by).await?;
+
+    // session 在主檔複製之後才寫：要等 copy 回報建立者在沙箱內的 id。
+    let session = sqlx::query_as::<_, SandboxSession>(
+        "insert into sandbox_session
+            (tenant_id, sandbox_tenant_id, created_by, created_by_in_sandbox, expires_at)
+         values ($1, $2, $3, $4, $5)
+         returning *",
+    )
+    .bind(parent_tenant_id)
+    .bind(sandbox_id)
+    .bind(created_by)
+    .bind(creator_in_sandbox)
+    .bind(expires_at)
+    .fetch_one(db.pool_without_tenant_isolation())
+    .await
+    .map_err(Error::from_db)?;
 
     Ok((sandbox_id, session))
 }
@@ -160,7 +168,12 @@ pub async fn create(
 ///
 /// id 一律沿用來源的值。這讓「沙箱裡的張文華」與「正式的張文華」
 /// 是同一個 uuid，模擬簽核的 acting_as 才指得回真實的人。
-async fn copy_master_data(db: &Db, from: Uuid, to: Uuid) -> Result<()> {
+async fn copy_master_data(
+    db: &Db,
+    from: Uuid,
+    to: Uuid,
+    creator: Uuid,
+) -> Result<Option<Uuid>> {
     use std::collections::HashMap;
 
     // ── 讀：以來源租戶的身分 ──────────────────────────
@@ -297,6 +310,126 @@ async fn copy_master_data(db: &Db, from: Uuid, to: Uuid) -> Result<()> {
     }
 
     dst.commit().await?;
+
+    // 定義要另外複製——沙箱的用途就是改定義再試跑，
+    // 沒有定義的沙箱等於空殼
+    copy_definitions(db, from, to).await?;
+
+    // 建立者在沙箱內的新 id。授權開洞要用它比對。
+    Ok(user_map.get(&creator).copied())
+}
+
+/// 複製表單與流程定義
+///
+/// 只複製**已發布**的版本，並在沙箱裡同樣標為已發布。
+/// 草稿不複製：那是來源租戶設計中的半成品，帶進沙箱只會混淆
+/// 「我現在改的是哪一版」。
+///
+/// 沙箱裡的定義是獨立的副本，改它不影響正式租戶——
+/// 那正是開發模式的意義。
+async fn copy_definitions(db: &Db, from: Uuid, to: Uuid) -> Result<()> {
+    let mut src = db.tenant_tx(from).await?;
+
+    let forms: Vec<(Uuid, String, String, String)> =
+        sqlx::query_as("select id, form_key, business_object, name from form_definition")
+            .fetch_all(src.executor())
+            .await
+            .map_err(Error::from_db)?;
+
+    let form_versions: Vec<(Uuid, Option<i32>, serde_json::Value)> = sqlx::query_as(
+        "select form_id, version, content from form_definition_version
+         where status = 'PUBLISHED'",
+    )
+    .fetch_all(src.executor())
+    .await
+    .map_err(Error::from_db)?;
+
+    let workflows: Vec<(Uuid, String, String, String, Option<String>)> = sqlx::query_as(
+        "select id, workflow_key, business_object, name, description from workflow_definition",
+    )
+    .fetch_all(src.executor())
+    .await
+    .map_err(Error::from_db)?;
+
+    let workflow_versions: Vec<(Uuid, Option<i32>, serde_json::Value)> = sqlx::query_as(
+        "select workflow_id, version, content from workflow_definition_version
+         where status = 'PUBLISHED'",
+    )
+    .fetch_all(src.executor())
+    .await
+    .map_err(Error::from_db)?;
+
+    src.commit().await?;
+
+    let mut dst = db.tenant_tx(to).await?;
+
+    for (old_id, key, bo, name) in &forms {
+        let new_id = Uuid::new_v4();
+        sqlx::query(
+            "insert into form_definition (id, tenant_id, form_key, business_object, name)
+             values ($1,$2,$3,$4,$5)",
+        )
+        .bind(new_id)
+        .bind(to)
+        .bind(key)
+        .bind(bo)
+        .bind(name)
+        .execute(dst.executor())
+        .await
+        .map_err(Error::from_db)?;
+
+        for (form_id, version, content) in form_versions.iter().filter(|(f, ..)| f == old_id) {
+            let _ = form_id;
+            sqlx::query(
+                "insert into form_definition_version
+                    (tenant_id, form_id, version, content, status, published_at)
+                 values ($1,$2,$3,$4,'PUBLISHED',now())",
+            )
+            .bind(to)
+            .bind(new_id)
+            .bind(version)
+            .bind(content)
+            .execute(dst.executor())
+            .await
+            .map_err(Error::from_db)?;
+        }
+    }
+
+    for (old_id, key, bo, name, desc) in &workflows {
+        let new_id = Uuid::new_v4();
+        sqlx::query(
+            "insert into workflow_definition
+                (id, tenant_id, workflow_key, business_object, name, description)
+             values ($1,$2,$3,$4,$5,$6)",
+        )
+        .bind(new_id)
+        .bind(to)
+        .bind(key)
+        .bind(bo)
+        .bind(name)
+        .bind(desc)
+        .execute(dst.executor())
+        .await
+        .map_err(Error::from_db)?;
+
+        for (wf_id, version, content) in workflow_versions.iter().filter(|(w, ..)| w == old_id) {
+            let _ = wf_id;
+            sqlx::query(
+                "insert into workflow_definition_version
+                    (tenant_id, workflow_id, version, content, status, published_at)
+                 values ($1,$2,$3,$4,'PUBLISHED',now())",
+            )
+            .bind(to)
+            .bind(new_id)
+            .bind(version)
+            .bind(content)
+            .execute(dst.executor())
+            .await
+            .map_err(Error::from_db)?;
+        }
+    }
+
+    dst.commit().await?;
     Ok(())
 }
 
@@ -315,7 +448,7 @@ async fn copy_master_data(db: &Db, from: Uuid, to: Uuid) -> Result<()> {
 /// 因此這裡只做兩件事：把 session 標成 DISCARDED、把租戶設為已過期。
 /// 實際清除交給以維運身分執行的回收程序（`expires_at` 就是給它看的）。
 pub async fn retire(db: &Db, sandbox_tenant_id: Uuid) -> Result<()> {
-    let mut tx = db.pool.begin().await.map_err(Error::from_db)?;
+    let mut tx = db.pool_without_tenant_isolation().begin().await.map_err(Error::from_db)?;
 
     sqlx::query("update sandbox_session set status = 'DISCARDED' where sandbox_tenant_id = $1")
         .bind(sandbox_tenant_id)
@@ -341,7 +474,7 @@ pub async fn is_retired(db: &Db, sandbox_tenant_id: Uuid) -> Result<bool> {
     let row: Option<(Option<DateTime<Utc>>,)> =
         sqlx::query_as("select expires_at from tenant where id = $1 and is_sandbox")
             .bind(sandbox_tenant_id)
-            .fetch_optional(&db.pool)
+            .fetch_optional(db.pool_without_tenant_isolation())
             .await
             .map_err(Error::from_db)?;
 

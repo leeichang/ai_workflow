@@ -309,10 +309,20 @@ async fn simulation_allowed(db: &Db, tenant_id: Uuid, actor: Uuid) -> bool {
     if !flags.is_sandbox {
         return false;
     }
+    // 比對沙箱內的 id——登入沙箱後 JWT 帶的是沙箱租戶的 user id
     persistence::sandbox::active_session_of(db, tenant_id)
         .await
         .unwrap()
-        .is_some_and(|s| s.created_by == actor)
+        .is_some_and(|s| s.created_by_in_sandbox == Some(actor))
+}
+
+/// 建立者在沙箱租戶內的 user id
+async fn creator_in_sandbox(db: &Db, sandbox_id: Uuid) -> Uuid {
+    persistence::sandbox::active_session_of(db, sandbox_id)
+        .await
+        .unwrap()
+        .and_then(|s| s.created_by_in_sandbox)
+        .expect("session 應記錄建立者在沙箱內的 id")
 }
 
 #[tokio::test]
@@ -343,9 +353,20 @@ async fn sandbox_creator_is_allowed() {
         .await
         .expect("建立沙箱失敗");
 
+    let inside = creator_in_sandbox(&db, sandbox_id).await;
+    assert_ne!(
+        inside, tester,
+        "沙箱內的 id 與正式租戶不同——app_user.id 是全域主鍵"
+    );
     assert!(
-        simulation_allowed(&db, sandbox_id, tester).await,
+        simulation_allowed(&db, sandbox_id, inside).await,
         "沙箱的建立者本人可以模擬簽核"
+    );
+
+    // 用正式租戶的 id 比對必定不成立，這正是先前的缺陷
+    assert!(
+        !simulation_allowed(&db, sandbox_id, tester).await,
+        "用正式租戶的 id 比對不該成立"
     );
 }
 
@@ -373,14 +394,15 @@ async fn retired_sandbox_blocks_simulation() {
         .await
         .expect("建立沙箱失敗");
 
-    assert!(simulation_allowed(&db, sandbox_id, tester).await);
+    let inside = creator_in_sandbox(&db, sandbox_id).await;
+    assert!(simulation_allowed(&db, sandbox_id, inside).await);
 
     persistence::sandbox::retire(&db, sandbox_id)
         .await
         .expect("退役失敗");
 
     assert!(
-        !simulation_allowed(&db, sandbox_id, tester).await,
+        !simulation_allowed(&db, sandbox_id, inside).await,
         "退役後不可再模擬簽核"
     );
 }

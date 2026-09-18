@@ -357,7 +357,71 @@ cat > /tmp/form-supplier.json <<'JSON'
 JSON
 create_form "supplier_review_form" "供應商評鑑表" /tmp/form-supplier.json
 
-rm -f /tmp/form-purchase.json /tmp/form-supplier.json /tmp/seed-resp.json
+# ── 流程定義 ────────────────────────────────────────────
+#
+# 為什麼要在這裡建：沒有流程定義的話，web/e2e/task-approval.spec.ts
+# 的 6 個測試會全部回 404（POST /instances 找不到 quotation_approval），
+# 而錯誤訊息是「啟動流程失敗」——看起來像服務沒起來，
+# 但六個服務其實都正常。新接手的人會在這裡卡很久。
+#
+# 定義取自 schemas/fixtures/，與 Rust validator 的測試 fixture 同一份。
+# 兩邊共用一份可以避免「測試通過但實際跑不起來」。
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+create_workflow() {
+    # macOS 的 bash 3.2：同一個 local 敘述不可引用前面剛宣告的變數
+    local key="$1"; local fixture="$2"
+    printf '  %-22s' "$key"
+
+    if [[ ! -f "$fixture" ]]; then
+        echo "找不到 $fixture"
+        return
+    fi
+
+    # 把 fixture 包成 API 要的建立請求
+    python3 - "$fixture" "$key" > /tmp/seed-wf.json <<'PY'
+import json, sys
+fixture, key = sys.argv[1], sys.argv[2]
+dsl = json.load(open(fixture))
+json.dump({
+    "workflow_key": key,
+    "business_object": dsl["business_object"],
+    "name": dsl["name"],
+    "description": dsl.get("description"),
+    "content": dsl,
+}, open("/dev/stdout", "w"), ensure_ascii=False)
+PY
+
+    local code
+    code=$(curl -s -o /tmp/seed-resp.json -w '%{http_code}' -X POST "$API/workflows" \
+        -H "Authorization: Bearer $TOKEN" \
+        -H 'Content-Type: application/json' \
+        -d @/tmp/seed-wf.json)
+
+    case "$code" in
+        201) printf '已建立 ' ;;
+        409) echo "已存在，略過"; return ;;
+        *)   echo "建立失敗 HTTP $code"; head -c 200 /tmp/seed-resp.json; echo; return ;;
+    esac
+
+    # 發布。此處才做完整圖結構驗證（含 WF-E012 路徑存在性），
+    # 驗不過表示 fixture 與業務物件定義不一致，要當成錯誤而非略過。
+    local pub
+    pub=$(curl -s -o /tmp/seed-resp.json -w '%{http_code}' -X POST \
+        "$API/workflows/$key/draft/publish" \
+        -H "Authorization: Bearer $TOKEN")
+
+    case "$pub" in
+        200) echo "並已發布" ;;
+        *)   echo "發布失敗 HTTP $pub"; head -c 300 /tmp/seed-resp.json; echo ;;
+    esac
+}
+
+echo "── 建立流程定義 ──"
+create_workflow "quotation_approval" "$ROOT/schemas/fixtures/quotation_approval_v1.json"
+
+rm -f /tmp/form-purchase.json /tmp/form-supplier.json /tmp/seed-resp.json /tmp/seed-wf.json
 
 echo
 echo "── 完成 ──"
@@ -368,6 +432,7 @@ select '  使用者 ' || count(*) || ' 人' from app_user where tenant_id = '$TE
 select '  部門 '   || count(*) || ' 個' from department where tenant_id = '$TENANT_ID';
 select '  角色 '   || count(*) || ' 種' from role where tenant_id = '$TENANT_ID';
 select '  表單 '   || count(*) || ' 張' from form_definition where tenant_id = '$TENANT_ID';
+select '  流程 '   || count(*) || ' 個' from workflow_definition where tenant_id = '$TENANT_ID';
 commit;
 SQL
 

@@ -38,6 +38,8 @@ pub struct FieldSpec {
 const QUOTATION: &str = include_str!("../../../../schemas/business-objects/quotation.json");
 const PURCHASE_REQUEST: &str =
     include_str!("../../../../schemas/business-objects/purchase_request.json");
+const LEAVE_REQUEST: &str =
+    include_str!("../../../../schemas/business-objects/leave_request.json");
 
 /// 內嵌的全部定義
 ///
@@ -45,7 +47,7 @@ const PURCHASE_REQUEST: &str =
 /// 而空集合在 WF-E012 代表「不檢查」——會靜默失去保護。
 /// 所以 `known_business_objects()` 提供給呼叫端做明確性檢查。
 fn all() -> Vec<BusinessObject> {
-    [QUOTATION, PURCHASE_REQUEST]
+    [QUOTATION, PURCHASE_REQUEST, LEAVE_REQUEST]
         .iter()
         .map(|raw| serde_json::from_str(raw).expect("內嵌的業務物件定義應為合法 JSON"))
         .collect()
@@ -81,7 +83,13 @@ mod tests {
     fn embedded_definitions_parse() {
         // 內嵌的 JSON 壞掉時要在測試就爆，而不是上線後第一次發布流程才爆
         let defs = all();
-        assert!(defs.len() >= 2, "至少應有報價單與採購申請兩個定義");
+        assert_eq!(
+            defs.len(),
+            3,
+            "應有報價單、採購申請、請假單三個定義。\
+             新增定義時要同時更新 all() 與這個數字——\
+             漏登記會讓該業務物件靜默失去 E012 保護"
+        );
     }
 
     #[test]
@@ -109,6 +117,23 @@ mod tests {
             "quotation.gross_margin",
         ] {
             assert!(!paths.contains(old), "舊名稱 {old} 不該出現在正式定義");
+        }
+    }
+
+    #[test]
+    fn leave_request_is_known() {
+        // 請假單是操作手冊示範用的第三個業務物件。
+        // 沒有定義的話，照手冊建立的流程會在發布時被 E012 擋下，
+        // 而使用者不會知道為什麼。
+        assert!(is_known("leave_request"));
+
+        let paths = paths_for("leave_request");
+        for p in [
+            "leave_request.leave_type",
+            "leave_request.days",
+            "leave_request.start_date",
+        ] {
+            assert!(paths.contains(p), "請假單定義缺少 {p}");
         }
     }
 

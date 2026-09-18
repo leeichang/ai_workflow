@@ -175,26 +175,26 @@ curl -s -X POST "$API/forms" \
                       "readonly_when": "node.id not in ['start','revise']" }
       },
       {
-        "key": "gross_margin",
+        "key": "margin_rate",
         "section": "lines",
         "ui": { "component": "display", "label": "預估毛利率 (%)", "width": 4,
                 "precision": 2, "suffix": "%", "external_visible": false },
-        "data": { "path": "quotation.gross_margin", "type": "decimal",
+        "data": { "path": "quotation.margin_rate", "type": "decimal",
                   "computed": "(subtotal - total_cost) / subtotal" }
       },
       {
-        "key": "total_amount",
+        "key": "total",
         "section": "amount",
         "ui": { "component": "display", "label": "報價總計 (含稅)", "width": 4, "precision": 2 },
-        "data": { "path": "quotation.total_amount", "type": "decimal",
+        "data": { "path": "quotation.total", "type": "decimal",
                   "computed": "subtotal + tax" }
       },
       {
-        "key": "internal_notes",
+        "key": "internal_note",
         "section": "internal",
         "ui": { "component": "textarea", "label": "內部簽核備註", "width": 12,
                 "help": "僅限廠務主管與核決層可見", "external_visible": false },
-        "data": { "path": "quotation.internal_notes", "type": "text", "max_length": 2000 },
+        "data": { "path": "quotation.internal_note", "type": "text", "max_length": 2000 },
         "workflow": { "readable_roles": ["admin", "approver", "designer"] }
       }
     ]

@@ -108,6 +108,18 @@ export interface FormDetail extends FormDefinition {
 export interface ValidationResult {
   valid: boolean
   errors?: string[]
+  /**
+   * 不影響 valid 的提醒
+   *
+   * 兩種：業務物件未定義、欄位路徑不在正式定義中。
+   * 與 errors 分開——警告不擋下發布，但使用者要看得到。
+   */
+  warnings?: string[]
+}
+
+/** 發布的回應。可能帶著警告成功 */
+export interface PublishResult extends FormVersion {
+  warnings?: string[]
 }
 
 export interface CreateFormRequest {

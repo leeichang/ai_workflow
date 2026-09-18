@@ -258,6 +258,35 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </button>
       </div>
 
+      <!--
+        警告：不影響發布，但使用者要看得到。
+        琥珀色而非紅色——紅色代表「不能發布」，
+        琥珀色代表「可以發布但你該知道」。
+      -->
+      <div
+        v-if="d.warnings.value.length > 0"
+        class="px-space-xl py-2 bg-[#FEF3C7] border-b border-outline-variant"
+        data-testid="warning-banner"
+      >
+        <div class="flex items-start gap-2">
+          <span class="material-symbols-outlined text-[18px] text-[#B45309]">warning</span>
+          <div class="flex-1">
+            <span class="font-label-header text-label-header text-[#B45309]">
+              提醒
+            </span>
+            <ul class="mt-1 space-y-0.5">
+              <li
+                v-for="(w, i) in d.warnings.value"
+                :key="i"
+                class="font-body-dense text-body-dense text-[#B45309]"
+              >
+                {{ w }}
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       <!-- 驗證錯誤 -->
       <div
         v-if="d.validationErrors.value.length > 0"

@@ -69,7 +69,7 @@ describe('設計器子選單', () => {
       w.find(`[data-testid="nav-designer-${key}"]`).attributes('to')
 
     // 表單與流程都進清單頁而非直接開某一張——固定指向報價單
-    // 會讓使用者以為系統只能編輯那一張，無從建立自己的
+    // 會讓使用者以為系統只能編輯那一張，無從建立自己的定義
     expect(to('forms')).toBe('/designer/forms')
     expect(to('workflows')).toBe('/designer/workflows')
     expect(to('templates')).toBe('/designer/templates')

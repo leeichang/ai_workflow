@@ -2,14 +2,13 @@
 /**
  * 流程清單與新增
  *
- * 與表單那半（FormList）補的是同一個缺口：後端有 POST /workflows、
- * 前端的 createWorkflow() 也寫好了，但先前**沒有任何畫面呼叫它**——
- * 設計器路由是 /designer/workflows/:workflowKey，只能開既有流程，
- * 選單還寫死指向 quotation_approval。
+ * 與 FormList 同一個缺口：後端有 POST /workflows、前端的
+ * createWorkflow() 也已定義，但先前沒有任何畫面呼叫它——
+ * /designer/workflows/:workflowKey 只能開既有流程，
+ * 選單寫死指向 quotation_approval。
  *
- * 換句話說：使用者無法從零建立一個流程。
- * 表單那半補完之後補上這半，「從零建一張表單 + 一個流程」
- * 的操作手冊才寫得出來。
+ * 流程比表單多一層限制：初始內容要通過 WF-E001
+ * （恰一個 trigger、至少一個 end），空殼會被擋下。
  */
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -35,11 +34,8 @@ const creating = ref(false)
 /**
  * workflow_key 的格式限制
  *
- * 與 form_key 同一套理由：這個值會進 API 路徑
- * （/workflows/{workflow_key}）與資料表關聯，建立之後不能改。
- *
- * 擋在前端是為了給出可讀的訊息——後端也會擋，
- * 但它的錯誤對使用者來說是天書。
+ * 與 form_key 相同的理由：會進 API 路徑與 Temporal 的
+ * workflow_id（`{tenant}:{business_object}:{key}`），建立後不能改。
  */
 const KEY_PATTERN = /^[a-z][a-z0-9_]*$/
 
@@ -65,29 +61,19 @@ async function load(): Promise<void> {
 }
 
 /**
- * 新流程的初始 DSL
+ * 新流程的初始內容
  *
- * 流程與表單最大的差別：圖結構要通過 WF-E001～E012 才能發布。
- * 產生一個建了卻發布不了的流程比不給建還糟——使用者會以為
- * 是自己設計錯了，而錯誤訊息講的是他沒寫過的節點。
+ * 不能送空殼：WF-E001 要求恰一個 trigger 節點與至少一個 end 節點，
+ * WF-E002 要求邊的兩端都存在。不符合的話使用者會看到 422
+ * 而不是一個可以開始編輯的流程。
  *
- * 因此起始骨架刻意滿足這幾條：
- *   E001  有 trigger 節點與 end 節點
- *   E003  每個節點都被邊碰到，沒有孤兒
- *   E012  不引用任何資料路徑——新流程的業務物件多半還沒有
- *         定義檔（schemas/business-objects/*.json），
- *         引用任何路徑都會讓發布失敗
+ * 給的是最小可用骨架——起點直接連到終點。使用者從中間插入節點即可，
+ * 設計器的「插入」功能（insert-{from}-{to}）正是為此設計。
  *
- * 中間放一關「主管簽核」而非只有 start→end，理由與表單的起始欄位
- * 相同：使用者進設計器時看得到一個實際的節點，知道節點長什麼樣、
- * 屬性面板怎麼用。而且 manager_of 不引用角色也不引用路徑，
- * 是唯一不需要任何前置設定就能跑的 resolver。
+ * trigger 用 form_submit：這套系統的流程幾乎都由表單送出觸發，
+ * schedule 與 webhook 是少數情況。
  */
-function initialContent(
-  workflowKey: string,
-  name: string,
-  object: string,
-): workflowsApi.WorkflowContent {
+function initialContent(workflowKey: string, name: string, object: string) {
   return {
     workflow_key: workflowKey,
     version: 1,
@@ -96,20 +82,11 @@ function initialContent(
     trigger: { type: 'form_submit' },
     nodes: [
       { id: 'start', type: 'trigger', label: '送出申請' },
-      {
-        id: 'approval',
-        type: 'human_approval',
-        label: '主管簽核',
-        participant: 'internal',
-        resolver: { type: 'manager_of', of: 'initiator' },
-      },
-      { id: 'end', type: 'end', label: '完成', result: 'completed' },
+      { id: 'end', type: 'end', label: '結束', result: 'completed' },
     ],
-    edges: [
-      ['start', 'approval'],
-      ['approval', 'end'],
-    ],
-  } as workflowsApi.WorkflowContent
+    // edge 是 [from, to] 的陣列，不是 { from, to } 物件
+    edges: [['start', 'end']],
+  }
 }
 
 async function confirmCreate(): Promise<void> {
@@ -130,8 +107,7 @@ async function confirmCreate(): Promise<void> {
     return
   }
 
-  // 業務物件留空時沿用 workflow_key。多數情況兩者相同，
-  // 強迫使用者填兩次只是徒增困擾。
+  // 業務物件留空時沿用 workflow_key，與表單的處理一致
   const object = newObject.value.trim() === '' ? key : newObject.value.trim()
 
   creating.value = true
@@ -143,11 +119,8 @@ async function confirmCreate(): Promise<void> {
       name,
       content: initialContent(key, name, object),
     })
-    // 建完直接進設計器，不要讓使用者自己再點一次
     router.push(`/designer/workflows/${key}`)
   } catch (error) {
-    // 後端以 409 表達代碼重複。把它的訊息原樣顯示——
-    // 換成「建立失敗，請稍後再試」會讓使用者一直重試同一個代碼。
     createError.value =
       error instanceof ApiError ? error.message : '建立失敗，請稍後再試'
   } finally {
@@ -155,7 +128,7 @@ async function confirmCreate(): Promise<void> {
   }
 }
 
-/** 流程的發布狀態。未發布與有草稿是兩件事，要分開顯示。 */
+/** 發布狀態。未發布與有草稿是兩件事，要分開顯示。 */
 function statusOf(w: WorkflowSummary): { text: string; class: string } {
   if (w.published_version === null) {
     return {
@@ -169,7 +142,10 @@ function statusOf(w: WorkflowSummary): { text: string; class: string } {
       class: 'bg-[#FEF3C7] text-[#B45309]',
     }
   }
-  return { text: `v${w.published_version}`, class: 'bg-[#DCFCE7] text-[#15803D]' }
+  return {
+    text: `v${w.published_version}`,
+    class: 'bg-[#DCFCE7] text-[#15803D]',
+  }
 }
 
 const isEmpty = computed(() => !loading.value && workflows.value.length === 0)
@@ -232,21 +208,15 @@ onMounted(load)
         載入中…
       </div>
 
-      <!--
-        空狀態不只說「沒有資料」。使用者第一次進來看到的就是這個畫面，
-        要明確告訴他下一步做什麼。
-      -->
       <div
         v-else-if="isEmpty"
         data-testid="workflow-empty"
         class="py-space-xl flex flex-col items-center gap-space-sm text-secondary"
       >
-        <span class="material-symbols-outlined text-[40px] text-outline">
-          account_tree
-        </span>
+        <span class="material-symbols-outlined text-[40px] text-outline">account_tree</span>
         <p class="font-body-dense text-body-dense">尚未建立任何流程</p>
         <p class="font-body-dense text-body-dense text-outline">
-          按右上角的「建立流程」開始，或先參考操作手冊
+          按右上角的「建立流程」開始。新流程會有起點與終點，從中間插入簽核節點即可
         </p>
       </div>
 
@@ -257,24 +227,16 @@ onMounted(load)
       >
         <thead>
           <tr class="bg-surface-container-low border-b border-outline-variant">
-            <th
-              class="text-left px-space-md py-space-sm font-label-header text-label-header text-secondary"
-            >
+            <th class="text-left px-space-md py-space-sm font-label-header text-label-header text-secondary">
               名稱
             </th>
-            <th
-              class="text-left px-space-md py-space-sm font-label-header text-label-header text-secondary"
-            >
+            <th class="text-left px-space-md py-space-sm font-label-header text-label-header text-secondary">
               代碼
             </th>
-            <th
-              class="text-left px-space-md py-space-sm font-label-header text-label-header text-secondary"
-            >
+            <th class="text-left px-space-md py-space-sm font-label-header text-label-header text-secondary">
               業務物件
             </th>
-            <th
-              class="text-left px-space-md py-space-sm font-label-header text-label-header text-secondary"
-            >
+            <th class="text-left px-space-md py-space-sm font-label-header text-label-header text-secondary">
               版本
             </th>
           </tr>
@@ -287,9 +249,7 @@ onMounted(load)
             class="border-b border-outline-variant last:border-b-0 hover:bg-surface-container-low transition-colors cursor-pointer"
             @click="router.push(`/designer/workflows/${w.workflow_key}`)"
           >
-            <td
-              class="px-space-md py-space-sm font-body-dense text-body-dense text-on-surface"
-            >
+            <td class="px-space-md py-space-sm font-body-dense text-body-dense text-on-surface">
               {{ w.name }}
             </td>
             <td class="px-space-md py-space-sm font-data-mono text-[12px] text-secondary">
@@ -331,7 +291,7 @@ onMounted(load)
             <input
               v-model="newName"
               type="text"
-              placeholder="例如：請假簽核流程"
+              placeholder="例如：請假簽核"
               data-testid="new-workflow-name"
               class="h-9 px-3 bg-surface-container-low border border-outline-variant rounded-lg font-body-dense text-body-dense"
             />
@@ -348,7 +308,6 @@ onMounted(load)
               data-testid="new-workflow-key"
               class="h-9 px-3 bg-surface-container-low border border-outline-variant rounded-lg font-data-mono text-[12px]"
             />
-            <!-- 事後不能改，所以要先講清楚 -->
             <span class="font-label-caption text-label-caption text-outline">
               小寫英文、數字與底線。建立後不能修改。
             </span>
@@ -365,20 +324,14 @@ onMounted(load)
               data-testid="new-business-object"
               class="h-9 px-3 bg-surface-container-low border border-outline-variant rounded-lg font-data-mono text-[12px]"
             />
+            <!--
+              業務物件決定條件式可以引用哪些路徑（WF-E012）。
+              沒有定義的業務物件不會被檢查，等於少一層保護。
+            -->
             <span class="font-label-caption text-label-caption text-outline">
-              這個流程處理哪一種單據。要與表單的業務物件一致才接得起來。
+              決定流程的條件式可以引用哪些資料路徑。應與表單的業務物件一致。
             </span>
           </label>
-
-          <!--
-            先講清楚會拿到什麼，使用者才不會以為系統擅自加了東西。
-          -->
-          <p
-            class="px-3 py-2 rounded-lg bg-surface-container-low font-label-caption text-label-caption text-secondary"
-          >
-            會先建立「送出申請 → 主管簽核 → 完成」的基本骨架，
-            進設計器後可自由增刪節點。
-          </p>
 
           <p
             v-if="createError"
@@ -390,9 +343,7 @@ onMounted(load)
           </p>
         </div>
 
-        <div
-          class="px-space-lg py-space-md border-t border-outline-variant flex justify-end gap-space-sm"
-        >
+        <div class="px-space-lg py-space-md border-t border-outline-variant flex justify-end gap-space-sm">
           <button
             type="button"
             data-testid="create-cancel"

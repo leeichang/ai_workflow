@@ -116,8 +116,8 @@ onMounted(async () => {
  * 四個設計器都已實作，但先前「設計器」只是 redirect 到表單設計器，
  * 另外三個沒有入口——使用者無從得知它們存在。
  *
- * 表單與流程都改為先進清單頁再選——固定指向某一張會讓使用者
- * 以為系統只能編輯那一張，無從建立自己的。
+ * 表單與流程都先進清單頁再選——固定指向報價單會讓使用者
+ * 以為系統只能編輯那一張，無從建立自己的定義。
  */
 const DESIGNER_SUB_ITEMS: SubNavItem[] = [
   {
@@ -263,12 +263,12 @@ const today = computed(() => {
         </RouterLink>
 
         <!--
-          設計器：四個子項目。側邊欄收合時退化成單一連結指向表單設計器，
+          設計器：四個子項目。側邊欄收合時退化成單一連結指向表單清單，
           因為 56px 寬放不下子選單。
         -->
         <RouterLink
           v-if="collapsed"
-          to="/designer/forms/quotation_form"
+          to="/designer/forms"
           title="設計器"
           data-testid="nav-designer"
           class="relative flex items-center justify-center py-space-sm rounded-lg transition-colors"

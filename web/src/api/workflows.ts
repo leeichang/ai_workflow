@@ -176,6 +176,18 @@ export interface GraphError {
 export interface ValidationResult {
   valid: boolean
   errors?: GraphError[]
+  /**
+   * 不影響 valid 的提醒
+   *
+   * 與 errors 分開：警告不擋下發布，但使用者要看得到。
+   * 目前只有一種——業務物件未定義，該流程的路徑不會被 WF-E012 檢查。
+   */
+  warnings?: string[]
+}
+
+/** 發布的回應。可能帶著警告成功 */
+export interface PublishResult extends WorkflowVersion {
+  warnings?: string[]
 }
 
 export interface CreateWorkflowRequest {
@@ -226,8 +238,8 @@ export function validateWorkflowDraft(key: string): Promise<ValidationResult> {
   })
 }
 
-export function publishWorkflowDraft(key: string): Promise<WorkflowVersion> {
-  return request<WorkflowVersion>(`/workflows/${encodeURIComponent(key)}/draft/publish`, {
+export function publishWorkflowDraft(key: string): Promise<PublishResult> {
+  return request<PublishResult>(`/workflows/${encodeURIComponent(key)}/draft/publish`, {
     method: 'POST',
   })
 }

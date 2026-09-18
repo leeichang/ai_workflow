@@ -1,0 +1,25 @@
+{
+  "business_object": "leave_request",
+  "name": "請假單",
+  "description": "業務物件的正式欄位定義。流程 DSL 的條件式與 resolver 只能引用此處宣告的路徑（WF-E012）。",
+  "version": 1,
+  "fields": {
+    "leave_request.number": { "type": "string", "label": "請假單號" },
+    "leave_request.applicant_id": { "type": "uuid", "label": "申請人" },
+    "leave_request.department_id": { "type": "uuid", "label": "所屬部門" },
+    "leave_request.leave_type": { "type": "string", "label": "假別" },
+    "leave_request.start_date": { "type": "datetime", "label": "開始時間" },
+    "leave_request.end_date": { "type": "datetime", "label": "結束時間" },
+    "leave_request.days": { "type": "decimal", "label": "請假天數" },
+    "leave_request.hours": { "type": "decimal", "label": "請假時數" },
+    "leave_request.reason": { "type": "text", "label": "請假事由" },
+    "leave_request.agent_id": { "type": "uuid", "label": "職務代理人" },
+    "leave_request.contact_during_leave": { "type": "string", "label": "假期間聯絡方式" },
+    "leave_request.attachments": { "type": "array", "item": "file", "label": "附件" }
+  },
+  "notes": [
+    "「請假天數」是 leave_request.days，小數表示半天（0.5）。時數另有 hours 欄位，兩者由表單的計算欄位維持一致。",
+    "假別（leave_type）的可選值由表單的下拉選單定義，不在此列舉——同一家公司的假別會隨制度調整，寫死在業務物件定義會讓每次調整都要改程式。",
+    "職務代理人（agent_id）與簽核人不同：代理人接手工作，簽核人決定准不准。流程的 resolver 不該指向 agent_id。"
+  ]
+}

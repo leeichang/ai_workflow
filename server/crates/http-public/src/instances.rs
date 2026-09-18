@@ -101,10 +101,35 @@ async fn start(
     )
     .map_err(|e| ApiError::BadRequest(e.to_string()))?;
 
+    // 鎖定建立當下的表單版本。
+    //
+    // 不鎖的話，流程跑到一半改表單定義，進行中的實例會用到新版——
+    // 欄位被刪掉、必填變選填、權限改了，都會直接影響還沒簽完的單。
+    //
+    // 以 business_object 反查：表單自己宣告服務哪個業務物件
+    // （form_definition.business_object），方向是「表單指定業務物件」。
+    //
+    // 查無已發布表單時為 None，不擋啟動——不是每個業務物件都有表單
+    // （例如純系統觸發的流程），而且既有租戶的表單可能還沒發布過。
+    let form_version = persistence::form::find_published_by_business_object(
+        &mut tx,
+        &definition.business_object,
+    )
+    .await?;
+
+    if form_version.is_none() {
+        tracing::info!(
+            business_object = %definition.business_object,
+            business_key = %body.business_key,
+            "業務物件沒有已發布的表單，此實例不鎖定表單版本"
+        );
+    }
+
     let instance = persistence::instance::create(
         &mut tx,
         persistence::instance::CreateInstance {
             workflow_version_id: published.id,
+            form_version_id: form_version.map(|v| v.id),
             business_object: definition.business_object.clone(),
             business_key: body.business_key.clone(),
             temporal_workflow_id: wf_id.clone(),

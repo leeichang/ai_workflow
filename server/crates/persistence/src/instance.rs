@@ -14,6 +14,8 @@ use uuid::Uuid;
 pub struct WorkflowInstance {
     pub id: Uuid,
     pub workflow_version_id: Uuid,
+    /// 建立當下的表單版本。既有實例與沒有已發布表單的業務物件為 None
+    pub form_version_id: Option<Uuid>,
     pub business_object: String,
     pub business_key: String,
     pub temporal_workflow_id: String,
@@ -30,6 +32,8 @@ pub struct WorkflowInstance {
 #[derive(Debug, Deserialize)]
 pub struct CreateInstance {
     pub workflow_version_id: Uuid,
+    /// 建立當下的表單版本。業務物件沒有已發布的表單時為 None
+    pub form_version_id: Option<Uuid>,
     pub business_object: String,
     pub business_key: String,
     pub temporal_workflow_id: String,
@@ -52,16 +56,19 @@ pub async fn create(
     let row = sqlx::query_as::<_, WorkflowInstance>(
         r#"
         insert into workflow_instance (
-            tenant_id, workflow_version_id, business_object, business_key,
+            tenant_id, workflow_version_id, form_version_id,
+            business_object, business_key,
             temporal_workflow_id, temporal_run_id, input, started_by
         )
-        values (current_setting('app.tenant_id')::uuid, $1, $2, $3, $4, $5, $6, $7)
-        returning id, workflow_version_id, business_object, business_key,
+        values (current_setting('app.tenant_id')::uuid, $1, $2, $3, $4, $5, $6, $7, $8)
+        returning id, workflow_version_id, form_version_id,
+                  business_object, business_key,
                   temporal_workflow_id, temporal_run_id, status, input, output,
                   error, started_by, started_at, ended_at
         "#,
     )
     .bind(input.workflow_version_id)
+    .bind(input.form_version_id)
     .bind(&input.business_object)
     .bind(&input.business_key)
     .bind(&input.temporal_workflow_id)
@@ -77,7 +84,8 @@ pub async fn create(
 pub async fn find_by_id(tx: &mut TenantTx<'_>, id: Uuid) -> Result<WorkflowInstance> {
     let row = sqlx::query_as::<_, WorkflowInstance>(
         r#"
-        select id, workflow_version_id, business_object, business_key,
+        select id, workflow_version_id, form_version_id,
+               business_object, business_key,
                temporal_workflow_id, temporal_run_id, status, input, output,
                error, started_by, started_at, ended_at
         from workflow_instance where id = $1
@@ -103,7 +111,8 @@ pub async fn list(tx: &mut TenantTx<'_>, filter: ListFilter) -> Result<Vec<Workf
 
     let rows = sqlx::query_as::<_, WorkflowInstance>(
         r#"
-        select id, workflow_version_id, business_object, business_key,
+        select id, workflow_version_id, form_version_id,
+               business_object, business_key,
                temporal_workflow_id, temporal_run_id, status, input, output,
                error, started_by, started_at, ended_at
         from workflow_instance

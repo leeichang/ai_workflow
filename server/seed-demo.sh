@@ -110,7 +110,8 @@ if [[ -z "$TOKEN" ]]; then
 fi
 
 create_form() {
-    local key="$1" name="$2" file="$3"
+    # macOS 的 bash 3.2：同一個 local 敘述不可引用前面剛宣告的變數
+    local key="$1"; local name="$2"; local file="$3"
     printf '  %-22s' "$key"
     local code
     code=$(curl -s -o /tmp/seed-resp.json -w '%{http_code}' -X POST "$API/forms" \
@@ -118,9 +119,29 @@ create_form() {
         -H 'Content-Type: application/json' \
         -d @"$file")
     case "$code" in
-        201) echo "已建立" ;;
-        409) echo "已存在，略過" ;;
-        *)   echo "失敗 HTTP $code"; head -c 200 /tmp/seed-resp.json; echo ;;
+        201) printf '已建立 ' ;;
+        # 已存在時仍要往下嘗試發布：環境可能是在加上發布這一步之前
+        # 建的，表單停在草稿。直接 return 會讓那些表單永遠鎖不到版本。
+        409) printf '已存在 ' ;;
+        *)   echo "失敗 HTTP $code"; head -c 200 /tmp/seed-resp.json; echo; return ;;
+    esac
+
+    # 建立只產生草稿，要發布才會有版本。
+    #
+    # 不發布的話 workflow_instance.form_version_id 永遠鎖不到東西——
+    # 版本鎖定只認 PUBLISHED，草稿隨時會變，鎖它等於沒鎖。
+    # 先前 seed 少了這一步，所有表單都停在草稿，
+    # 畫面能運作只是因為讀取端會退回草稿。
+    local pub
+    pub=$(curl -s -o /tmp/seed-resp.json -w '%{http_code}' -X POST \
+        "$API/forms/$key/draft/publish" \
+        -H "Authorization: Bearer $TOKEN")
+
+    case "$pub" in
+        200) echo "並已發布" ;;
+        # 沒有草稿可發布（已經是發布狀態）——冪等，不是錯誤
+        409) echo "（已是發布狀態）" ;;
+        *)   echo "發布失敗 HTTP $pub"; head -c 300 /tmp/seed-resp.json; echo ;;
     esac
 }
 

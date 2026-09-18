@@ -116,9 +116,8 @@ onMounted(async () => {
  * 四個設計器都已實作，但先前「設計器」只是 redirect 到表單設計器，
  * 另外三個沒有入口——使用者無從得知它們存在。
  *
- * 表單改為先進清單頁再選——固定指向報價單會讓使用者
- * 以為系統只能編輯那一張，無從建立自己的表單。
- * 流程設計器待補清單頁後比照辦理。
+ * 表單與流程都先進清單頁再選——固定指向報價單會讓使用者
+ * 以為系統只能編輯那一張，無從建立自己的定義。
  */
 const DESIGNER_SUB_ITEMS: SubNavItem[] = [
   {
@@ -129,7 +128,7 @@ const DESIGNER_SUB_ITEMS: SubNavItem[] = [
   },
   {
     key: 'workflows',
-    path: '/designer/workflows/quotation_approval',
+    path: '/designer/workflows',
     label: '流程設計器',
     icon: 'account_tree',
   },

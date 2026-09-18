@@ -74,6 +74,13 @@ export const router = createRouter({
       name: 'form-designer',
       component: () => import('./pages/FormDesigner.vue'),
     },
+    // 同樣要排在 :workflowKey 之前，否則 'workflows' 之後的路徑段
+    // 會被當成 workflowKey 吃掉
+    {
+      path: '/designer/workflows',
+      name: 'workflow-list',
+      component: () => import('./pages/WorkflowList.vue'),
+    },
     {
       path: '/designer/workflows/:workflowKey',
       name: 'workflow-designer',

@@ -68,10 +68,10 @@ describe('設計器子選單', () => {
     const to = (key: string) =>
       w.find(`[data-testid="nav-designer-${key}"]`).attributes('to')
 
-    // 表單進清單頁而非直接開某一張——固定指向報價單會讓使用者
-    // 以為系統只能編輯那一張，無從建立自己的表單
+    // 表單與流程都進清單頁而非直接開某一張——固定指向報價單
+    // 會讓使用者以為系統只能編輯那一張，無從建立自己的
     expect(to('forms')).toBe('/designer/forms')
-    expect(to('workflows')).toBe('/designer/workflows/quotation_approval')
+    expect(to('workflows')).toBe('/designer/workflows')
     expect(to('templates')).toBe('/designer/templates')
     expect(to('permissions')).toBe('/designer/permissions')
   })

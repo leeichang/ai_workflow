@@ -228,20 +228,20 @@ impl Ctx {
                     "workflow": { "readonly_when": "node.id not in ['start','revise']" }
                 },
                 {
-                    "key": "total_amount",
+                    "key": "total",
                     "section": "customer",
                     "ui": { "component": "display", "label": "報價總計" },
                     "data": {
-                        "path": "quotation.total_amount",
+                        "path": "quotation.total",
                         "type": "decimal",
                         "computed": "sum(quotation.lines.amount)"
                     }
                 },
                 {
-                    "key": "gross_margin",
+                    "key": "margin_rate",
                     "section": "internal",
                     "ui": { "component": "display", "label": "預估毛利率", "external_visible": false },
-                    "data": { "path": "quotation.gross_margin", "type": "decimal" }
+                    "data": { "path": "quotation.margin_rate", "type": "decimal" }
                 },
                 {
                     "key": "cost_detail",
@@ -359,8 +359,8 @@ async fn computed_field_is_locked_readonly() {
         .as_array()
         .unwrap()
         .iter()
-        .find(|r| r["key"] == "total_amount")
-        .expect("應有 total_amount 列");
+        .find(|r| r["key"] == "total")
+        .expect("應有 total 列");
 
     let cell = &total["cells"]["start"];
     assert_eq!(cell["permission"], "READONLY", "計算欄位應唯讀");
@@ -403,7 +403,7 @@ async fn admin_sees_everything_editable() {
         let p = row["cells"]["start"]["permission"].as_str().unwrap();
         let key = row["key"].as_str().unwrap();
         // 計算欄位例外，admin 也改不了
-        if key == "total_amount" {
+        if key == "total" {
             assert_eq!(p, "READONLY", "計算欄位對 admin 仍唯讀");
         } else {
             assert_eq!(p, "EDITABLE", "admin 應可編輯 {key}");
@@ -424,7 +424,7 @@ async fn external_visible_false_marked_in_row() {
         .as_array()
         .unwrap()
         .iter()
-        .find(|r| r["key"] == "gross_margin")
+        .find(|r| r["key"] == "margin_rate")
         .unwrap();
 
     assert_eq!(
@@ -482,7 +482,7 @@ async fn preview_for_external_hides_internal_fields() {
 
     let fields = result.as_array().unwrap();
 
-    let margin = fields.iter().find(|f| f["key"] == "gross_margin").unwrap();
+    let margin = fields.iter().find(|f| f["key"] == "margin_rate").unwrap();
     assert_eq!(margin["permission"], "HIDDEN", "毛利率不給客戶看");
 
     let name = fields.iter().find(|f| f["key"] == "customer_name").unwrap();

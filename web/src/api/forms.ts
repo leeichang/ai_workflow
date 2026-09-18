@@ -11,6 +11,7 @@ import type {
   FormDetail,
   FormSummary,
   FormVersion,
+  PublishResult,
   ValidationResult,
 } from './types'
 
@@ -49,8 +50,8 @@ export function validateDraft(formKey: string): Promise<ValidationResult> {
   })
 }
 
-export function publishDraft(formKey: string): Promise<FormVersion> {
-  return request<FormVersion>(`/forms/${encodeURIComponent(formKey)}/draft/publish`, {
+export function publishDraft(formKey: string): Promise<PublishResult> {
+  return request<PublishResult>(`/forms/${encodeURIComponent(formKey)}/draft/publish`, {
     method: 'POST',
   })
 }

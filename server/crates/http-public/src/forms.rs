@@ -45,6 +45,75 @@ pub struct ValidationResult {
     valid: bool,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     errors: Vec<String>,
+    /// 不影響 `valid` 的提醒。見 `business_object_warnings`
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    warnings: Vec<String>,
+}
+
+/// 發布成功的回應
+///
+/// 比 `FormVersion` 多一個 warnings。發布可能帶著警告成功，
+/// 呼叫端要能拿到那些警告顯示給使用者。
+#[derive(Serialize)]
+pub struct PublishResult {
+    #[serde(flatten)]
+    version: persistence::form::FormVersion,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    warnings: Vec<String>,
+}
+
+/// 表單的業務物件相關警告
+///
+/// 表單不像流程會引用路徑，所以沒有 WF-E012 那種靜默跳過簽核的風險。
+/// 但它有另一個：**欄位的 `data.path` 決定日後流程能引用什麼**。
+///
+/// 路徑寫成 `quotation.total_amount`（已淘汰的舊名稱）時，表單本身能用，
+/// 但流程的條件式 `quotation.total > x` 就取不到值——而這要等到流程
+/// 跑起來才會發現，那時已經太晚。這正是 seed.sh 與 fixture 曾有兩套
+/// 詞彙的問題來源。
+///
+/// 兩種警告都不擋下發布：
+///   - 業務物件未定義時仍應可用，否則使用者要先請人幫他建 JSON 定義
+///   - 路徑不在定義裡可能是刻意的（純顯示欄位、暫存欄位）
+fn business_object_warnings(business_object: &str, content: &Value) -> Vec<String> {
+    if !domain::business_object::is_known(business_object) {
+        let known = domain::business_object::known_business_objects().join("、");
+        return vec![format!(
+            "業務物件「{business_object}」尚未定義，\
+             日後為此表單建立流程時，條件式與簽核人路徑不會被檢查。\
+             已定義的業務物件：{known}"
+        )];
+    }
+
+    let known_paths = domain::business_object::paths_for(business_object);
+    let mut unknown: Vec<String> = content
+        .get("fields")
+        .and_then(Value::as_array)
+        .map(|fields| {
+            fields
+                .iter()
+                .filter_map(|f| f.get("data")?.get("path")?.as_str())
+                // 只檢查屬於這個業務物件的路徑。表單可以引用其他物件的
+                // 資料（例如 customer.name），那不在本業務物件的定義裡
+                // 是正常的。
+                .filter(|p| p.starts_with(&format!("{business_object}.")))
+                .filter(|p| !known_paths.contains(*p))
+                .map(str::to_owned)
+                .collect()
+        })
+        .unwrap_or_default();
+
+    if unknown.is_empty() {
+        return Vec::new();
+    }
+
+    unknown.sort();
+    unknown.dedup();
+    vec![format!(
+        "以下欄位路徑不在「{business_object}」的正式定義中：{}。\
+         流程的條件式引用正式路徑時會取不到這些欄位的值。",
+        unknown.join("、")
+    )]
 }
 
 #[derive(Deserialize)]
@@ -179,14 +248,18 @@ async fn validate_draft(
         return Err(ApiError::Conflict("沒有草稿可驗證".into()));
     };
 
+    let warnings = business_object_warnings(&form.business_object, &draft.content);
+
     match domain::form_schema::validate_for_publish(&draft.content) {
         Ok(()) => Ok(Json(ValidationResult {
             valid: true,
             errors: vec![],
+            warnings,
         })),
         Err(e) => Ok(Json(ValidationResult {
             valid: false,
             errors: e.to_string().split('；').map(str::to_owned).collect(),
+            warnings,
         })),
     }
 }
@@ -199,7 +272,7 @@ async fn publish(
     State(state): State<AppState>,
     actor: Actor,
     Path(form_key): Path<String>,
-) -> ApiResult<Json<persistence::form::FormVersion>> {
+) -> ApiResult<Json<PublishResult>> {
     actor.require_any(&["designer"])?;
 
     let mut tx = state.db.tenant_tx(actor.tenant_id).await?;
@@ -211,6 +284,7 @@ async fn publish(
 
     domain::form_schema::validate_for_publish(&draft.content)?;
 
+    let warnings = business_object_warnings(&form.business_object, &draft.content);
     let published = persistence::form::publish(&mut tx, form.id, actor.user_id).await?;
 
     tx.audit(
@@ -220,12 +294,17 @@ async fn publish(
             .payload(serde_json::json!({
                 "form_key": form_key,
                 "version": published.version,
+                // 警告也要記——事後查得到哪些表單的路徑偏離了正式定義
+                "warnings": warnings,
             })),
     )
     .await?;
 
     tx.commit().await?;
-    Ok(Json(published))
+    Ok(Json(PublishResult {
+        version: published,
+        warnings,
+    }))
 }
 
 async fn list_versions(

@@ -308,3 +308,119 @@ test.describe('未定義的業務物件', () => {
     ).toBeTruthy()
   })
 })
+
+/**
+ * 表單的業務物件警告
+ *
+ * 表單不像流程會引用路徑，所以沒有 WF-E012 那種靜默跳過簽核的風險。
+ * 但它有另一個：**欄位的 data.path 決定日後流程能引用什麼**。
+ *
+ * 路徑寫成 quotation.total_amount（舊名稱）時，表單本身能用，
+ * 但流程的條件式 quotation.total > x 就取不到值——
+ * 而這要等到流程跑起來才會發現，那時已經太晚。
+ *
+ * 所以表單發布時回報兩種警告：
+ *   1. 業務物件未定義（之後建流程時路徑不會被檢查）
+ *   2. 欄位路徑不在正式定義裡（流程可能引用不到）
+ */
+test.describe('表單的業務物件警告', () => {
+  /** 建立表單，回傳 form_key */
+  async function createForm(
+    request: APIRequestContext,
+    jwt: string,
+    key: string,
+    businessObject: string,
+    fieldPath: string,
+  ): Promise<void> {
+    const res = await request.post(`${API}/forms`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+      data: {
+        form_key: key,
+        business_object: businessObject,
+        name: `警告測試 ${key}`,
+        content: {
+          form_key: key,
+          version: 1,
+          business_object: businessObject,
+          name: `警告測試 ${key}`,
+          layout: { columns: 2 },
+          sections: [{ key: 'main', title: '基本資料' }],
+          fields: [
+            {
+              key: 'test_field',
+              section: 'main',
+              ui: { component: 'input', label: '測試欄位' },
+              data: { path: fieldPath, type: 'string' },
+            },
+          ],
+        },
+      },
+    })
+    expect(res.status(), '建立表單失敗').toBe(201)
+  }
+
+  test('業務物件未定義時回報警告', async ({ request }) => {
+    const jwt = await token(request, 'designer@demo.local')
+    const key = `form_unknown_bo_${Date.now()}`
+    await createForm(request, jwt, key, 'expense_claim', 'expense_claim.amount')
+
+    const res = await request.post(`${API}/forms/${key}/draft/validate`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    })
+
+    expect(res.status()).toBe(200)
+    const body = await res.json()
+    expect(body.warnings, '應回報警告').toBeDefined()
+    expect(JSON.stringify(body.warnings)).toContain('expense_claim')
+  })
+
+  test('欄位路徑不在正式定義時回報警告', async ({ request }) => {
+    const jwt = await token(request, 'designer@demo.local')
+    const key = `form_bad_path_${Date.now()}`
+
+    // total_amount 是已淘汰的舊名稱，正式名稱是 quotation.total。
+    // 表單用舊名稱存得起來，但流程的條件式引用 quotation.total 會取不到值。
+    await createForm(request, jwt, key, 'quotation', 'quotation.total_amount')
+
+    const res = await request.post(`${API}/forms/${key}/draft/validate`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    })
+
+    expect(res.status()).toBe(200)
+    const body = await res.json()
+    expect(body.warnings, '應回報警告').toBeDefined()
+    expect(JSON.stringify(body.warnings)).toContain('quotation.total_amount')
+  })
+
+  test('發布成功但回報警告', async ({ request }) => {
+    const jwt = await token(request, 'designer@demo.local')
+    const key = `form_publish_warn_${Date.now()}`
+    await createForm(request, jwt, key, 'expense_claim', 'expense_claim.amount')
+
+    const res = await request.post(`${API}/forms/${key}/draft/publish`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    })
+
+    // 不擋下發布——新業務物件尚未定義時仍應可用
+    expect(res.status(), '未定義的業務物件不該擋下發布').toBe(200)
+    const body = await res.json()
+    expect(body.warnings, '應回報警告').toBeDefined()
+  })
+
+  test('路徑正確時不產生警告', async ({ request }) => {
+    const jwt = await token(request, 'designer@demo.local')
+    const key = `form_ok_${Date.now()}`
+    await createForm(request, jwt, key, 'quotation', 'quotation.total')
+
+    const res = await request.post(`${API}/forms/${key}/draft/validate`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    })
+
+    expect(res.status()).toBe(200)
+    const body = await res.json()
+    expect(
+      body.warnings === undefined || body.warnings.length === 0,
+      'quotation.total 是正式路徑，不該有警告',
+    ).toBeTruthy()
+  })
+})

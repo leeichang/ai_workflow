@@ -21,6 +21,14 @@ export function useDesigner(formKey: string) {
   const saving = ref(false)
   const error = ref<string | null>(null)
   const validationErrors = ref<string[]>([])
+  /**
+   * 不影響發布的提醒
+   *
+   * 兩種：業務物件未定義、欄位路徑不在正式定義中。
+   * 後者是 quotation.total_amount 那類舊名稱——表單本身能用，
+   * 但流程的條件式引用正式路徑時會取不到值。
+   */
+  const warnings = ref<string[]>([])
 
   /** 最後儲存時間，設計稿顯示「已同步自動存檔 16:42」 */
   const lastSavedAt = ref<Date | null>(null)
@@ -177,6 +185,7 @@ export function useDesigner(formKey: string) {
       if (dirty.value) await save()
       const result = await validateDraft(formKey)
       validationErrors.value = result.errors ?? []
+      warnings.value = result.warnings ?? []
       return result.valid
     } catch (e) {
       error.value = e instanceof ApiError ? e.message : '驗證失敗'
@@ -190,6 +199,8 @@ export function useDesigner(formKey: string) {
     try {
       if (dirty.value) await save()
       const version = await publishDraft(formKey)
+      // 發布可能帶著警告成功
+      warnings.value = version.warnings ?? []
       publishedVersion.value = version.version
       dirty.value = false
       await load()
@@ -213,6 +224,7 @@ export function useDesigner(formKey: string) {
     saving,
     error,
     validationErrors,
+    warnings,
     lastSavedAt,
     publishedVersion,
     dirty,

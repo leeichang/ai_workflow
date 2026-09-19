@@ -34,7 +34,11 @@ insert into role (tenant_id, code, name, is_system) values
   ('$TENANT_ID', 'designer',  '流程設計者', true),
   ('$TENANT_ID', 'approver',  '簽核人員',   true),
   ('$TENANT_ID', 'requester', '申請人',     true),
-  ('$TENANT_ID', 'viewer',    '檢視者',     true)
+  ('$TENANT_ID', 'viewer',    '檢視者',     true),
+  -- 流程監控員（N1，2026-09-19 定案）。語意單一：看全部流程並介入
+  -- 處理。刻意不讓 approver／finance_manager 兼差——那些是「會簽到
+  -- 某些單」不是「該看到全部單」
+  ('$TENANT_ID', 'process_monitor', '流程監控員', true)
 on conflict (tenant_id, code) do nothing;
 
 insert into department (tenant_id, code, name) values
@@ -49,7 +53,10 @@ select '$TENANT_ID', u.email, u.name, '$PASSWORD_HASH',
 from (values
   ('admin@demo.local',    '林建志', 'mfg'),
   ('designer@demo.local', '陳雅婷', 'sales'),
-  ('sales@demo.local',    '王景榮', 'sales')
+  ('sales@demo.local',    '王景榮', 'sales'),
+  -- 流程監控員。獨立於 admin 才驗得出「非 admin 也看得到全部」，
+  -- 用 admin 測等於沒測到新角色
+  ('monitor@demo.local',  '周美玲', 'mfg')
 ) as u(email, name, dept)
 on conflict (tenant_id, email) do nothing;
 
@@ -60,7 +67,8 @@ join role r on r.tenant_id = '$TENANT_ID'
 where u.tenant_id = '$TENANT_ID'
   and ((u.email = 'admin@demo.local'    and r.code = 'admin')
     or (u.email = 'designer@demo.local' and r.code = 'designer')
-    or (u.email = 'sales@demo.local'    and r.code = 'requester'))
+    or (u.email = 'sales@demo.local'    and r.code = 'requester')
+    or (u.email = 'monitor@demo.local'  and r.code = 'process_monitor'))
 on conflict do nothing;
 
 commit;

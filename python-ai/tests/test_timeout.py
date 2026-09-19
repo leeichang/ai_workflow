@@ -53,6 +53,16 @@ async def resolve_participants(req: dict) -> list[dict]:
     return STATE["participants"]
 
 
+@activity.defn(name="raise_attention")
+async def raise_attention(req: dict) -> None:
+    """記下異常標記，讓測試驗得到「這件事被回報出去了」
+
+    N3 的問題本質是「沒有任何地方看得到」，因此測試要驗的
+    不是流程行為（照舊繼續等），而是**有沒有送出這個回報**。
+    """
+    STATE.setdefault("attention", []).append(req)
+
+
 ACTIVITIES = [
     resolve_participants,
     create_human_tasks,
@@ -60,6 +70,7 @@ ACTIVITIES = [
     run_action,
     send_notification,
     report_instance_finished,
+    raise_attention,
 ]
 
 pytestmark = pytest.mark.asyncio
@@ -329,6 +340,82 @@ class TestESCALATE:
 
             state = await handle.query(DslInterpreter.current_state)
             assert "approve" in (state.active_nodes or []), "加簽者未簽不該前進"
+            await handle.cancel()
+            await settle(handle)
+
+    async def test_解析不到加簽對象時回報異常但流程繼續(self, env):
+        """N3（2026-09-19 定案）
+
+        兩件事都要成立，缺一不可：
+          1. 流程**不失敗**——原簽核人本來就還簽得動，
+             把跑到一半的單弄死是破壞性的
+          2. 但異常要**被回報出去**——原本只留一行 WARNING，
+             畫面與稽核都看不到，那才是 N3 的問題本質
+        """
+        reset_state()
+        # cfo 解析出空陣列：加簽對象不存在
+        STATE["by_role"] = {
+            "manager": [{"id": "u1", "display": "張經理", "kind": "internal"}],
+            "cfo": [],
+        }
+
+        task_queue = f"to-{uuid.uuid4()}"
+        async with Worker(
+            env.client,
+            task_queue=task_queue,
+            workflows=[DslInterpreter],
+            activities=ACTIVITIES,
+        ):
+            handle = await env.client.start_workflow(
+                DslInterpreter.run,
+                make_input(self.dsl()),
+                id=f"wf-{uuid.uuid4()}",
+                task_queue=task_queue,
+            )
+            await env.sleep(60 * 60 * 24 * 3)
+
+            raised = STATE.get("attention", [])
+            assert raised, "解析不到加簽對象時必須回報異常"
+            assert raised[0]["code"] == "ESCALATE_UNRESOLVED"
+            assert "主管簽核" in raised[0]["detail"], (
+                f"訊息要說得出是哪個節點：{raised[0]['detail']}"
+            )
+
+            # 流程仍在原節點等待，沒有失敗
+            state = await handle.query(DslInterpreter.current_state)
+            assert "approve" in (state.active_nodes or []), "流程不該離開節點"
+            assert "task-approve-0" in (state.pending_task_ids or []), (
+                "原待辦要保留，原簽核人還簽得動"
+            )
+
+            await handle.cancel()
+            await settle(handle)
+
+    async def test_加簽成功時不回報異常(self, env):
+        """反向驗證
+
+        只測「解析不到就回報」的話，一個**每次都回報**的實作
+        也會通過，但那會讓監控頁被正常的單淹沒。
+        """
+        reset_state()
+        self.setup_roles()
+
+        task_queue = f"to-{uuid.uuid4()}"
+        async with Worker(
+            env.client,
+            task_queue=task_queue,
+            workflows=[DslInterpreter],
+            activities=ACTIVITIES,
+        ):
+            handle = await env.client.start_workflow(
+                DslInterpreter.run,
+                make_input(self.dsl()),
+                id=f"wf-{uuid.uuid4()}",
+                task_queue=task_queue,
+            )
+            await env.sleep(60 * 60 * 24 * 3)
+
+            assert not STATE.get("attention"), "加簽成功不該標記異常"
             await handle.cancel()
             await settle(handle)
 

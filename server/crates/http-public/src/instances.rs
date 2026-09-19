@@ -26,6 +26,11 @@ pub fn routes() -> Router<AppState> {
         .route("/instances", get(list).post(start))
         .route("/instances/{id}", get(get_one))
         .route("/instances/{id}/cancel", post(cancel))
+        // 以下三個是流程監控的介入動作，只有 admin 與 process_monitor 能用
+        .route("/instances/{id}/tasks", get(list_tasks))
+        .route("/instances/{id}/remind", post(remind))
+        .route("/instances/{id}/resolve-attention", post(resolve_attention))
+        .route("/tasks/{id}/reassign", post(reassign_task))
 }
 
 #[derive(Deserialize)]
@@ -56,6 +61,9 @@ pub struct ListQuery {
     status: Option<String>,
     #[serde(default = "default_limit")]
     limit: i64,
+    /// 只看需要人介入的單
+    #[serde(default)]
+    needs_attention: bool,
 }
 
 fn default_limit() -> i64 {
@@ -222,10 +230,8 @@ async fn list(
     // 一般使用者只看得到自己的單。RLS 只隔離到租戶，
     // 同租戶的人預設看得見彼此——流程監控要的是更嚴的範圍。
     //
-    // 只有 admin 不設限。刻意不把 approver、finance_manager 等
-    // 一併放行：那些角色是「會簽到某些單」，不是「該看到全部單」，
-    // 兩者混為一談會讓監控變成全租戶的資料出口。
-    let visible_to = if actor.has_role("admin") {
+    // admin 與 process_monitor 不設限（見 Actor::can_monitor_all）。
+    let visible_to = if actor.can_monitor_all() {
         None
     } else {
         Some(actor.user_id)
@@ -239,6 +245,7 @@ async fn list(
             status: q.status,
             limit: q.limit,
             visible_to,
+            needs_attention: q.needs_attention,
         },
     )
     .await?;
@@ -257,7 +264,7 @@ async fn get_one(
 
     // 清單過濾了，單筆也要濾——否則知道 id 就能繞過清單的限制，
     // 而 id 會出現在通知連結、稽核紀錄裡，不是秘密。
-    let visible = actor.has_role("admin")
+    let visible = actor.can_monitor_all()
         || instance.started_by == Some(actor.user_id)
         || persistence::human_task::is_participant(&mut tx, id, actor.user_id).await?;
     tx.commit().await?;
@@ -306,6 +313,17 @@ async fn cancel(
     let mut tx = state.db.tenant_tx(actor.tenant_id).await?;
     let instance = persistence::instance::find_by_id(&mut tx, id).await?;
 
+    // 誰能取消：發起人自己，或監控角色（admin / process_monitor）。
+    //
+    // 這裡原本**完全沒有角色檢查**——同租戶任何人只要知道 id
+    // 就能取消別人的單，而 id 會出現在通知連結與稽核紀錄裡。
+    // 清單有過濾但取消沒有，是一個既有的漏洞，補在這裡。
+    //
+    // 回 404 而非 403：403 等於告訴對方「這張單存在」。
+    if !actor.can_monitor_all() && instance.started_by != Some(actor.user_id) {
+        return Err(ApiError::not_found("workflow_instance", id));
+    }
+
     if instance.status != "RUNNING" {
         return Err(ApiError::Conflict(format!(
             "流程狀態為 {}，無法取消",
@@ -323,7 +341,12 @@ async fn cancel(
         persistence::AuditEvent::new("internal", "instance.cancel", "workflow_instance")
             .actor(actor.user_id.to_string(), actor.name.clone())
             .target(instance.id.to_string())
-            .payload(serde_json::json!({ "reason": body.reason })),
+            // by_monitor 讓稽核看得出「這張單是被營運中止的，
+            // 不是發起人自己撤的」。兩者的責任歸屬不同。
+            .payload(serde_json::json!({
+                "reason": body.reason,
+                "by_monitor": instance.started_by != Some(actor.user_id),
+            })),
     )
     .await?;
     tx.commit().await?;
@@ -347,6 +370,240 @@ async fn cancel(
         "requested": true,
         "note": "取消請求已送出。流程完成清理後狀態才會更新"
     })))
+}
+
+// ── 流程監控的介入動作 ──────────────────────────────────
+//
+// 四個端點都要求 can_monitor_all（admin 或 process_monitor）。
+// 語意是「營運端排除卡關」，不是一般使用者處理自己的單——
+// 後者走既有的收件匣與 /instances/{id}/cancel。
+
+/// 這筆流程卡在誰身上
+///
+/// 監控頁要回答的核心問題。流程狀態只說「RUNNING」，
+/// 卡在誰身上是待辦才知道的事。
+async fn list_tasks(
+    State(state): State<AppState>,
+    actor: Actor,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<Vec<persistence::human_task::HumanTask>>> {
+    actor.require_any(&["process_monitor"])?;
+
+    let mut tx = state.db.tenant_tx(actor.tenant_id).await?;
+    // 先確認流程存在且屬於本租戶。RLS 已擋跨租戶，
+    // 這裡是為了讓不存在的 id 回 404 而非空陣列——
+    // 空陣列會讓監控頁顯示「這張單沒有待辦」，語意是錯的。
+    let _ = persistence::instance::find_by_id(&mut tx, id).await?;
+    let tasks = persistence::human_task::list_by_instance(&mut tx, id).await?;
+    tx.commit().await?;
+
+    Ok(Json(tasks))
+}
+
+/// 催辦：對還沒簽的人重寄提醒
+///
+/// 「卡住」在實務上最常見的解法就是催人，而不是取消或改派。
+/// 因此這是監控角色最常用的動作，放在最前面。
+async fn remind(
+    State(state): State<AppState>,
+    actor: Actor,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<Value>> {
+    actor.require_any(&["process_monitor"])?;
+
+    let mut tx = state.db.tenant_tx(actor.tenant_id).await?;
+    let instance = persistence::instance::find_by_id(&mut tx, id).await?;
+
+    if instance.status != "RUNNING" {
+        return Err(ApiError::Conflict(format!(
+            "流程狀態為 {}，沒有待辦可催",
+            instance.status
+        )));
+    }
+
+    let tasks = persistence::human_task::list_by_instance(&mut tx, id).await?;
+    let pending: Vec<_> = tasks.iter().filter(|t| t.status == "PENDING").collect();
+
+    if pending.is_empty() {
+        return Err(ApiError::Conflict(
+            "沒有待處理的待辦，不需要催辦".into(),
+        ));
+    }
+
+    // 指派給角色的待辦沒有 assignee_user_id，收件人要用角色去解析。
+    // 目前 resolve_recipients 只認 user id 與 email，因此角色型的
+    // 待辦先跳過——催不到的人要讓呼叫端知道，不能靜默少寄。
+    let (to, skipped): (Vec<String>, usize) = {
+        let mut to = Vec::new();
+        let mut skipped = 0;
+        for t in &pending {
+            match t.assignee_user_id {
+                Some(u) => to.push(u.to_string()),
+                None => skipped += 1,
+            }
+        }
+        (to, skipped)
+    };
+
+    tx.audit(
+        persistence::AuditEvent::new("internal", "instance.remind", "workflow_instance")
+            .actor(actor.user_id.to_string(), actor.name.clone())
+            .target(instance.id.to_string())
+            .payload(serde_json::json!({
+                "pending": pending.len(),
+                "notified": to.len(),
+                "skipped_role_tasks": skipped,
+            })),
+    )
+    .await?;
+    tx.commit().await?;
+
+    if to.is_empty() {
+        return Ok(Json(serde_json::json!({
+            "notified": 0,
+            "skipped_role_tasks": skipped,
+            "note": "待辦都指派給角色，目前無法定位個人信箱",
+        })));
+    }
+
+    // 走 internal::deliver 而非自己組信：沙箱改寫只做在那裡，
+    // 自己組信會讓沙箱的催辦信寄給真的同事。
+    let node_id = pending
+        .first()
+        .map(|t| t.node_id.clone())
+        .unwrap_or_default();
+
+    let result = crate::internal::deliver(
+        &state,
+        actor.tenant_id,
+        crate::internal::NotificationBody {
+            instance_id: instance.id,
+            node_id,
+            channel: vec!["email".into()],
+            to,
+            kind: Some("reminder".into()),
+            remaining: None,
+        },
+    )
+    .await?;
+
+    Ok(Json(serde_json::json!({
+        "notified": pending.len() - skipped,
+        "skipped_role_tasks": skipped,
+        "send": result.0,
+    })))
+}
+
+#[derive(Deserialize)]
+pub struct ResolveAttentionBody {
+    #[serde(default)]
+    note: String,
+}
+
+/// 標記異常已處理
+///
+/// 刻意做成手動：「解析不到加簽對象」修好組織資料之後，
+/// 不會有任何事件回來通知系統。自動解除只能靠輪詢重試，
+/// 而重試的時機無從判定。由處理的人按下按鈕，順帶留稽核。
+async fn resolve_attention(
+    State(state): State<AppState>,
+    actor: Actor,
+    Path(id): Path<Uuid>,
+    Json(body): Json<ResolveAttentionBody>,
+) -> ApiResult<Json<Value>> {
+    actor.require_any(&["process_monitor"])?;
+
+    let mut tx = state.db.tenant_tx(actor.tenant_id).await?;
+    let instance = persistence::instance::find_by_id(&mut tx, id).await?;
+
+    if !instance.needs_attention {
+        return Err(ApiError::Conflict("這筆流程沒有待處理的異常".into()));
+    }
+
+    let cleared = persistence::instance::clear_attention(&mut tx, id).await?;
+
+    tx.audit(
+        persistence::AuditEvent::new(
+            "internal",
+            "instance.attention_resolved",
+            "workflow_instance",
+        )
+        .actor(actor.user_id.to_string(), actor.name.clone())
+        .target(instance.id.to_string())
+        // 記下原本的異常代碼：解除之後欄位會被清空，
+        // 不記的話事後查不出「當時是什麼問題」。
+        .payload(serde_json::json!({
+            "code": instance.attention_code,
+            "detail": instance.attention_detail,
+            "note": body.note,
+        })),
+    )
+    .await?;
+    tx.commit().await?;
+
+    Ok(Json(serde_json::json!({ "resolved": cleared })))
+}
+
+#[derive(Deserialize)]
+pub struct ReassignBody {
+    to_user_id: Uuid,
+    #[serde(default)]
+    reason: String,
+}
+
+/// 把卡住的待辦改派給別人
+///
+/// 這會動到簽核責任歸屬，因此稽核事件型別與一般的指派分開
+/// （`task.reassign` 而非 `task.create`）——查稽核時要看得出
+/// 「這張單是被營運改派的，不是原主管指派的」。
+async fn reassign_task(
+    State(state): State<AppState>,
+    actor: Actor,
+    Path(id): Path<Uuid>,
+    Json(body): Json<ReassignBody>,
+) -> ApiResult<Json<Value>> {
+    actor.require_any(&["process_monitor"])?;
+
+    let mut tx = state.db.tenant_tx(actor.tenant_id).await?;
+    let task = persistence::human_task::find_by_id(&mut tx, id).await?;
+
+    if task.status != "PENDING" {
+        return Err(ApiError::Conflict(format!(
+            "待辦狀態為 {}，無法改派",
+            task.status
+        )));
+    }
+
+    // 目標必須是同租戶的在職員工。RLS 保證跨租戶查不到，
+    // 但離職的人查得到——改派給離職者等於把單丟進黑洞。
+    let target = persistence::organization::find_employee(&mut tx, body.to_user_id).await?;
+    if target.status != "ACTIVE" {
+        return Err(ApiError::BadRequest(format!(
+            "{} 不是在職員工，無法改派",
+            target.name
+        )));
+    }
+
+    let moved = persistence::human_task::reassign(&mut tx, id, body.to_user_id).await?;
+
+    tx.audit(
+        persistence::AuditEvent::new("internal", "task.reassign", "human_task")
+            .actor(actor.user_id.to_string(), actor.name.clone())
+            .target(task.id.to_string())
+            .payload(serde_json::json!({
+                "instance_id": task.instance_id,
+                "node_id": task.node_id,
+                "from_user_id": task.assignee_user_id,
+                "from_role": task.assignee_role,
+                "to_user_id": body.to_user_id,
+                "to_name": target.name,
+                "reason": body.reason,
+            })),
+    )
+    .await?;
+    tx.commit().await?;
+
+    Ok(Json(serde_json::json!({ "reassigned": moved })))
 }
 
 fn describe(r: &temporal_client::WorkflowResult) -> String {

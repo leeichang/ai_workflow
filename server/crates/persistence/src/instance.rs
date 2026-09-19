@@ -27,7 +27,26 @@ pub struct WorkflowInstance {
     pub started_by: Option<Uuid>,
     pub started_at: DateTime<Utc>,
     pub ended_at: Option<DateTime<Utc>>,
+    /// 需要人介入。流程仍在跑，不是失敗狀態
+    ///
+    /// 與 `status` 正交：status 是生命週期，這是「跑得下去但不對勁」。
+    /// 塞進 status 的話「異常但仍在跑」就沒辦法表達了。
+    pub needs_attention: bool,
+    /// 機器可讀的原因代碼（ESCALATE_UNRESOLVED 等）
+    pub attention_code: Option<String>,
+    pub attention_detail: Option<String>,
+    pub attention_at: Option<DateTime<Utc>>,
 }
+
+/// 查詢欄位清單
+///
+/// 做成常數：四個查詢要列同一組欄位，先前加 `form_version_id`
+/// 時就漏過一處，直到 decode 失敗才發現。
+const COLUMNS: &str = "id, workflow_version_id, form_version_id, \
+     business_object, business_key, \
+     temporal_workflow_id, temporal_run_id, status, input, output, \
+     error, started_by, started_at, ended_at, \
+     needs_attention, attention_code, attention_detail, attention_at";
 
 #[derive(Debug, Deserialize)]
 pub struct CreateInstance {
@@ -53,7 +72,7 @@ pub async fn create(
     input: CreateInstance,
     started_by: Uuid,
 ) -> Result<WorkflowInstance> {
-    let row = sqlx::query_as::<_, WorkflowInstance>(
+    let row = sqlx::query_as::<_, WorkflowInstance>(&format!(
         r#"
         insert into workflow_instance (
             tenant_id, workflow_version_id, form_version_id,
@@ -61,12 +80,9 @@ pub async fn create(
             temporal_workflow_id, temporal_run_id, input, started_by
         )
         values (current_setting('app.tenant_id')::uuid, $1, $2, $3, $4, $5, $6, $7, $8)
-        returning id, workflow_version_id, form_version_id,
-                  business_object, business_key,
-                  temporal_workflow_id, temporal_run_id, status, input, output,
-                  error, started_by, started_at, ended_at
-        "#,
-    )
+        returning {COLUMNS}
+        "#
+    ))
     .bind(input.workflow_version_id)
     .bind(input.form_version_id)
     .bind(&input.business_object)
@@ -82,15 +98,9 @@ pub async fn create(
 }
 
 pub async fn find_by_id(tx: &mut TenantTx<'_>, id: Uuid) -> Result<WorkflowInstance> {
-    let row = sqlx::query_as::<_, WorkflowInstance>(
-        r#"
-        select id, workflow_version_id, form_version_id,
-               business_object, business_key,
-               temporal_workflow_id, temporal_run_id, status, input, output,
-               error, started_by, started_at, ended_at
-        from workflow_instance where id = $1
-        "#,
-    )
+    let row = sqlx::query_as::<_, WorkflowInstance>(&format!(
+        "select {COLUMNS} from workflow_instance where id = $1"
+    ))
     .bind(id)
     .fetch_optional(tx.executor())
     .await?
@@ -109,6 +119,8 @@ pub struct ListFilter {
     /// 刻意做成 Option 而非 bool + user_id：呼叫端必須明確表態
     /// 「不設限」，漏傳會變成看得到全部，那正是要避免的方向。
     pub visible_to: Option<Uuid>,
+    /// 只列需要人介入的。監控頁的「只看異常」用它
+    pub needs_attention: bool,
 }
 
 pub async fn list(tx: &mut TenantTx<'_>, filter: ListFilter) -> Result<Vec<WorkflowInstance>> {
@@ -121,12 +133,12 @@ pub async fn list(tx: &mut TenantTx<'_>, filter: ListFilter) -> Result<Vec<Workf
     //   1. 自己發起的
     //   2. 自己有（或曾有）待辦的——那張單本來就在你的收件匣裡，
     //      看得到它的存在不算新增洩漏
-    let rows = sqlx::query_as::<_, WorkflowInstance>(
+    //
+    // 排序把異常排最前面：監控頁的用途是找出要處理的單，
+    // 讓它們沉在第三頁等於這個功能沒做。
+    let rows = sqlx::query_as::<_, WorkflowInstance>(&format!(
         r#"
-        select id, workflow_version_id, form_version_id,
-               business_object, business_key,
-               temporal_workflow_id, temporal_run_id, status, input, output,
-               error, started_by, started_at, ended_at
+        select {COLUMNS}
         from workflow_instance i
         where ($1::text is null or business_object = $1)
           and ($2::text is null or status = $2)
@@ -135,14 +147,16 @@ pub async fn list(tx: &mut TenantTx<'_>, filter: ListFilter) -> Result<Vec<Workf
                or exists (select 1 from human_task t
                           where t.instance_id = i.id
                             and t.assignee_user_id = $4))
-        order by started_at desc
+          and ($5::boolean is not true or needs_attention)
+        order by needs_attention desc, started_at desc
         limit $3
-        "#,
-    )
+        "#
+    ))
     .bind(filter.business_object.as_deref())
     .bind(filter.status.as_deref())
     .bind(limit)
     .bind(filter.visible_to)
+    .bind(filter.needs_attention)
     .fetch_all(tx.executor())
     .await?;
 
@@ -161,6 +175,65 @@ pub async fn set_run_id(tx: &mut TenantTx<'_>, id: Uuid, run_id: &str) -> Result
     Ok(())
 }
 
+/// 標記需要人介入
+///
+/// 流程**不會**因此停下。原簽核人照樣能簽，只是監控頁會紅字標出。
+/// 這是 N3 的定案：改成失敗會讓已經跑到一半的流程死掉，
+/// 而原簽核人本來還簽得動。
+///
+/// 已經是異常的再標一次會覆寫原因。後發生的異常比較接近當下，
+/// 而且流程只有一個「現在卡在哪」——保留最舊的沒有意義。
+pub async fn mark_attention(
+    tx: &mut TenantTx<'_>,
+    id: Uuid,
+    code: &str,
+    detail: &str,
+) -> Result<bool> {
+    let affected = sqlx::query(
+        r#"
+        update workflow_instance
+        set needs_attention = true,
+            attention_code = $2,
+            attention_detail = $3,
+            attention_at = now()
+        where id = $1 and status = 'RUNNING'
+        "#,
+    )
+    .bind(id)
+    .bind(code)
+    .bind(detail)
+    .execute(tx.executor())
+    .await?
+    .rows_affected();
+
+    Ok(affected > 0)
+}
+
+/// 解除異常標記
+///
+/// 人處理完之後由監控頁呼叫。刻意不自動解除：
+/// 「解析不到加簽對象」修好組織資料後不會有任何事件回來通知，
+/// 自動解除只能靠輪詢重試，而重試的時機無從判定。
+/// 由處理的人按下「已處理」，順帶留下誰處理的稽核。
+pub async fn clear_attention(tx: &mut TenantTx<'_>, id: Uuid) -> Result<bool> {
+    let affected = sqlx::query(
+        r#"
+        update workflow_instance
+        set needs_attention = false,
+            attention_code = null,
+            attention_detail = null,
+            attention_at = null
+        where id = $1 and needs_attention
+        "#,
+    )
+    .bind(id)
+    .execute(tx.executor())
+    .await?
+    .rows_affected();
+
+    Ok(affected > 0)
+}
+
 /// 更新最終狀態
 ///
 /// 只允許從 RUNNING 轉出。流程結束後再收到結束事件是可能的
@@ -175,7 +248,13 @@ pub async fn finish(
     let affected = sqlx::query(
         r#"
         update workflow_instance
-        set status = $2, output = $3, error = $4, ended_at = now()
+        set status = $2, output = $3, error = $4, ended_at = now(),
+            -- 結束的流程不需要人介入了。不清掉的話監控頁會一直
+            -- 把已完成的單排在最前面，真正該處理的反而被擠下去
+            needs_attention = false,
+            attention_code = null,
+            attention_detail = null,
+            attention_at = null
         where id = $1 and status = 'RUNNING'
         "#,
     )

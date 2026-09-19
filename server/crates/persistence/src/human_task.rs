@@ -196,6 +196,61 @@ pub async fn cancel_by_instance(
     Ok(affected)
 }
 
+/// 列出流程的所有待辦
+///
+/// 監控頁要回答「卡在誰身上」，那是待辦而非流程狀態才知道的事。
+pub async fn list_by_instance(
+    tx: &mut TenantTx<'_>,
+    instance_id: Uuid,
+) -> Result<Vec<HumanTask>> {
+    let rows = sqlx::query_as::<_, HumanTask>(
+        r#"
+        select id, instance_id, node_id, node_label, assignee_user_id,
+               assignee_role, participant_kind, form_key, status, decision,
+               comment, due_at, created_at, decided_at
+        from human_task
+        where instance_id = $1
+        order by created_at
+        "#,
+    )
+    .bind(instance_id)
+    .fetch_all(tx.executor())
+    .await?;
+
+    Ok(rows)
+}
+
+/// 改派待辦給別人
+///
+/// 只動 PENDING 的。已決策的不能改派——那會讓稽核紀錄裡
+/// 「誰簽的」與「指派給誰」對不起來。
+///
+/// 改派同時清掉 `assignee_role`：原本指派給角色的待辦改派給特定人
+/// 之後，若 role 還留著，該角色的其他人在收件匣仍看得到它
+/// （`inbox` 查詢是 `assignee_user_id = $1 or assignee_role = any($2)`）。
+/// 那等於沒有改派。
+pub async fn reassign(
+    tx: &mut TenantTx<'_>,
+    id: Uuid,
+    to_user_id: Uuid,
+) -> Result<bool> {
+    let affected = sqlx::query(
+        r#"
+        update human_task
+        set assignee_user_id = $2,
+            assignee_role = null
+        where id = $1 and status = 'PENDING'
+        "#,
+    )
+    .bind(id)
+    .bind(to_user_id)
+    .execute(tx.executor())
+    .await?
+    .rows_affected();
+
+    Ok(affected > 0)
+}
+
 /// 這個人是否在這筆流程裡有（或曾有）待辦
 ///
 /// 流程監控的可見範圍用它判定：那張單本來就在你的收件匣裡，

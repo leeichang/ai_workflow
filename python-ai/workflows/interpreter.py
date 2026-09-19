@@ -549,9 +549,29 @@ class DslInterpreter:
         extra = [p for p in extra if p.id not in known]
 
         if not extra:
-            workflow.logger.warning(
-                "節點 %s 逾時加簽，但解析不到新的參與者，改為繼續等待",
-                node["id"],
+            # 解析不到加簽對象（N3，2026-09-19 定案）
+            #
+            # 原本只留一行 WARNING，然後繼續等。問題不在「繼續等」
+            # ——原簽核人本來就還簽得動，讓流程失敗反而會把一張
+            # 跑到一半的單弄死。問題在於**沒有任何人看得到**：
+            # 畫面與稽核都不會出現這件事。
+            #
+            # 因此照舊繼續等，但把異常掛到實例上讓監控頁紅字標出。
+            label = node.get("label") or node["id"]
+            await workflow.execute_activity(
+                "raise_attention",
+                args=[
+                    {
+                        "tenant_id": self._input.tenant_id,
+                        "instance_id": self._input.instance_id,
+                        "code": "ESCALATE_UNRESOLVED",
+                        "detail": (
+                            f"節點「{label}」逾時加簽，但解析不到新的簽核人。"
+                            "流程仍在等原簽核人處理。"
+                        ),
+                    }
+                ],
+                start_to_close_timeout=ACTIVITY_TIMEOUT,
             )
             wait.deadline = None
             return

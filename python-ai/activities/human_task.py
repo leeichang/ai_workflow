@@ -176,6 +176,30 @@ async def report_instance_finished(req: dict) -> None:
     )
 
 
+@activity.defn(name="raise_attention")
+async def raise_attention(req: dict) -> None:
+    """標記流程需要人介入
+
+    流程不會因此停下。用於「跑得下去但不對勁」的情況，
+    目前唯一的來源是逾時加簽解析不到對象（ESCALATE_UNRESOLVED）。
+
+    失敗不該讓流程死掉——標記不上只是少了一個提示，
+    但把整張單弄失敗是破壞性的，正好違背這個機制的初衷。
+    """
+    try:
+        await _post(
+            f"/internal/instances/{req['instance_id']}/attention",
+            req["tenant_id"],
+            {"code": req["code"], "detail": req["detail"]},
+        )
+    except ApplicationError:
+        activity.logger.exception(
+            "標記異常失敗，流程繼續：instance=%s code=%s",
+            req["instance_id"],
+            req["code"],
+        )
+
+
 ALL_ACTIVITIES = [
     resolve_participants,
     create_human_tasks,
@@ -183,4 +207,5 @@ ALL_ACTIVITIES = [
     run_action,
     send_notification,
     report_instance_finished,
+    raise_attention,
 ]

@@ -13,17 +13,69 @@
 import { computed, onMounted, ref } from 'vue'
 import AppShell from '@/components/AppShell.vue'
 import * as instancesApi from '@/api/instances'
-import type { InstanceDetail, WorkflowInstance } from '@/api/instances'
+import * as orgApi from '@/api/org'
+import type { HumanTask, InstanceDetail, WorkflowInstance } from '@/api/instances'
 import { ApiError } from '@/api/types'
+import { useSession } from '@/auth/useSession'
 
 const items = ref<WorkflowInstance[]>([])
 const loading = ref(true)
 const errorMessage = ref('')
 const statusFilter = ref('')
+/** 只看需要人介入的。導入期通常先把卡住的處理完 */
+const attentionOnly = ref(false)
 
 const detail = ref<InstanceDetail | null>(null)
 const detailLoading = ref(false)
 const detailError = ref('')
+
+/**
+ * 介入權限（N1，2026-09-19 定案）
+ *
+ * `hasRole` 對 admin 一律回 true，與後端 `can_monitor_all`
+ * （admin || process_monitor）的語意一致。
+ *
+ * 這只是 UX 層的隱藏，**不是權限控制**——後端每個端點都會再擋。
+ * 只靠前端不顯示按鈕等於沒有權限。
+ */
+const { hasRole } = useSession()
+const canIntervene = computed(() => hasRole('process_monitor'))
+
+/** 卡在誰身上。流程狀態只說 RUNNING，卡在誰是待辦才知道 */
+const tasks = ref<HumanTask[]>([])
+const actionMessage = ref('')
+const actionError = ref('')
+const acting = ref(false)
+
+/** 改派的目標人選。只在真的要改派時才載入，不佔開啟詳情的時間 */
+const employees = ref<orgApi.Employee[]>([])
+const reassigning = ref<HumanTask | null>(null)
+const reassignTo = ref('')
+
+const TASK_STATUS_LABEL: Record<string, string> = {
+  PENDING: '待處理',
+  APPROVED: '已核准',
+  REJECTED: '已退回',
+  CANCELLED: '已取消',
+}
+
+/**
+ * 異常代碼的說明與處理建議
+ *
+ * 用代碼分支而非比對 `attention_detail` 的中文：訊息會改寫，
+ * 代碼不會。未知代碼落回 detail 原文，不要顯示空白——
+ * 後端新增代碼時前端還沒跟上是正常的，但不能因此什麼都不說。
+ */
+const ATTENTION_HINT: Record<string, string> = {
+  ESCALATE_UNRESOLVED:
+    '逾時要加簽給別人，但解析不到對象。通常是該角色沒有成員，或主管欄位是空的。到組織健康檢查看看，修好後回來按「已處理」。',
+}
+
+const attentionHint = computed(() => {
+  const d = detail.value
+  if (d === null || !d.needs_attention) return ''
+  return ATTENTION_HINT[d.attention_code ?? ''] ?? ''
+})
 
 const STATUS_LABEL: Record<string, string> = {
   RUNNING: '執行中',
@@ -45,9 +97,10 @@ async function load(): Promise<void> {
   loading.value = true
   errorMessage.value = ''
   try {
-    items.value = await instancesApi.list(
-      statusFilter.value ? { status: statusFilter.value } : {},
-    )
+    items.value = await instancesApi.list({
+      ...(statusFilter.value ? { status: statusFilter.value } : {}),
+      needs_attention: attentionOnly.value,
+    })
   } catch (error) {
     errorMessage.value =
       error instanceof ApiError ? error.message : '無法載入流程清單，請稍後再試'
@@ -60,14 +113,112 @@ async function open(item: WorkflowInstance): Promise<void> {
   detail.value = null
   detailError.value = ''
   detailLoading.value = true
+  tasks.value = []
+  actionMessage.value = ''
+  actionError.value = ''
+  reassigning.value = null
   try {
     detail.value = await instancesApi.getOne(item.id)
+    // 待辦另外抓。抓不到不該讓整個詳情開不起來——
+    // 流程資訊本身仍然有用，少的只是「卡在誰身上」
+    if (canIntervene.value) {
+      try {
+        tasks.value = await instancesApi.listTasks(item.id)
+      } catch {
+        actionError.value = '無法載入待辦清單'
+      }
+    }
   } catch (error) {
     detailError.value =
       error instanceof ApiError ? error.message : '無法載入流程詳情'
   } finally {
     detailLoading.value = false
   }
+}
+
+/** 重新載入詳情與待辦。介入動作之後畫面要反映結果 */
+async function refreshDetail(): Promise<void> {
+  const current = detail.value
+  if (current === null) return
+  detail.value = await instancesApi.getOne(current.id)
+  tasks.value = await instancesApi.listTasks(current.id)
+}
+
+/** 包住介入動作的共用流程：擋重複點擊、清訊息、統一錯誤處理 */
+async function act(run: () => Promise<string>): Promise<void> {
+  acting.value = true
+  actionMessage.value = ''
+  actionError.value = ''
+  try {
+    actionMessage.value = await run()
+    await refreshDetail()
+  } catch (error) {
+    actionError.value =
+      error instanceof ApiError ? error.message : '操作失敗，請稍後再試'
+  } finally {
+    acting.value = false
+  }
+}
+
+async function remind(): Promise<void> {
+  await act(async () => {
+    const r = await instancesApi.remind(detail.value!.id)
+    if (r.notified === 0) {
+      // 催不到也要說清楚原因，不能回一句「已送出」讓人以為催過了
+      return r.note ?? '沒有可以催辦的對象'
+    }
+    const skipped =
+      r.skipped_role_tasks > 0
+        ? `（另有 ${r.skipped_role_tasks} 筆指派給角色，定位不到個人信箱）`
+        : ''
+    return `已寄出 ${r.notified} 封提醒${skipped}`
+  })
+}
+
+async function resolveAttention(): Promise<void> {
+  await act(async () => {
+    await instancesApi.resolveAttention(detail.value!.id)
+    // 清掉之後這張單會從「只看異常」的清單消失，主清單要跟著更新
+    await load()
+    return '已標記為處理完成'
+  })
+}
+
+async function cancelInstance(): Promise<void> {
+  // 取消是不可逆的：進行中的單會結束，待辦全部撤掉。
+  // 監控角色取消的是**別人的**單，更要確認。
+  if (!window.confirm('取消後流程會結束，所有待辦都會撤銷。確定要取消嗎？')) {
+    return
+  }
+  await act(async () => {
+    await instancesApi.cancel(detail.value!.id, '流程監控人員取消')
+    await load()
+    return '取消請求已送出'
+  })
+}
+
+/** 開啟改派。員工清單延後到這時才載入 */
+async function startReassign(task: HumanTask): Promise<void> {
+  reassigning.value = task
+  reassignTo.value = ''
+  actionError.value = ''
+  if (employees.value.length === 0) {
+    try {
+      employees.value = await orgApi.listEmployees({})
+    } catch {
+      actionError.value = '無法載入員工清單'
+    }
+  }
+}
+
+async function confirmReassign(): Promise<void> {
+  const task = reassigning.value
+  if (task === null || reassignTo.value === '') return
+  await act(async () => {
+    await instancesApi.reassignTask(task.id, reassignTo.value, '流程卡住，監控人員改派')
+    reassigning.value = null
+    return '已改派'
+  })
 }
 
 /** 已結束的本地狀態 */
@@ -135,6 +286,18 @@ onMounted(load)
             <option value="REJECTED">已退回</option>
             <option value="CANCELLED">已取消</option>
           </select>
+          <label
+            class="flex items-center gap-2 font-body-dense text-body-dense text-on-surface-variant cursor-pointer"
+          >
+            <input
+              v-model="attentionOnly"
+              type="checkbox"
+              data-testid="monitor-attention-only"
+              class="accent-primary"
+              @change="load"
+            />
+            只看需要處理的
+          </label>
           <button
             type="button"
             data-testid="monitor-refresh"
@@ -224,6 +387,17 @@ onMounted(load)
               >
                 {{ STATUS_LABEL[it.status] ?? it.status }}
               </span>
+              <!--
+                異常與狀態並列而非取代：這張單同時「執行中」且
+                「需要處理」，兩件事都要看得到
+              -->
+              <span
+                v-if="it.needs_attention"
+                :data-testid="`monitor-attention-${it.business_key}`"
+                class="ml-1 px-2 py-0.5 rounded font-label-caption text-label-caption bg-error-container text-on-error-container whitespace-nowrap"
+              >
+                需要處理
+              </span>
             </td>
             <td class="px-space-md py-space-sm font-body-dense text-body-dense text-secondary">
               {{ at(it.started_at) }}
@@ -305,10 +479,157 @@ onMounted(load)
             >
               {{ detail.error }}
             </p>
+
+            <!--
+              異常說明（N3）
+              先寫發生什麼事，再寫怎麼處理。只說「解析不到簽核人」
+              使用者不知道要去哪裡修，那個提示就等於沒有用
+            -->
+            <div
+              v-if="detail.needs_attention"
+              data-testid="monitor-attention-box"
+              class="px-3 py-2 rounded-lg bg-error-container text-on-error-container flex flex-col gap-1"
+            >
+              <p class="font-label-header text-label-header">需要人介入</p>
+              <p class="font-body-dense text-body-dense">
+                {{ detail.attention_detail }}
+              </p>
+              <p
+                v-if="attentionHint"
+                class="font-body-dense text-body-dense opacity-80"
+              >
+                {{ attentionHint }}
+              </p>
+            </div>
+
+            <!-- ── 卡在誰身上 ────────────────────────── -->
+            <template v-if="canIntervene && tasks.length > 0">
+              <div class="flex flex-col gap-1">
+                <p class="font-label-header text-label-header text-secondary">
+                  待辦
+                </p>
+                <div
+                  v-for="t in tasks"
+                  :key="t.id"
+                  :data-testid="`monitor-task-${t.node_id}`"
+                  class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-outline-variant font-body-dense text-body-dense"
+                >
+                  <div>
+                    <p class="text-on-surface">{{ t.node_label ?? t.node_id }}</p>
+                    <p class="font-label-caption text-label-caption text-secondary">
+                      {{ TASK_STATUS_LABEL[t.status] ?? t.status }}
+                      <template v-if="t.assignee_role">
+                        ・角色：{{ t.assignee_role }}
+                      </template>
+                    </p>
+                  </div>
+                  <button
+                    v-if="t.status === 'PENDING'"
+                    type="button"
+                    :disabled="acting"
+                    :data-testid="`monitor-reassign-${t.node_id}`"
+                    class="h-7 px-2 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-low font-label-header text-label-header disabled:opacity-50 whitespace-nowrap"
+                    @click="startReassign(t)"
+                  >
+                    改派
+                  </button>
+                </div>
+              </div>
+
+              <!-- 改派的目標 -->
+              <div
+                v-if="reassigning !== null"
+                data-testid="monitor-reassign-panel"
+                class="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-low"
+              >
+                <select
+                  v-model="reassignTo"
+                  data-testid="monitor-reassign-to"
+                  class="flex-1 h-8 px-2 rounded-lg border border-outline-variant bg-surface-container-lowest font-body-dense text-body-dense"
+                >
+                  <option value="">選擇改派對象…</option>
+                  <option v-for="e in employees" :key="e.id" :value="e.id">
+                    {{ e.name }}{{ e.department_name ? `（${e.department_name}）` : '' }}
+                  </option>
+                </select>
+                <button
+                  type="button"
+                  :disabled="acting || reassignTo === ''"
+                  data-testid="monitor-reassign-confirm"
+                  class="h-8 px-3 rounded-lg bg-primary text-on-primary font-label-header text-label-header disabled:opacity-50"
+                  @click="confirmReassign"
+                >
+                  確認改派
+                </button>
+                <button
+                  type="button"
+                  class="h-8 px-3 rounded-lg border border-outline-variant text-on-surface-variant font-label-header text-label-header"
+                  @click="reassigning = null"
+                >
+                  取消
+                </button>
+              </div>
+            </template>
+
+            <p
+              v-if="actionMessage"
+              data-testid="monitor-action-message"
+              class="px-3 py-2 rounded-lg bg-[#DCFCE7] text-[#166534] font-body-dense text-body-dense"
+            >
+              {{ actionMessage }}
+            </p>
+            <p
+              v-if="actionError"
+              role="alert"
+              data-testid="monitor-action-error"
+              class="px-3 py-2 rounded-lg bg-error-container text-on-error-container font-body-dense text-body-dense"
+            >
+              {{ actionError }}
+            </p>
           </template>
         </div>
 
-        <div class="px-space-lg py-space-md border-t border-outline-variant flex justify-end">
+        <div class="px-space-lg py-space-md border-t border-outline-variant flex justify-between items-center gap-2">
+          <!--
+            介入動作（N1）。只有 admin 與 process_monitor 看得到。
+            後端每個端點都會再擋一次——前端隱藏只是 UX，不是權限。
+
+            催辦放最左：卡住最常見的解法是催人，不是取消。
+            取消放最右且用紅字：它是不可逆的。
+          -->
+          <div v-if="canIntervene && detail !== null" class="flex items-center gap-2">
+            <button
+              v-if="detail.status === 'RUNNING'"
+              type="button"
+              :disabled="acting"
+              data-testid="monitor-remind"
+              class="h-8 px-3 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-low font-label-header text-label-header disabled:opacity-50"
+              @click="remind"
+            >
+              催辦
+            </button>
+            <button
+              v-if="detail.needs_attention"
+              type="button"
+              :disabled="acting"
+              data-testid="monitor-resolve-attention"
+              class="h-8 px-3 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-low font-label-header text-label-header disabled:opacity-50"
+              @click="resolveAttention"
+            >
+              標記已處理
+            </button>
+            <button
+              v-if="detail.status === 'RUNNING'"
+              type="button"
+              :disabled="acting"
+              data-testid="monitor-cancel"
+              class="h-8 px-3 rounded-lg border border-error text-error hover:bg-error-container font-label-header text-label-header disabled:opacity-50"
+              @click="cancelInstance"
+            >
+              取消流程
+            </button>
+          </div>
+          <div v-else></div>
           <button
             type="button"
             data-testid="monitor-detail-close"

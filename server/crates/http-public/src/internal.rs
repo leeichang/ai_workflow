@@ -31,6 +31,59 @@ pub fn routes() -> Router<AppState> {
         .route("/internal/actions/run", post(run_action))
         .route("/internal/notifications", post(send_notification))
         .route("/internal/instances/{id}/finish", post(finish_instance))
+        .route("/internal/instances/{id}/attention", post(raise_attention))
+}
+
+// ── 異常標記 ────────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct AttentionBody {
+    /// 機器可讀的代碼，例如 ESCALATE_UNRESOLVED
+    code: String,
+    detail: String,
+}
+
+/// 標記流程需要人介入（N3）
+///
+/// 流程**不會**因此停下。這是 2026-09-19 的定案：
+/// 逾時加簽解析不到對象時，原本只留一行 WARNING，
+/// 畫面與稽核都看不到；但改成讓流程失敗又太粗暴——
+/// 原簽核人本來還簽得動，整張單死掉是破壞性的。
+///
+/// 因此折衷：照跑，但掛旗標讓監控頁紅字標出。
+async fn raise_attention(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(body): Json<AttentionBody>,
+) -> ApiResult<Json<Value>> {
+    let tenant_id = authorize(&state, &headers)?;
+
+    let mut tx = state.db.tenant_tx(tenant_id).await?;
+    let marked = persistence::instance::mark_attention(&mut tx, id, &body.code, &body.detail)
+        .await?;
+
+    // 一定要寫稽核。N3 的問題本質是「這件事沒有任何地方看得到」，
+    // 只改資料庫欄位的話，異常被解除之後就查不出曾經發生過。
+    tx.audit(
+        persistence::AuditEvent::new("system", "instance.attention_raised", "workflow_instance")
+            .target(id.to_string())
+            .payload(serde_json::json!({
+                "code": body.code,
+                "detail": body.detail,
+                // 流程已結束時標不上（mark_attention 限定 RUNNING）。
+                // 記下來，否則會以為旗標掛上了
+                "marked": marked,
+            })),
+    )
+    .await?;
+    tx.commit().await?;
+
+    if !marked {
+        tracing::warn!(%id, code = %body.code, "流程已非 RUNNING，異常標記未套用");
+    }
+
+    Ok(Json(serde_json::json!({ "marked": marked })))
 }
 
 /// 驗證內部密鑰並取出 tenant_id
@@ -376,17 +429,17 @@ async fn run_action(
 
 #[derive(Deserialize)]
 pub struct NotificationBody {
-    instance_id: Uuid,
-    node_id: String,
-    channel: Vec<String>,
+    pub(crate) instance_id: Uuid,
+    pub(crate) node_id: String,
+    pub(crate) channel: Vec<String>,
     #[serde(default)]
-    to: Vec<String>,
+    pub(crate) to: Vec<String>,
     /// "reminder" 代表逾時前提醒，None 代表流程中的 notification 節點
     #[serde(default)]
-    kind: Option<String>,
+    pub(crate) kind: Option<String>,
     /// 提醒專用：距離到期還有多久（ISO 8601）
     #[serde(default)]
-    remaining: Option<String>,
+    pub(crate) remaining: Option<String>,
 }
 
 /// 送出通知
@@ -403,7 +456,20 @@ async fn send_notification(
     Json(body): Json<NotificationBody>,
 ) -> ApiResult<Json<Value>> {
     let tenant_id = authorize(&state, &headers)?;
+    deliver(&state, tenant_id, body).await
+}
 
+/// 實際寄送
+///
+/// 從 handler 抽出來讓流程監控的「催辦」也能用。
+/// 不讓催辦自己組信的理由：沙箱改寫（標題前綴、收件人換成測試者）
+/// 只做在這裡。催辦若自己走一條路，沙箱裡的催辦信會寄給真的同事，
+/// 而那封信看起來和正式的待辦提醒一模一樣。
+pub(crate) async fn deliver(
+    state: &AppState,
+    tenant_id: Uuid,
+    body: NotificationBody,
+) -> ApiResult<Json<Value>> {
     let mut tx = state.db.tenant_tx(tenant_id).await?;
     let recipients = resolve_recipients(&mut tx, &body.to).await?;
 

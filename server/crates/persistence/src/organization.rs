@@ -297,29 +297,50 @@ pub struct EmployeeFilter {
     pub include_inactive: Option<bool>,
 }
 
+/// 員工查詢的共用 select
+///
+/// 抽成常數而非各自重寫：`roles` 的子查詢與兩個 left join
+/// 在清單與單筆之間必須一致，否則同一個人在兩個畫面顯示的
+/// 部門或角色會不一樣。
+const EMPLOYEE_SELECT: &str = r#"
+    select u.id, u.employee_no, u.name, u.email,
+           u.department_id, d.name as department_name,
+           u.manager_id, m.name as manager_name,
+           u.job_title, u.phone, u.extension,
+           u.hired_at, u.left_at, u.status, u.can_login,
+           u.sync_status, u.source_system, u.platform_managed_fields,
+           array(
+               select r.code from user_role ur
+               join role r on r.id = ur.role_id
+               where ur.user_id = u.id
+               order by r.code
+           ) as roles
+    from app_user u
+    left join department d on d.id = u.department_id
+    left join app_user m on m.id = u.manager_id
+"#;
+
+/// 取單一員工
+///
+/// 改派待辦前要確認對象還在職——離職的人查得到（RLS 只隔離租戶），
+/// 改派給他等於把單丟進黑洞。
+pub async fn find_employee(tx: &mut TenantTx<'_>, id: Uuid) -> Result<Employee> {
+    sqlx::query_as::<_, Employee>(&format!("{EMPLOYEE_SELECT} where u.id = $1"))
+        .bind(id)
+        .fetch_optional(tx.executor())
+        .await?
+        .ok_or_else(|| crate::Error::not_found("app_user", id))
+}
+
 pub async fn list_employees(
     tx: &mut TenantTx<'_>,
     filter: &EmployeeFilter,
 ) -> Result<Vec<Employee>> {
     let pattern = filter.q.as_deref().map(|s| format!("%{s}%"));
 
-    let rows = sqlx::query_as::<_, Employee>(
+    let rows = sqlx::query_as::<_, Employee>(&format!(
         r#"
-        select u.id, u.employee_no, u.name, u.email,
-               u.department_id, d.name as department_name,
-               u.manager_id, m.name as manager_name,
-               u.job_title, u.phone, u.extension,
-               u.hired_at, u.left_at, u.status, u.can_login,
-               u.sync_status, u.source_system, u.platform_managed_fields,
-               array(
-                   select r.code from user_role ur
-                   join role r on r.id = ur.role_id
-                   where ur.user_id = u.id
-                   order by r.code
-               ) as roles
-        from app_user u
-        left join department d on d.id = u.department_id
-        left join app_user m on m.id = u.manager_id
+        {EMPLOYEE_SELECT}
         where ($1::boolean is true
                or (u.status = 'ACTIVE'
                    and (u.left_at is null or u.left_at > current_date)))
@@ -329,8 +350,8 @@ pub async fn list_employees(
                or u.email ilike $3
                or coalesce(u.employee_no, '') ilike $3)
         order by coalesce(u.employee_no, ''), u.name
-        "#,
-    )
+        "#
+    ))
     .bind(filter.include_inactive.unwrap_or(false))
     .bind(filter.department_id)
     .bind(pattern)

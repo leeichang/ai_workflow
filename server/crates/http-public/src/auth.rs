@@ -50,6 +50,20 @@ impl Actor {
         self.has_role("admin")
     }
 
+    /// 看得到全租戶流程、並能介入處理
+    ///
+    /// 語意是「營運端負責盯流程、排除卡關」，單獨一個角色。
+    /// 刻意不把 approver、finance_manager 一併放行：那些角色是
+    /// 「會簽到某些單」不是「該看到全部單」，混為一談之後很難再拆開，
+    /// 而且會讓監控變成全租戶的資料出口。
+    ///
+    /// 做成方法而非在各處 `has_role("process_monitor")`：
+    /// 這個判斷散在清單、單筆、取消、改派、催辦五處，
+    /// 任何一處漏掉 admin 或拼錯角色名都是權限漏洞。
+    pub fn can_monitor_all(&self) -> bool {
+        self.is_admin() || self.has_role("process_monitor")
+    }
+
     /// 要求具備指定角色之一，否則回 403
     pub fn require_any(&self, roles: &[&str]) -> Result<(), ApiError> {
         if self.is_admin() || roles.iter().any(|r| self.has_role(r)) {
@@ -176,6 +190,40 @@ pub fn verify_password(plain: &str, hash: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn actor_with(roles: &[&str]) -> Actor {
+        Actor {
+            user_id: Uuid::nil(),
+            tenant_id: Uuid::nil(),
+            name: "測試".into(),
+            roles: roles.iter().map(|r| (*r).to_string()).collect(),
+        }
+    }
+
+    #[test]
+    fn monitor_role_sees_everything() {
+        assert!(actor_with(&["process_monitor"]).can_monitor_all());
+        assert!(actor_with(&["admin"]).can_monitor_all());
+    }
+
+    #[test]
+    fn approval_roles_are_not_monitors() {
+        // **安全回歸。** 這是 N1 的核心決定：approver 與
+        // finance_manager 的語意是「會簽到某些單」，不是
+        // 「該看到全部單」。任何人把它們加進 can_monitor_all
+        // 都會讓監控變成全租戶的資料出口，這條會紅。
+        for role in ["approver", "finance_manager", "designer", "requester", "viewer"] {
+            assert!(
+                !actor_with(&[role]).can_monitor_all(),
+                "{role} 不該看得到全部流程"
+            );
+        }
+    }
+
+    #[test]
+    fn no_roles_sees_nothing() {
+        assert!(!actor_with(&[]).can_monitor_all());
+    }
 
     #[test]
     fn password_roundtrip() {

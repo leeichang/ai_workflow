@@ -90,6 +90,18 @@ export const router = createRouter({
       name: 'template-designer',
       component: () => import('./pages/TemplateDesigner.vue'),
     },
+    // 組織管理與健康檢查。放在設計器底下而非設定：
+    // 它們回答的是「流程會不會卡」，是設計流程時要看的東西
+    {
+      path: '/designer/organization',
+      name: 'organization',
+      component: () => import('./pages/OrgManage.vue'),
+    },
+    {
+      path: '/designer/org-health',
+      name: 'org-health',
+      component: () => import('./pages/OrgHealth.vue'),
+    },
     {
       path: '/designer/permissions',
       name: 'permission-matrix',

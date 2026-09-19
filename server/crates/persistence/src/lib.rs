@@ -10,6 +10,8 @@ pub mod error;
 pub mod form;
 pub mod human_task;
 pub mod instance;
+pub mod org_health;
+pub mod organization;
 pub mod participant;
 pub mod workflow;
 

@@ -144,6 +144,20 @@ const DESIGNER_SUB_ITEMS: SubNavItem[] = [
     label: '權限矩陣',
     icon: 'grid_on',
   },
+  // 放設計器底下而非設定：它們回答「流程會不會卡」，
+  // 是設計流程時要看的東西
+  {
+    key: 'organization',
+    path: '/designer/organization',
+    label: '組織管理',
+    icon: 'account_circle',
+  },
+  {
+    key: 'org-health',
+    path: '/designer/org-health',
+    label: '組織健康檢查',
+    icon: 'health_and_safety',
+  },
 ]
 
 const designerSubItems = DESIGNER_SUB_ITEMS

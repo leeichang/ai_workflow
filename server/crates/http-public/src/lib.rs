@@ -9,6 +9,7 @@ pub mod instances;
 pub mod internal;
 pub mod lookup;
 pub mod mailer;
+pub mod org;
 pub mod permission_write;
 pub mod permissions;
 pub mod tasks;
@@ -70,6 +71,7 @@ pub fn router(state: AppState) -> Router {
         .merge(instances::routes())
         .merge(tasks::routes())
         .merge(lookup::routes())
+        .merge(org::routes())
         .merge(internal::routes())
         .with_state(state)
 }

@@ -79,11 +79,17 @@ if [[ -z "$TOKEN" ]]; then
     exit 1
 fi
 
-echo "建立報價單表單"
-curl -s -X POST "$API/forms" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d @- <<'JSON' | head -c 200
+# 表單定義先寫成檔案，因為要送兩次：
+# 第一次用 POST 建立，若表單已存在（撞 form_key 的唯一約束）
+# 就改用 PUT 更新草稿。
+#
+# 先前只有 POST，於是**表單定義的任何修改都不會套用到既有環境**——
+# seed 印出 CONFLICT 就跳過，接著把舊草稿發布出去。
+# 這讓 readable_roles 這類後來才加的設定在實機上從未生效過。
+FORM_JSON=$(mktemp)
+trap 'rm -f "$FORM_JSON"' EXIT
+
+cat > "$FORM_JSON" <<'JSON'
 {
   "form_key": "quotation_form",
   "business_object": "quotation",
@@ -201,6 +207,39 @@ curl -s -X POST "$API/forms" \
   }
 }
 JSON
+
+echo "建立報價單表單"
+create=$(curl -s -o /tmp/seed-form-create.json -w '%{http_code}' -X POST "$API/forms" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d @"$FORM_JSON")
+
+if [ "$create" = "409" ]; then
+    # 已存在。把 content 取出來當草稿送——PUT /draft 的 body 只要 content
+    printf '  表單已存在，改為更新草稿  '
+    python3 -c "
+import json, sys
+doc = json.load(open('$FORM_JSON'))
+json.dump({'content': doc['content']}, open('$FORM_JSON.draft', 'w'))
+"
+    upd=$(curl -s -o /tmp/seed-form-draft.json -w '%{http_code}' -X PUT \
+      "$API/forms/quotation_form/draft" \
+      -H "Authorization: Bearer $TOKEN" \
+      -H 'Content-Type: application/json' \
+      -d @"$FORM_JSON.draft")
+    rm -f "$FORM_JSON.draft"
+
+    case "$upd" in
+        2*) echo "已更新" ;;
+        *)  echo "失敗（HTTP $upd）"; cat /tmp/seed-form-draft.json; exit 1 ;;
+    esac
+elif [ "${create#2}" != "$create" ]; then
+    echo "  已建立"
+else
+    echo "  建立失敗（HTTP $create）"
+    cat /tmp/seed-form-create.json
+    exit 1
+fi
 
 # 建立只產生草稿，要發布才會有版本。
 #

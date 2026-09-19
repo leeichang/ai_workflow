@@ -57,6 +57,12 @@ pub enum IssueCode {
     EmployeeNoEmail,
     /// 部門的上層部門不存在。組織樹斷裂
     DepartmentBrokenParent,
+    /// 已發布的流程引用了一個沒有任何成員的角色
+    ///
+    /// `by_role` 解析回空，流程卡在那個節點；若是 `timeout.to`
+    /// 的升級對象，加簽會**靜默不發生**——Worker 只留一行 WARNING，
+    /// 畫面與稽核都看不到
+    RoleHasNoMembers,
 }
 
 impl IssueCode {
@@ -68,7 +74,8 @@ impl IssueCode {
             | Self::ManagerInactive
             | Self::ManagerCycle
             | Self::DepartmentNoManager
-            | Self::DepartmentManagerIsSelf => Severity::High,
+            | Self::DepartmentManagerIsSelf
+            | Self::RoleHasNoMembers => Severity::High,
             Self::EmployeeNoDepartment
             | Self::EmployeeNoEmail
             | Self::DepartmentBrokenParent => Severity::Medium,
@@ -91,6 +98,10 @@ impl IssueCode {
             Self::EmployeeNoDepartment => "沒有所屬部門。依部門解析的簽核人找不到",
             Self::EmployeeNoEmail => "沒有 email。通知寄不出去，且不會有錯誤訊息",
             Self::DepartmentBrokenParent => "上層部門不存在。組織樹斷裂",
+            Self::RoleHasNoMembers => {
+                "已發布的流程指派給這個角色，但它一個成員都沒有。流程會卡在該節點，\
+                 若是逾時升級對象則會靜默不發生"
+            }
         }
     }
 }
@@ -171,6 +182,7 @@ pub async fn check(tx: &mut TenantTx<'_>) -> Result<HealthReport> {
     issues.extend(check_employee_department(tx).await?);
     issues.extend(check_email(tx).await?);
     issues.extend(check_department_parent(tx).await?);
+    issues.extend(check_referenced_roles(tx).await?);
 
     let employee_count: i64 = sqlx::query_scalar(&format!(
         "select count(*) from app_user u where {}",
@@ -368,6 +380,85 @@ async fn check_email(tx: &mut TenantTx<'_>) -> Result<Vec<Issue>> {
         .into_iter()
         .map(|(id, name)| Issue::new(IssueCode::EmployeeNoEmail, "employee", id, name))
         .collect())
+}
+
+/// 已發布的流程引用了沒有成員的角色
+///
+/// demo 租戶的 `sales_director` 掛 0 人，而 `manager_approval` 的
+/// `P2D` 逾時要升級給它——加簽在實機上**靜默不發生**，
+/// Worker 只留一行 WARNING（見總結 04 的 N2）。
+///
+/// 兩種引用位置都要看：
+///   - `resolver.type = "role"`：流程會卡在那個節點
+///   - `timeout.to.type = "role"`：升級靜默失效，比卡住更難發現
+///
+/// 只看 PUBLISHED 的版本。草稿還在改，引用一個還沒建人的角色
+/// 是正常的設計過程。
+async fn check_referenced_roles(tx: &mut TenantTx<'_>) -> Result<Vec<Issue>> {
+    // 用 jsonb_path_query 把兩種位置的角色代碼一次撈出來。
+    // 在 SQL 裡做而非取回整份 DSL 再解析：流程定義可能很大，
+    // 而這裡只需要幾個字串
+    let rows: Vec<(String,)> = sqlx::query_as(
+        r#"
+        select distinct value #>> '{}' as role_code
+        from workflow_definition_version v,
+             lateral jsonb_path_query(
+                 v.content,
+                 '$.nodes[*].resolver ? (@.type == "role").value'
+             ) as value
+        where v.status = 'PUBLISHED'
+        union
+        select distinct value #>> '{}'
+        from workflow_definition_version v,
+             lateral jsonb_path_query(
+                 v.content,
+                 '$.nodes[*].timeout.to ? (@.type == "role").value'
+             ) as value
+        where v.status = 'PUBLISHED'
+        "#,
+    )
+    .fetch_all(tx.executor())
+    .await?;
+
+    let mut issues = Vec::new();
+    for (code,) in rows {
+        // 角色可能根本不存在（流程引用了打錯的代碼），
+        // 也可能存在但沒有人。兩種都要報，訊息不同
+        let row: Option<(Uuid, String, i64)> = sqlx::query_as(
+            "select r.id, r.name,
+                    (select count(*) from user_role ur where ur.role_id = r.id)
+             from role r where r.code = $1",
+        )
+        .bind(&code)
+        .fetch_optional(tx.executor())
+        .await?;
+
+        match row {
+            Some((id, name, count)) if count == 0 => {
+                issues.push(
+                    Issue::new(IssueCode::RoleHasNoMembers, "role", id, name)
+                        .with_detail(format!("角色代碼：{code}")),
+                );
+            }
+            Some(_) => {}
+            None => {
+                // 找不到角色時沒有 uuid 可用。用 nil uuid 而非跳過——
+                // 跳過等於讓一個更嚴重的問題（流程引用了不存在的角色）
+                // 完全看不見
+                issues.push(
+                    Issue::new(
+                        IssueCode::RoleHasNoMembers,
+                        "role",
+                        Uuid::nil(),
+                        code.clone(),
+                    )
+                    .with_detail(format!("角色「{code}」在這個租戶裡不存在")),
+                );
+            }
+        }
+    }
+
+    Ok(issues)
 }
 
 async fn check_department_parent(tx: &mut TenantTx<'_>) -> Result<Vec<Issue>> {

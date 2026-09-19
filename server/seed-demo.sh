@@ -88,12 +88,24 @@ select u.id, r.id, '$TENANT_ID'
 from app_user u
 join role r on r.tenant_id = '$TENANT_ID'
 where u.tenant_id = '$TENANT_ID'
-  and ((u.email = 'cfo@demo.local'     and r.code in ('cfo', 'approver'))
+  and ((u.email = 'cfo@demo.local'     and r.code in ('cfo', 'approver', 'sales_director'))
     or (u.email = 'finance@demo.local' and r.code in ('finance_manager', 'approver'))
     or (u.email = 'qa@demo.local'      and r.code = 'approver')
     or (u.email = 'procure@demo.local' and r.code = 'requester')
     or (u.email = 'sales2@demo.local'  and r.code = 'requester'))
 on conflict do nothing;
+
+-- sales_director 指派給張文華的理由
+--
+-- quotation_approval 的 manager_approval 設 P2D / ESCALATE 到
+-- sales_director。ESCALATE 的語意是**往上升級**：業務員送單 →
+-- 主管是陳雅婷 → 她兩天沒簽 → 該升給她的上級，也就是張文華。
+--
+-- 這個角色先前建了但一個人都沒指派，導致逾時加簽在實機上
+-- 靜默不發生（Worker 只留一行 WARNING）。模擬功能第一次上工
+-- 就抓到這個設定錯誤——見總結 04 的 N2。
+--
+-- 沒有指派給陳雅婷：她就是那個逾時沒簽的人，升級給自己等於沒升級。
 
 commit;
 SQL

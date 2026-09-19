@@ -15,7 +15,7 @@ use axum::body::Body;
 use axum::http::{header, Request, StatusCode};
 use http_public::{AppState, JwtKeys};
 use persistence::Db;
-use serde_json::Value;
+use serde_json::{json, Value};
 use tower::ServiceExt;
 use uuid::Uuid;
 
@@ -403,6 +403,219 @@ async fn high_issues_sort_first() {
     } else {
         panic!("測試資料應該同時有 HIGH 與 MEDIUM：{body}");
     }
+}
+
+/// 已發布的流程引用了沒有成員的角色
+///
+/// demo 租戶的 sales_director 掛 0 人，而 manager_approval 的 P2D
+/// 逾時要升級給它——加簽在實機上靜默不發生，Worker 只留一行
+/// WARNING（總結 04 的 N2）。這是健康檢查該抓到的
+#[tokio::test]
+async fn detects_role_with_no_members() {
+    let ctx = Ctx::new().await;
+
+    let mut tx = ctx.tx().await;
+    // 建一個沒有人的角色
+    sqlx::query("insert into role (tenant_id, code, name) values ($1, 'empty_role', '空角色')")
+        .bind(ctx.tenant_id)
+        .execute(tx.executor())
+        .await
+        .expect("建立角色失敗");
+
+    publish_flow_referencing(&mut tx, ctx.tenant_id, "empty_role", "resolver").await;
+    tx.commit().await.unwrap();
+
+    let (_, body) = ctx.get_health().await;
+
+    let issues = issues_of(&body, "ROLE_HAS_NO_MEMBERS");
+    assert_eq!(issues.len(), 1, "{body}");
+    assert_eq!(issues[0]["subject_name"], "空角色");
+    assert_eq!(issues[0]["subject_type"], "role");
+    assert_eq!(issues[0]["severity"], "HIGH");
+}
+
+/// timeout.to 的升級對象也要檢查
+///
+/// 這個位置比 resolver 更危險：解析不到時流程不會卡，
+/// 而是**繼續等待**——畫面與稽核都看不到加簽沒發生
+#[tokio::test]
+async fn detects_empty_role_in_timeout_escalation() {
+    let ctx = Ctx::new().await;
+
+    let mut tx = ctx.tx().await;
+    sqlx::query("insert into role (tenant_id, code, name) values ($1, 'escalate_to', '升級對象')")
+        .bind(ctx.tenant_id)
+        .execute(tx.executor())
+        .await
+        .expect("建立角色失敗");
+
+    publish_flow_referencing(&mut tx, ctx.tenant_id, "escalate_to", "timeout").await;
+    tx.commit().await.unwrap();
+
+    let (_, body) = ctx.get_health().await;
+
+    let issues = issues_of(&body, "ROLE_HAS_NO_MEMBERS");
+    assert_eq!(issues.len(), 1, "{body}");
+    assert_eq!(issues[0]["subject_name"], "升級對象");
+}
+
+/// 有人的角色不報
+#[tokio::test]
+async fn role_with_members_is_not_reported() {
+    let ctx = Ctx::new().await;
+
+    let mut tx = ctx.tx().await;
+    let role_id: Uuid = sqlx::query_scalar(
+        "insert into role (tenant_id, code, name) values ($1, 'staffed', '有人的角色')
+         returning id",
+    )
+    .bind(ctx.tenant_id)
+    .fetch_one(tx.executor())
+    .await
+    .expect("建立角色失敗");
+
+    sqlx::query("insert into user_role (user_id, role_id, tenant_id) values ($1, $2, $3)")
+        .bind(ctx.staff)
+        .bind(role_id)
+        .bind(ctx.tenant_id)
+        .execute(tx.executor())
+        .await
+        .expect("指派角色失敗");
+
+    publish_flow_referencing(&mut tx, ctx.tenant_id, "staffed", "resolver").await;
+    tx.commit().await.unwrap();
+
+    let (_, body) = ctx.get_health().await;
+    assert_eq!(issues_of(&body, "ROLE_HAS_NO_MEMBERS").len(), 0, "{body}");
+}
+
+/// 草稿不檢查
+///
+/// 還在改的流程引用一個還沒建人的角色是正常的設計過程
+#[tokio::test]
+async fn draft_flows_are_not_checked() {
+    let ctx = Ctx::new().await;
+
+    let mut tx = ctx.tx().await;
+    sqlx::query("insert into role (tenant_id, code, name) values ($1, 'draft_role', '草稿角色')")
+        .bind(ctx.tenant_id)
+        .execute(tx.executor())
+        .await
+        .expect("建立角色失敗");
+
+    let flow_id: Uuid = sqlx::query_scalar(
+        "insert into workflow_definition (tenant_id, workflow_key, business_object, name)
+         values ($1, 'draft_flow', 'quotation', '草稿流程') returning id",
+    )
+    .bind(ctx.tenant_id)
+    .fetch_one(tx.executor())
+    .await
+    .expect("建立流程失敗");
+
+    sqlx::query(
+        "insert into workflow_definition_version (tenant_id, workflow_id, content, status)
+         values ($1, $2, $3, 'DRAFT')",
+    )
+    .bind(ctx.tenant_id)
+    .bind(flow_id)
+    .bind(flow_content("draft_role", "resolver"))
+    .execute(tx.executor())
+    .await
+    .expect("建立版本失敗");
+    tx.commit().await.unwrap();
+
+    let (_, body) = ctx.get_health().await;
+    assert_eq!(issues_of(&body, "ROLE_HAS_NO_MEMBERS").len(), 0, "{body}");
+}
+
+/// 流程引用了不存在的角色
+///
+/// 比「角色沒有人」更嚴重——跳過不報等於讓它完全看不見
+#[tokio::test]
+async fn detects_reference_to_missing_role() {
+    let ctx = Ctx::new().await;
+
+    let mut tx = ctx.tx().await;
+    publish_flow_referencing(&mut tx, ctx.tenant_id, "no_such_role", "resolver").await;
+    tx.commit().await.unwrap();
+
+    let (_, body) = ctx.get_health().await;
+
+    let issues = issues_of(&body, "ROLE_HAS_NO_MEMBERS");
+    assert_eq!(issues.len(), 1, "{body}");
+    assert!(
+        issues[0]["detail"].as_str().unwrap().contains("不存在"),
+        "{body}"
+    );
+}
+
+/// 最小的流程 DSL，把角色放在指定位置
+fn flow_content(role_code: &str, position: &str) -> serde_json::Value {
+    let node = if position == "timeout" {
+        json!({
+            "id": "approve",
+            "type": "human_approval",
+            "label": "簽核",
+            "participant": "internal",
+            "resolver": { "type": "manager_of", "of": "initiator" },
+            "timeout": {
+                "after": "P2D",
+                "policy": "ESCALATE",
+                "to": { "type": "role", "value": role_code }
+            }
+        })
+    } else {
+        json!({
+            "id": "approve",
+            "type": "human_approval",
+            "label": "簽核",
+            "participant": "internal",
+            "resolver": { "type": "role", "value": role_code }
+        })
+    };
+
+    json!({
+        "workflow_key": "test_flow",
+        "version": 1,
+        "business_object": "quotation",
+        "name": "測試流程",
+        "nodes": [
+            { "id": "start", "type": "trigger", "label": "送出" },
+            node,
+            { "id": "end", "type": "end", "label": "結束", "result": "completed" }
+        ],
+        "edges": [["start", "approve"], ["approve", "end"]]
+    })
+}
+
+/// 建立並發布一個引用指定角色的流程
+async fn publish_flow_referencing(
+    tx: &mut persistence::TenantTx<'_>,
+    tenant_id: Uuid,
+    role_code: &str,
+    position: &str,
+) {
+    let flow_id: Uuid = sqlx::query_scalar(
+        "insert into workflow_definition (tenant_id, workflow_key, business_object, name)
+         values ($1, $2, 'quotation', '測試流程') returning id",
+    )
+    .bind(tenant_id)
+    .bind(format!("flow_{role_code}"))
+    .fetch_one(tx.executor())
+    .await
+    .expect("建立流程失敗");
+
+    sqlx::query(
+        "insert into workflow_definition_version
+            (tenant_id, workflow_id, version, content, status, published_at)
+         values ($1, $2, 1, $3, 'PUBLISHED', now())",
+    )
+    .bind(tenant_id)
+    .bind(flow_id)
+    .bind(flow_content(role_code, position))
+    .execute(tx.executor())
+    .await
+    .expect("發布版本失敗");
 }
 
 /// 未登入不能看

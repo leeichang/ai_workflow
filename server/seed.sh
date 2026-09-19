@@ -271,4 +271,5 @@ echo
 echo "完成。登入資訊："
 echo "  租戶代碼：$TENANT_CODE"
 echo "  帳號：designer@demo.local / admin@demo.local / sales@demo.local"
+echo "  流程監控：monitor@demo.local（只有 process_monitor，不是 admin）"
 echo "  密碼：demo1234"

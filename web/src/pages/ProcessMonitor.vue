@@ -100,6 +100,10 @@ async function load(): Promise<void> {
     items.value = await instancesApi.list({
       ...(statusFilter.value ? { status: statusFilter.value } : {}),
       needs_attention: attentionOnly.value,
+      // 後端預設 50。監控是營運要「看完」的清單，不是收件匣，
+      // 50 筆在有幾十條流程同時在跑的租戶會看不到全部——
+      // 而看不到的那幾筆正可能是卡住的。上限 200 由後端 clamp。
+      limit: 200,
     })
   } catch (error) {
     errorMessage.value =
@@ -144,17 +148,32 @@ async function refreshDetail(): Promise<void> {
   tasks.value = await instancesApi.listTasks(current.id)
 }
 
-/** 包住介入動作的共用流程：擋重複點擊、清訊息、統一錯誤處理 */
+/**
+ * 包住介入動作的共用流程：擋重複點擊、清訊息、統一錯誤處理
+ *
+ * 動作本身與「重新載入畫面」分成兩段 try，因為兩者的失敗意義不同：
+ * 催辦成功但重載失敗時，信**已經寄出去了**。把它一起當成失敗會讓
+ * 使用者以為沒寄到而再按一次，於是收件人收到兩封。
+ *
+ * 所以成功訊息照留，重載失敗只在旁邊提醒畫面可能不是最新的。
+ */
 async function act(run: () => Promise<string>): Promise<void> {
   acting.value = true
   actionMessage.value = ''
   actionError.value = ''
   try {
     actionMessage.value = await run()
-    await refreshDetail()
   } catch (error) {
     actionError.value =
       error instanceof ApiError ? error.message : '操作失敗，請稍後再試'
+    acting.value = false
+    return
+  }
+
+  try {
+    await refreshDetail()
+  } catch {
+    actionError.value = '動作已完成，但畫面沒有更新成功，請重新整理'
   } finally {
     acting.value = false
   }

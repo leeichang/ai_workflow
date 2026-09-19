@@ -13,6 +13,7 @@ pub mod mailer;
 pub mod org;
 pub mod permission_write;
 pub mod permissions;
+mod sandbox;
 pub mod tasks;
 pub mod workflows;
 
@@ -69,6 +70,7 @@ pub fn router(state: AppState) -> Router {
         .merge(permissions::routes())
         .merge(permission_write::routes())
         .merge(workflows::routes())
+        .merge(sandbox::routes())
         .merge(instances::routes())
         .merge(tasks::routes())
         .merge(lookup::routes())

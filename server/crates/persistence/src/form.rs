@@ -133,6 +133,42 @@ pub async fn get_latest_published(
     .map_err(Error::from_db)
 }
 
+/// 取某業務物件當前的已發布表單版本
+///
+/// 供流程實例在建立時鎖定表單版本（workflow_instance.form_version_id）。
+///
+/// 方向是「表單指定業務物件」——表單自己宣告服務哪個業務物件，
+/// 這裡以業務物件反查。不是「流程指定表單」，
+/// 後者會讓同一張表單被多個流程各自宣告一次，遲早不一致。
+///
+/// 只認 PUBLISHED。草稿是設計中的半成品，鎖它等於沒鎖——
+/// 草稿隨時會變，而版本鎖定的目的正是「不要變」。
+///
+/// 查無表單時回 `None` 而非錯誤：不是每個業務物件都有表單
+/// （例如純系統觸發的流程），沒有表單不該讓啟動流程失敗。
+///
+/// 同一個業務物件有多張已發布表單時取**最近發布**的。
+/// 乾淨的租戶不該出現這種情況（一個業務物件一張表單），
+/// 但測試殘留會造成。選最近發布的而非隨機，是為了讓同一份資料
+/// 每次都得到同樣的答案——不確定的結果會讓
+/// 「為什麼這張單綁到那張表單」無法追查。
+pub async fn find_published_by_business_object(
+    tx: &mut TenantTx<'_>,
+    business_object: &str,
+) -> Result<Option<FormVersion>> {
+    sqlx::query_as::<_, FormVersion>(
+        "select v.* from form_definition_version v
+         join form_definition f on f.id = v.form_id
+         where f.business_object = $1 and v.status = 'PUBLISHED'
+         order by v.published_at desc nulls last, v.version desc
+         limit 1",
+    )
+    .bind(business_object)
+    .fetch_optional(tx.executor())
+    .await
+    .map_err(Error::from_db)
+}
+
 pub async fn get_version(
     tx: &mut TenantTx<'_>,
     form_id: Uuid,

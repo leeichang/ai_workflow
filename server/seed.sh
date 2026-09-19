@@ -202,6 +202,24 @@ curl -s -X POST "$API/forms" \
 }
 JSON
 
+# 建立只產生草稿，要發布才會有版本。
+#
+# workflow_instance.form_version_id 只鎖 PUBLISHED 的版本——
+# 草稿隨時會變，鎖它等於沒鎖。少了這一步，所有實例的
+# form_version_id 都會是 NULL。
+echo
+printf '發布報價單表單  '
+pub=$(curl -s -o /tmp/seed-form-publish.json -w '%{http_code}' -X POST \
+  "$API/forms/quotation_form/draft/publish" \
+  -H "Authorization: Bearer $TOKEN")
+case "$pub" in
+  200) echo "已發布" ;;
+  # 沒有草稿可發布代表已經是發布狀態——冪等，不是錯誤
+  409) echo "已是發布狀態" ;;
+  *)   echo "失敗 HTTP $pub"; head -c 200 /tmp/seed-form-publish.json; echo ;;
+esac
+rm -f /tmp/seed-form-publish.json
+
 echo
 echo "完成。登入資訊："
 echo "  租戶代碼：$TENANT_CODE"

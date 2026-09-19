@@ -133,6 +133,10 @@ class InstanceInput:
     workflow_version_id: str
     dsl: dict[str, Any]
     business_object: dict[str, Any] = field(default_factory=dict)
+    # 這個實例是否跑在沙箱（開發模式）裡。
+    # 只有沙箱可以時間快轉——預設 False，既有的執行中實例
+    # 與任何沒有明確標記的實例都會拒絕快轉。
+    is_sandbox: bool = False
 
 
 @dataclass

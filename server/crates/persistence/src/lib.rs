@@ -14,6 +14,7 @@ pub mod org_health;
 pub mod organization;
 pub mod participant;
 pub mod sync;
+pub mod sandbox;
 pub mod workflow;
 
 use sqlx::postgres::{PgPoolOptions, PgQueryResult};
@@ -79,7 +80,23 @@ impl Db {
             .execute(&mut *tx)
             .await?;
 
-        Ok(TenantTx { tx, tenant_id })
+        // 沙箱屬性在這裡取一次，讓呼叫端不必各自查 tenant 表。
+        //
+        // 多一次 PK 查詢的代價換的是：「忘記判斷 is_sandbox」這種錯誤
+        // 更難發生。通知的收件人改寫、標題前綴、授權開洞都要用它，
+        // 靠每一處記得自己查，遲早漏一處——而漏掉的那一處
+        // 會把沙箱的信寄給真實的同事。
+        let is_sandbox: Option<bool> =
+            sqlx::query_scalar("select is_sandbox from tenant where id = $1")
+                .bind(tenant_id)
+                .fetch_optional(&mut *tx)
+                .await?;
+
+        Ok(TenantTx {
+            tx,
+            tenant_id,
+            is_sandbox: is_sandbox.unwrap_or(false),
+        })
     }
 
     /// 不綁租戶的連線。僅供登入查詢與平台管理使用。
@@ -103,11 +120,20 @@ impl Db {
 pub struct TenantTx<'a> {
     tx: Transaction<'a, Postgres>,
     tenant_id: Uuid,
+    is_sandbox: bool,
 }
 
 impl<'a> TenantTx<'a> {
     pub fn tenant_id(&self) -> Uuid {
         self.tenant_id
+    }
+
+    /// 這個交易是否在沙箱租戶內
+    ///
+    /// 通知的收件人改寫與標題前綴都看它。正式租戶永遠是 false，
+    /// 所以那些改寫在正式環境不可能被觸發。
+    pub fn is_sandbox(&self) -> bool {
+        self.is_sandbox
     }
 
     /// 取得底層執行器供查詢使用
@@ -132,15 +158,17 @@ impl<'a> TenantTx<'a> {
         sqlx::query(
             r#"
             insert into audit_event
-                (tenant_id, actor_kind, actor_id, actor_name,
+                (tenant_id, actor_kind, actor_id, actor_name, acting_as,
                  action, target_type, target_id, payload, ip, user_agent, request_id)
-            values ($1, $2, $3, $4, $5, $6, $7, $8, $9::inet, $10, $11)
+            values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::inet, $11, $12)
             "#,
         )
         .bind(self.tenant_id)
         .bind(event.actor_kind)
         .bind(event.actor_id)
         .bind(event.actor_name)
+        .bind(event.acting_as.as_deref().map(|s| s.parse::<Uuid>()).transpose()
+              .map_err(|_| Error::Conflict("acting_as 必須是 uuid".into()))?)
         .bind(event.action)
         .bind(event.target_type)
         .bind(event.target_id)
@@ -166,6 +194,11 @@ pub struct AuditEvent<'a> {
     pub action: &'a str,
     pub target_type: &'a str,
     pub target_id: Option<String>,
+    /// 模擬簽核時被扮演的對象。正式操作為 None。
+    ///
+    /// 與 actor_id 並存而非取代它：只記 acting_as 的話，
+    /// 稽核會顯示張文華核准了某張單，而他根本不知道有這回事。
+    pub acting_as: Option<String>,
     pub payload: serde_json::Value,
     pub ip: Option<String>,
     pub user_agent: Option<String>,
@@ -186,6 +219,15 @@ impl<'a> AuditEvent<'a> {
     pub fn actor(mut self, id: impl Into<String>, name: impl Into<String>) -> Self {
         self.actor_id = Some(id.into());
         self.actor_name = Some(name.into());
+        self
+    }
+
+    /// 標註這次操作是在扮演誰
+    ///
+    /// 新增 builder 而非改 `actor()` 的簽章：`actor()` 有 15 個呼叫點，
+    /// 改簽章要全部動到，而其中 14 個與模擬簽核無關。
+    pub fn acting_as(mut self, id: impl Into<String>) -> Self {
+        self.acting_as = Some(id.into());
         self
     }
 

@@ -407,11 +407,45 @@ async fn send_notification(
     let mut tx = state.db.tenant_tx(tenant_id).await?;
     let recipients = resolve_recipients(&mut tx, &body.to).await?;
 
+    // ── 沙箱改寫 ────────────────────────────────────────
+    //
+    // 兩件事：標題加前綴、收件人改成測試者。**都在寄送端做。**
+    //
+    // 不在呼叫端做的理由：send_notification 有五個呼叫路徑
+    // （human_task 建立、提醒、逾時、ESCALATE、流程結束），
+    // 靠每一處記得傳遲早漏一個——而漏掉的那一封信，
+    // 會有人當成真的待辦去簽核。
+    //
+    // 照常寄出而非攔截：攔截只驗證到「系統決定要寄給誰」，
+    // 收件人 email 打錯不會發現。真的寄出去才驗得到信送得到。
+    //
+    // 收件人改成測試者而非原對象：解析出來的是真實的同事，
+    // 寄給他們除了打擾沒有額外價值，而且中小企業的主管收到
+    // 「【沙箱模擬】待簽核」很可能還是會點進去簽。
+    let sandbox_tester = if tx.is_sandbox() {
+        sandbox_tester_email(&state, tenant_id).await
+    } else {
+        None
+    };
+
+    let actual_recipients = match &sandbox_tester {
+        Some(email) => vec![email.clone()],
+        None => recipients.clone(),
+    };
+
     let outcome = if body.channel.iter().any(|c| c == "email") {
+        let subject = match &sandbox_tester {
+            Some(_) => format!("{SANDBOX_SUBJECT_PREFIX}{}", subject_of(&body)),
+            None => subject_of(&body),
+        };
+        let text = match &sandbox_tester {
+            Some(_) => sandbox_body(&text_of(&body), &recipients, &body),
+            None => text_of(&body),
+        };
         let mail = crate::mailer::Mail {
-            to: recipients.clone(),
-            subject: subject_of(&body),
-            body: text_of(&body),
+            to: actual_recipients.clone(),
+            subject,
+            body: text,
         };
         state.mailer.send(&mail).await
     } else {
@@ -432,8 +466,12 @@ async fn send_notification(
                 "node_id": body.node_id,
                 "kind": body.kind,
                 "channel": body.channel,
-                "to": body.to,
-                "recipients": recipients,
+                // 三層都要記。只記最後一層的話查不出「原本要寄給誰」，
+                // 而那正是沙箱要驗證的東西。
+                "to": body.to,                         // 原始參與者 id
+                "recipients": recipients,              // 解析後的真實收件人
+                "actual_recipients": actual_recipients, // 沙箱改寫後實際寄達的
+                "is_sandbox": sandbox_tester.is_some(),
                 "status": status,
                 "detail": detail,
             })),
@@ -622,4 +660,58 @@ mod tests {
         let list = external_contacts(&business, "quotation.customer_contact_ids");
         assert!(list.is_empty());
     }
+}
+
+/// 沙箱信件的標題前綴
+///
+/// 一定要能一眼認出來。沒有前綴的話，收件人會把測試信
+/// 當成真的待辦去簽核。
+const SANDBOX_SUBJECT_PREFIX: &str = "【沙箱模擬】";
+
+/// 這個沙箱的測試者信箱
+///
+/// 沙箱的信一律改寄給發起模擬的人。查不到就回 None，
+/// 讓信照原收件人寄出——那比不寄好，至少驗得到 SMTP 設定，
+/// 而沙箱租戶本來就是短命的。
+async fn sandbox_tester_email(state: &AppState, sandbox_tenant_id: Uuid) -> Option<String> {
+    let session = persistence::sandbox::active_session_of(&state.db, sandbox_tenant_id)
+        .await
+        .ok()
+        .flatten()?;
+
+    let mut tx = state.db.tenant_tx(session.tenant_id).await.ok()?;
+    let emails = persistence::participant::emails_of(&mut tx, &[session.created_by])
+        .await
+        .ok()?;
+    tx.commit().await.ok()?;
+
+    emails.into_iter().next()
+}
+
+/// 沙箱信件的內文
+///
+/// 原收件人與解析依據寫在內文，三件事就都驗得到：
+///   收件人解析對不對 → 看「原收件人」
+///   resolver 設定對不對 → 看「解析依據」
+///   信真的寄得出去 → 測試者收到了
+///
+/// 唯一寄不到的情況（原收件人 email 打錯）在內文一眼看得出來，
+/// 不需要真的寄過去試。
+fn sandbox_body(original: &str, original_recipients: &[String], body: &NotificationBody) -> String {
+    let to_line = if original_recipients.is_empty() {
+        "（解析不到任何收件人）".to_string()
+    } else {
+        original_recipients.join("、")
+    };
+
+    format!(
+        "{original}\n\
+         \n──────────────────────────────\n\
+         這是沙箱模擬的通知，不是真實待辦。\n\
+         \n\
+         原收件人：{to_line}\n\
+         解析依據：{:?}\n\
+         ──────────────────────────────\n",
+        body.to
+    )
 }

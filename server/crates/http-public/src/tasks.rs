@@ -137,7 +137,22 @@ async fn decide(
         .as_deref()
         .is_some_and(|r| actor.roles.iter().any(|mine| mine == r));
 
-    if !is_assignee && !has_role {
+    // 模擬簽核的開洞。**這裡是安全邊界，改動前先讀完這段。**
+    //
+    // 測試者在沙箱裡扮演別人簽核，必然不是 assignee，會被上面那道
+    // 檢查擋下。所以必須開洞——但條件寫死成兩個，不可放寬：
+    //
+    //   1. 必須是沙箱租戶（tenant.is_sandbox）
+    //   2. 操作者必須是該沙箱的建立者本人（sandbox_session.created_by）
+    //
+    // **不可做成「有某個角色就能扮演」。** 那會變成正式環境的提權
+    // 路徑——只要誤給一個角色，同租戶的人就能冒名簽核任何單。
+    //
+    // 沙箱身分不是一種權限，是一種環境狀態：正式租戶的 is_sandbox
+    // 永遠是 false，這個洞在正式環境不可能打開。
+    let is_simulation = simulation_allowed(&state, &actor).await?;
+
+    if !is_assignee && !has_role && !is_simulation {
         return Err(ApiError::Forbidden("此待辦不是指派給您的".into()));
     }
 
@@ -201,4 +216,33 @@ async fn decide(
         decision: body.decision,
         signalled: true,
     }))
+}
+
+/// 這次操作是否為合法的模擬簽核
+///
+/// **安全邊界。兩個條件缺一不可，且都不是「角色」。**
+///
+/// 1. 租戶必須是沙箱——正式租戶的 `is_sandbox` 永遠是 false，
+///    所以這個洞在正式環境不可能打開
+/// 2. 操作者必須是該沙箱的建立者本人——不是「某個角色的人」，
+///    也不是「任何能進沙箱的人」
+///
+/// 做成可配置的角色會變成正式環境的提權路徑：只要誤給一個角色，
+/// 同租戶的人就能冒名簽核任何單。沙箱身分不是一種權限，
+/// 是一種環境狀態。
+///
+/// 沙箱退役後 `active_session_of` 查不到 ACTIVE session，
+/// 條件自動不成立。
+async fn simulation_allowed(state: &AppState, actor: &Actor) -> ApiResult<bool> {
+    let flags = persistence::sandbox::flags_of(&state.db, actor.tenant_id).await?;
+    if !flags.is_sandbox {
+        return Ok(false);
+    }
+
+    // 比對 created_by_in_sandbox 而非 created_by：
+    // 登入沙箱後 JWT 帶的是沙箱租戶的 user id，與正式租戶的 id 不同
+    // （app_user.id 是全域主鍵，複製主檔時必須重新產生）。
+    // 用 created_by 比對的話條件永遠不成立，建立者反而進不了自己的沙箱。
+    let session = persistence::sandbox::active_session_of(&state.db, actor.tenant_id).await?;
+    Ok(session.is_some_and(|s| s.created_by_in_sandbox == Some(actor.user_id)))
 }

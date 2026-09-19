@@ -205,6 +205,10 @@ const navItemsBefore = computed<NavItem[]>(() => [
 
 /** 設計器之後的項目 */
 const navItemsAfter: NavItem[] = [
+  // 模擬簽核排在設計器之後：先設計，再驗證
+  { path: '/simulation', label: '模擬簽核', icon: 'science' },
+  // 監控是「已經在跑的」，排在模擬（還沒上線的）之後
+  { path: '/monitor', label: '流程監控', icon: 'monitoring' },
   { path: '/reports', label: '報表', icon: 'bar_chart' },
   { path: '/settings', label: '設定', icon: 'settings' },
 ]

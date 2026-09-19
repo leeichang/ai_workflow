@@ -258,3 +258,205 @@ test.describe('授權邊界', () => {
     expect(res.status(), '正式租戶不是沙箱，應回 403').toBe(403)
   })
 })
+
+test.describe('權限過濾畫面', () => {
+  // 使用者原話的第三件事：
+  //   「系統依據權限設定顯示每個簽核人員的畫面」
+  //
+  // 少了這塊，模擬只證明流程會動，沒證明那個人簽核時
+  // 看得到該看的、看不到不該看的。
+  test.setTimeout(180_000)
+
+  test('扮演時看得到那個人眼中的欄位權限', async ({ page, request }) => {
+    await clearSandboxes(request)
+    const jwt = await token(request)
+
+    const createRes = await request.post(`${API}/sandboxes`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    })
+    expect(createRes.status()).toBe(201)
+    const sandboxId = (await createRes.json()).sandbox_tenant_id as string
+    created.push(sandboxId)
+
+    const started = await request.post(
+      `${API}/sandboxes/${sandboxId}/instances`,
+      {
+        headers: { Authorization: `Bearer ${jwt}` },
+        data: {
+          workflow_key: 'quotation_approval',
+          business_key: `E2E-PERM-${Date.now()}`,
+          input: {
+            quotation: {
+              discount_rate: 0.1,
+              total: 400000,
+              customer_contact_ids: ['c@example.com'],
+            },
+          },
+        },
+      },
+    )
+    expect(started.status()).toBe(201)
+
+    await login(page)
+    await page.goto('/simulation')
+    await expect(async () => {
+      await page.getByTestId('sim-refresh').click()
+      await expect(page.getByTestId('sim-task-table')).toBeVisible({
+        timeout: 3_000,
+      })
+    }).toPass({ timeout: 40_000 })
+
+    await page.locator('[data-testid^="act-as-"]').first().click()
+    await expect(page.getByTestId('sim-form-view')).toBeVisible()
+
+    // 顯示的必須是**被扮演者**的角色，不是測試者的。
+    // 測試者登入時帶的是 designer——出現 designer 就代表
+    // 後端用錯了角色來源，畫面與那個人真正看到的不同。
+    const roles = page.getByTestId('sim-form-roles')
+    await expect(roles).toBeVisible()
+    await expect(roles).not.toContainText('designer')
+
+    await shot(page, '06-被扮演者眼中的欄位權限')
+  })
+})
+
+test.describe('平行分支模擬', () => {
+  // 驗收標準（交辦 §5 S2）：
+  //   「一個測試者從頭走完含平行分支的報價單流程」
+  test.setTimeout(240_000)
+
+  test('會簽的兩張待辦歸成一組，顯示還在等幾條分支', async ({
+    page,
+    request,
+  }) => {
+    await clearSandboxes(request)
+    const jwt = await token(request)
+
+    const createRes = await request.post(`${API}/sandboxes`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    })
+    const sandboxId = (await createRes.json()).sandbox_tenant_id as string
+    created.push(sandboxId)
+
+    const started = await request.post(
+      `${API}/sandboxes/${sandboxId}/instances`,
+      {
+        headers: { Authorization: `Bearer ${jwt}` },
+        data: {
+          workflow_key: 'quotation_parallel_approval',
+          business_key: `E2E-COSIGN-${Date.now()}`,
+          input: {
+            quotation: {
+              discount_rate: 0.2,
+              total: 900000,
+              customer_contact_ids: ['c@example.com'],
+            },
+          },
+        },
+      },
+    )
+    expect(started.status(), '啟動會簽流程失敗').toBe(201)
+
+    await login(page)
+    await page.goto('/simulation')
+
+    // 先過主管簽核，會簽才會展開
+    await expect(async () => {
+      await page.getByTestId('sim-refresh').click()
+      await expect(page.getByTestId('sim-task-table')).toContainText(
+        '主管簽核',
+        { timeout: 3_000 },
+      )
+    }).toPass({ timeout: 60_000 })
+
+    await page.locator('[data-testid^="act-as-"]').first().click()
+    await page.getByTestId('sim-approve').click()
+
+    // 會簽展開：兩張待辦，一個標頭
+    await expect(async () => {
+      await page.getByTestId('sim-refresh').click()
+      await expect(page.locator('[data-testid^="sim-branch-progress-"]')).toBeVisible({
+        timeout: 3_000,
+      })
+    }).toPass({ timeout: 60_000 })
+
+    const header = page.locator('[data-testid^="sim-branch-progress-"]')
+    await expect(header).toContainText('2 條分支')
+    // 標頭只有一個——兩個代表被當成兩組獨立的事，
+    // 使用者會以為流程分岔成兩條路
+    await expect(page.locator('[data-testid^="sim-branch-"]').first()).toBeVisible()
+
+    await shot(page, '07-會簽分支與進度')
+
+    // 簽掉一條，進度要動
+    await page.locator('[data-testid^="act-as-"]').first().click()
+    await page.getByTestId('sim-approve').click()
+
+    await expect(async () => {
+      await page.getByTestId('sim-refresh').click()
+      await expect(page.locator('[data-testid^="sim-branch-progress-"]')).toContainText(
+        '已完成 1 條',
+        { timeout: 3_000 },
+      )
+    }).toPass({ timeout: 60_000 })
+
+    await shot(page, '08-會簽完成一條分支')
+  })
+})
+
+test.describe('時間快轉', () => {
+  test.setTimeout(180_000)
+
+  test('有逾時的節點可以快轉，並說明套用了哪個策略', async ({
+    page,
+    request,
+  }) => {
+    await clearSandboxes(request)
+    const jwt = await token(request)
+
+    const createRes = await request.post(`${API}/sandboxes`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    })
+    const sandboxId = (await createRes.json()).sandbox_tenant_id as string
+    created.push(sandboxId)
+
+    await request.post(`${API}/sandboxes/${sandboxId}/instances`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+      data: {
+        workflow_key: 'quotation_approval',
+        business_key: `E2E-SKIP-${Date.now()}`,
+        input: {
+          quotation: {
+            discount_rate: 0.1,
+            total: 300000,
+            customer_contact_ids: ['c@example.com'],
+          },
+        },
+      },
+    })
+
+    await login(page)
+    await page.goto('/simulation')
+    await expect(async () => {
+      await page.getByTestId('sim-refresh').click()
+      await expect(page.locator('[data-testid^="skip-time-"]')).toBeVisible({
+        timeout: 3_000,
+      })
+    }).toPass({ timeout: 60_000 })
+
+    // 按鈕要寫明快轉多久、之後會發生什麼——
+    // 快轉跑的是真正的逾時策略，不是假造一個通過
+    const btn = page.locator('[data-testid^="skip-time-"]').first()
+    await expect(btn).toContainText('2 天')
+
+    await shot(page, '09-時間快轉按鈕')
+
+    await btn.click()
+    await expect(page.getByTestId('sim-skip-message')).toBeVisible({
+      timeout: 20_000,
+    })
+    await expect(page.getByTestId('sim-skip-message')).toContainText('已快轉')
+
+    await shot(page, '10-快轉後套用的逾時策略')
+  })
+})

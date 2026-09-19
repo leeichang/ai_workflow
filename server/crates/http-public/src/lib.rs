@@ -143,7 +143,7 @@ async fn login(
 
     // password_hash 可為 NULL——組織同步進來的人員（產線作業員、
     // 不用電腦的主管）存在於 app_user 但沒有登入權限。
-    // 見 migrations/0006_organization.sql 與需求 07 §2。
+    // 見 migrations/0009_organization.sql 與需求 07 §2。
     let row: Option<(Uuid, String, String, Option<String>, String, bool)> = sqlx::query_as(
         "select id, name, email, password_hash, status, can_login \
          from app_user where email = $1",

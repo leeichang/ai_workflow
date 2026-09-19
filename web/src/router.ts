@@ -75,6 +75,13 @@ export const router = createRouter({
       component: () => import('./pages/FormDesigner.vue'),
     },
     // 同樣要排在 :workflowKey 之前
+    // 模擬簽核。放在 /simulation 而非 /designer 底下——
+    // 它不是設計工具，是驗證工具。
+    {
+      path: '/simulation',
+      name: 'simulation',
+      component: () => import('./pages/SimulationMode.vue'),
+    },
     {
       path: '/designer/workflows',
       name: 'workflow-list',

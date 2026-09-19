@@ -179,6 +179,8 @@ const navItemsBefore = computed<NavItem[]>(() => [
 
 /** 設計器之後的項目 */
 const navItemsAfter: NavItem[] = [
+  // 模擬簽核排在設計器之後：先設計，再驗證
+  { path: '/simulation', label: '模擬簽核', icon: 'science' },
   { path: '/reports', label: '報表', icon: 'bar_chart' },
   { path: '/settings', label: '設定', icon: 'settings' },
 ]

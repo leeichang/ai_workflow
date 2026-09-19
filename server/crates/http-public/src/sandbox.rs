@@ -24,7 +24,8 @@ pub fn routes() -> Router<AppState> {
         .route("/sandboxes/{id}/retire", post(retire))
         .route("/sandboxes/{id}/participants/{node_id}", get(participants))
         .route("/sandboxes/{id}/tasks", get(pending_tasks))
-        .route("/tasks/{id}/simulate", post(simulate))
+        .route("/sandboxes/{id}/instances", post(start_instance))
+        .route("/sandboxes/{id}/tasks/{task_id}/simulate", post(simulate))
 }
 
 #[derive(Serialize)]
@@ -173,6 +174,116 @@ async fn participants(
     ))
 }
 
+#[derive(Deserialize)]
+pub struct StartBody {
+    workflow_key: String,
+    business_key: String,
+    #[serde(default)]
+    input: Value,
+}
+
+/// 在沙箱裡啟動一張測試單
+///
+/// 沒有這支的話，測試者得登入沙箱租戶才能啟動流程——
+/// 那與「不換身分登入」矛盾，整個模擬就少了起點。
+///
+/// 與 `POST /instances` 的差別只在租戶取自路徑而非 JWT，
+/// 其餘邏輯（只能用已發布版本、鎖定表單版本、workflow_id 前綴）
+/// 都沿用同一條路徑。
+async fn start_instance(
+    State(state): State<AppState>,
+    actor: Actor,
+    Path(sandbox_id): Path<Uuid>,
+    Json(body): Json<StartBody>,
+) -> ApiResult<(axum::http::StatusCode, Json<Value>)> {
+    require_simulation_owner(&state, &actor, sandbox_id).await?;
+
+    let handle = state.temporal.as_ref().ok_or_else(|| {
+        ApiError::ServiceUnavailable("流程引擎未連線，暫時無法啟動".into())
+    })?;
+
+    let mut tx = state.db.tenant_tx(sandbox_id).await?;
+
+    let definition = persistence::workflow::find_by_key(&mut tx, &body.workflow_key).await?;
+    let published = persistence::workflow::get_latest_published(&mut tx, definition.id)
+        .await?
+        .ok_or_else(|| {
+            ApiError::Conflict(format!("流程 {} 尚未發布，無法啟動", body.workflow_key))
+        })?;
+
+    let _wf_id = temporal_client::workflow_id::build(
+        sandbox_id,
+        &definition.business_object,
+        &body.business_key,
+    )
+    .map_err(|e| ApiError::BadRequest(e.to_string()))?;
+
+    let form_version =
+        persistence::form::find_published_by_business_object(&mut tx, &definition.business_object)
+            .await?;
+
+    let instance = persistence::instance::create(
+        &mut tx,
+        persistence::instance::CreateInstance {
+            workflow_version_id: published.id,
+            form_version_id: form_version.map(|v| v.id),
+            business_object: definition.business_object.clone(),
+            business_key: body.business_key.clone(),
+            temporal_workflow_id: _wf_id.clone(),
+            temporal_run_id: String::new(),
+            input: body.input.clone(),
+        },
+        // 發起人記沙箱裡的建立者——resolver 的 manager_of(initiator)
+        // 要解析得出這個人的主管
+        session_creator_in_sandbox(&state, sandbox_id).await?,
+    )
+    .await?;
+
+    tx.commit().await?;
+
+    // 資料已落地才啟動 Temporal——順序與 POST /instances 一致：
+    // 先寫 DB 再啟動，失敗時留下可回收的孤兒紀錄；
+    // 反過來會留下系統完全不知道存在的幽靈流程。
+    let started = handle
+        .client
+        .start_workflow(temporal_client::StartWorkflow {
+            tenant_id: sandbox_id,
+            business_object: definition.business_object.clone(),
+            instance_id: body.business_key.clone(),
+            workflow_type: "DslInterpreter".into(),
+            task_queue: handle.task_queue.clone(),
+            args: vec![serde_json::json!({
+                "tenant_id": sandbox_id,
+                "instance_id": instance.id,
+                "workflow_version_id": published.id,
+                "dsl": published.content,
+                "business_object": body.input,
+            })],
+        })
+        .await
+        .map_err(|e| ApiError::ServiceUnavailable(format!("啟動流程失敗：{e}")))?;
+
+    let mut tx = state.db.tenant_tx(sandbox_id).await?;
+    persistence::instance::set_run_id(&mut tx, instance.id, &started.run_id).await?;
+    tx.commit().await?;
+
+    Ok((
+        axum::http::StatusCode::CREATED,
+        Json(serde_json::json!({
+            "id": instance.id,
+            "business_key": body.business_key,
+        })),
+    ))
+}
+
+/// 沙箱建立者在沙箱內的 user id
+async fn session_creator_in_sandbox(state: &AppState, sandbox_id: Uuid) -> ApiResult<Uuid> {
+    persistence::sandbox::active_session_of(&state.db, sandbox_id)
+        .await?
+        .and_then(|s| s.created_by_in_sandbox)
+        .ok_or_else(|| ApiError::Conflict("這個開發模式沒有對應的使用者".into()))
+}
+
 #[derive(Serialize)]
 pub struct PendingTaskView {
     task_id: Uuid,
@@ -266,7 +377,7 @@ pub struct SimulateResult {
 async fn simulate(
     State(state): State<AppState>,
     actor: Actor,
-    Path(task_id): Path<Uuid>,
+    Path((sandbox_id, task_id)): Path<(Uuid, Uuid)>,
     Json(body): Json<SimulateBody>,
 ) -> ApiResult<Json<SimulateResult>> {
     if body.decision != "APPROVE" && body.decision != "REJECT" {
@@ -275,11 +386,12 @@ async fn simulate(
         ));
     }
 
-    // 授權：必須在沙箱，且是該沙箱的建立者本人。
-    // 與 tasks.rs 的開洞同一組條件——沙箱身分是環境狀態不是權限。
-    require_simulation_owner(&state, &actor, actor.tenant_id).await?;
+    // 授權：目標必須是沙箱、屬於我的租戶、且我是建立者本人。
+    // 沙箱身分是環境狀態不是權限。
+    require_simulation_owner(&state, &actor, sandbox_id).await?;
 
-    let mut tx = state.db.tenant_tx(actor.tenant_id).await?;
+    // 之後的操作都在**沙箱租戶**內進行——測試者本人仍在正式租戶。
+    let mut tx = state.db.tenant_tx(sandbox_id).await?;
     let task = persistence::human_task::find_by_id(&mut tx, task_id).await?;
 
     if task.status != "PENDING" {
@@ -352,8 +464,17 @@ async fn simulate(
 
 /// 檢查操作者是不是這個沙箱的建立者本人
 ///
-/// 與 `tasks.rs` 的 `simulation_allowed()` 同一組條件。
-/// 兩處都要檢查，因為兩處都是可以做決策的入口。
+/// **測試者不換身分登入**（D-07c）：他一直以正式租戶的身分登入，
+/// 只是操作沙箱裡的東西。所以比對的是正式租戶的 id 與租戶：
+///
+///   1. 目標必須是沙箱租戶
+///   2. 呼叫者所屬的租戶必須是這個沙箱的來源租戶
+///   3. 呼叫者必須是建立者本人
+///
+/// 第 2 條不可省：少了它，別的租戶只要知道沙箱 id 就能操作它。
+///
+/// 與 `tasks.rs` 的開洞互補——那條處理的是「真的登入沙箱租戶」
+/// 的情況，這條處理「從正式租戶操作沙箱」，兩者都不是角色。
 async fn require_simulation_owner(
     state: &AppState,
     actor: &Actor,
@@ -368,8 +489,11 @@ async fn require_simulation_owner(
         .await?
         .ok_or_else(|| ApiError::Forbidden("這個開發模式已退役".into()))?;
 
-    // 比對沙箱內的 id——登入沙箱後 JWT 帶的是沙箱租戶的 user id
-    if session.created_by_in_sandbox != Some(actor.user_id) {
+    if session.tenant_id != actor.tenant_id {
+        return Err(ApiError::Forbidden("這個開發模式不屬於您的租戶".into()));
+    }
+
+    if session.created_by != actor.user_id {
         return Err(ApiError::Forbidden("只有開發模式的建立者可以模擬簽核".into()));
     }
 

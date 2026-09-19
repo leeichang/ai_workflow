@@ -114,6 +114,8 @@ async fn sandbox_is_flagged_and_has_session() {
     assert_eq!(session.created_by, tester, "session 要記得建立者是誰");
     assert_eq!(session.status, "ACTIVE");
     assert_eq!(session.sandbox_tenant_id, Some(sandbox_id));
+
+    persistence::sandbox::retire(&db, sandbox_id).await.ok();
 }
 
 #[tokio::test]
@@ -145,6 +147,9 @@ async fn sandbox_copies_users_so_resolver_can_work() {
         users.iter().all(|(id, _)| *id != tester),
         "沙箱的 id 必須重新產生，不可與來源相同"
     );
+
+    // 收掉自己建的沙箱——每個沙箱都複製整份定義，不收會累積
+    persistence::sandbox::retire(&db, sandbox_id).await.ok();
 }
 
 #[tokio::test]
@@ -166,6 +171,9 @@ async fn sandbox_copies_roles() {
         roles.iter().any(|(c,)| c == "approver"),
         "沙箱要有來源的角色"
     );
+
+    // 收掉自己建的沙箱——每個沙箱都複製整份定義，不收會累積
+    persistence::sandbox::retire(&db, sandbox_id).await.ok();
 }
 
 // ── 隔離（雙向）────────────────────────────────────────
@@ -193,6 +201,9 @@ async fn sandbox_data_does_not_leak_into_parent() {
         .unwrap();
 
     assert!(leaked.is_empty(), "沙箱的資料不該出現在正式租戶");
+
+    // 收掉自己建的沙箱——每個沙箱都複製整份定義，不收會累積
+    persistence::sandbox::retire(&db, sandbox_id).await.ok();
 }
 
 #[tokio::test]
@@ -221,6 +232,9 @@ async fn parent_data_does_not_leak_into_sandbox_after_creation() {
         .unwrap();
 
     assert!(leaked.is_empty(), "建立後正式租戶的異動不該流進沙箱");
+
+    // 收掉自己建的沙箱——每個沙箱都複製整份定義，不收會累積
+    persistence::sandbox::retire(&db, sandbox_id).await.ok();
 }
 
 // ── 回收 ──────────────────────────────────────────────
@@ -368,6 +382,9 @@ async fn sandbox_creator_is_allowed() {
         !simulation_allowed(&db, sandbox_id, tester).await,
         "用正式租戶的 id 比對不該成立"
     );
+
+    // 收掉自己建的沙箱——每個沙箱都複製整份定義，不收會累積
+    persistence::sandbox::retire(&db, sandbox_id).await.ok();
 }
 
 #[tokio::test]
@@ -384,6 +401,9 @@ async fn sandbox_non_creator_is_blocked() {
         !simulation_allowed(&db, sandbox_id, someone_else).await,
         "沙箱的非建立者不可模擬簽核"
     );
+
+    // 收掉自己建的沙箱——每個沙箱都複製整份定義，不收會累積
+    persistence::sandbox::retire(&db, sandbox_id).await.ok();
 }
 
 #[tokio::test]

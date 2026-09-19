@@ -10,7 +10,7 @@
 //!     不影響既有表單定義
 //!
 //! 來源名稱刻意用 EIG canonical 的詞彙（`employee` 而非 `app_user`），
-//! 與 `migrations/0006_organization.sql` 建立的 view 一致。
+//! 與 `migrations/0009_organization.sql` 建立的 view 一致。
 
 use axum::extract::{Path, Query, State};
 use axum::routing::get;

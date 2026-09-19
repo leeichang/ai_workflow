@@ -24,6 +24,13 @@ const errorMessage = ref('')
 /** 只看 HIGH。導入期通常先把會卡住的修完再管其他 */
 const highOnly = ref(false)
 
+/** 對象類型的中文。未知值原樣顯示，不要硬塞一個預設 */
+const SUBJECT_LABEL: Record<string, string> = {
+  employee: '員工',
+  department: '部門',
+  role: '角色',
+}
+
 const SEVERITY_STYLE: Record<Severity, { text: string; class: string }> = {
   HIGH: { text: '會卡住', class: 'bg-error-container text-on-error-container' },
   MEDIUM: { text: '功能受損', class: 'bg-[#FEF3C7] text-[#92400E]' },
@@ -51,6 +58,20 @@ function fixLink(issue: OrgIssue) {
     path: '/designer/organization',
     query: { [key]: issue.subject_id },
   }
+}
+
+/**
+ * 角色成員沒有管理畫面
+ *
+ * `ROLE_HAS_NO_MEMBERS` 的 subject 是角色，不是人或部門。
+ * 組織管理頁沒有「編輯角色成員」，指過去只會開一個不存在的
+ * 員工編輯然後靜默失敗——那比沒有連結更糟。
+ *
+ * 要修這一項得改 seed 或用 SQL 指派 user_role。等角色管理 UI
+ * 做出來之前，先讓使用者看到說明而不是一個壞掉的按鈕。
+ */
+function hasFixLink(issue: OrgIssue): boolean {
+  return issue.subject_type !== 'role'
 }
 
 async function load(): Promise<void> {
@@ -229,7 +250,7 @@ onMounted(load)
                     {{ issue.subject_name }}
                   </p>
                   <p class="font-label-caption text-label-caption text-secondary mt-0.5">
-                    {{ issue.subject_type === 'department' ? '部門' : '員工' }}
+                    {{ SUBJECT_LABEL[issue.subject_type] ?? issue.subject_type }}
                   </p>
                 </td>
                 <td class="px-space-md py-space-sm align-top">
@@ -249,6 +270,7 @@ onMounted(load)
                     部門的問題先跳到組織管理讓使用者找得到它
                   -->
                   <RouterLink
+                    v-if="hasFixLink(issue)"
                     :to="fixLink(issue)"
                     class="h-7 px-2 inline-flex items-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-low font-label-header text-label-header whitespace-nowrap"
                     :data-testid="`org-health-fix-${issue.subject_id}`"

@@ -33,11 +33,18 @@ export type IssueCode =
   | 'EMPLOYEE_NO_DEPARTMENT'
   | 'EMPLOYEE_NO_EMAIL'
   | 'DEPARTMENT_BROKEN_PARENT'
+  /**
+   * 已發布的流程引用了沒有成員的角色
+   *
+   * subject 是角色而非人或部門——組織管理頁沒有角色成員的編輯畫面，
+   * 所以這一項不提供「前往修正」
+   */
+  | 'ROLE_HAS_NO_MEMBERS'
 
 export interface OrgIssue {
   code: IssueCode
   severity: Severity
-  /** employee 或 department */
+  /** employee、department 或 role */
   subject_type: string
   subject_id: string
   subject_name: string

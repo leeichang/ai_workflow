@@ -104,20 +104,37 @@ pub struct ListFilter {
     pub business_object: Option<String>,
     pub status: Option<String>,
     pub limit: i64,
+    /// 只列出這個人看得到的單。`None` = 不設限（監控角色）。
+    ///
+    /// 刻意做成 Option 而非 bool + user_id：呼叫端必須明確表態
+    /// 「不設限」，漏傳會變成看得到全部，那正是要避免的方向。
+    pub visible_to: Option<Uuid>,
 }
 
 pub async fn list(tx: &mut TenantTx<'_>, filter: ListFilter) -> Result<Vec<WorkflowInstance>> {
     let limit = filter.limit.clamp(1, 200);
 
+    // 可見範圍：RLS 只隔離租戶，同租戶的人預設看得到彼此的單。
+    // 流程監控要「一般使用者看不到別人的單」，因此這裡再收一層。
+    //
+    // 看得到的條件（`visible_to` 為 None 時不設限，給監控角色用）：
+    //   1. 自己發起的
+    //   2. 自己有（或曾有）待辦的——那張單本來就在你的收件匣裡，
+    //      看得到它的存在不算新增洩漏
     let rows = sqlx::query_as::<_, WorkflowInstance>(
         r#"
         select id, workflow_version_id, form_version_id,
                business_object, business_key,
                temporal_workflow_id, temporal_run_id, status, input, output,
                error, started_by, started_at, ended_at
-        from workflow_instance
+        from workflow_instance i
         where ($1::text is null or business_object = $1)
           and ($2::text is null or status = $2)
+          and ($4::uuid is null
+               or started_by = $4
+               or exists (select 1 from human_task t
+                          where t.instance_id = i.id
+                            and t.assignee_user_id = $4))
         order by started_at desc
         limit $3
         "#,
@@ -125,6 +142,7 @@ pub async fn list(tx: &mut TenantTx<'_>, filter: ListFilter) -> Result<Vec<Workf
     .bind(filter.business_object.as_deref())
     .bind(filter.status.as_deref())
     .bind(limit)
+    .bind(filter.visible_to)
     .fetch_all(tx.executor())
     .await?;
 

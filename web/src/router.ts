@@ -83,6 +83,11 @@ export const router = createRouter({
       component: () => import('./pages/SimulationMode.vue'),
     },
     {
+      path: '/monitor',
+      name: 'monitor',
+      component: () => import('./pages/ProcessMonitor.vue'),
+    },
+    {
       path: '/designer/workflows',
       name: 'workflow-list',
       component: () => import('./pages/WorkflowList.vue'),

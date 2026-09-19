@@ -45,8 +45,19 @@ export function list(
   return request<WorkflowInstance[]>(`/instances${qs ? `?${qs}` : ''}`)
 }
 
-export function getOne(id: string): Promise<WorkflowInstance> {
-  return request<WorkflowInstance>(`/instances/${id}`)
+/**
+ * 單筆詳情
+ *
+ * `live_status` 是 Temporal 回報的即時狀態，與本地的 `status` 分開呈現：
+ * 後者是投影，可能落後。**兩者不一致本身就是有用的訊號**，
+ * 合併成一個欄位會把它藏起來。
+ */
+export interface InstanceDetail extends WorkflowInstance {
+  live_status: string | null
+}
+
+export function getOne(id: string): Promise<InstanceDetail> {
+  return request<InstanceDetail>(`/instances/${encodeURIComponent(id)}`)
 }
 
 export interface StartInstanceInput {

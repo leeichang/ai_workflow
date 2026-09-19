@@ -293,6 +293,7 @@ async fn list_returns_form_version_column() {
     let rows = persistence::instance::list(
         &mut tx,
         persistence::instance::ListFilter {
+            visible_to: None,
             business_object: Some("list_bo".into()),
             status: None,
             limit: 10,

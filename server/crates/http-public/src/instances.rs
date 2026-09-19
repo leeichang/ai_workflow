@@ -219,6 +219,18 @@ async fn list(
     actor: Actor,
     Query(q): Query<ListQuery>,
 ) -> ApiResult<Json<Vec<persistence::instance::WorkflowInstance>>> {
+    // 一般使用者只看得到自己的單。RLS 只隔離到租戶，
+    // 同租戶的人預設看得見彼此——流程監控要的是更嚴的範圍。
+    //
+    // 只有 admin 不設限。刻意不把 approver、finance_manager 等
+    // 一併放行：那些角色是「會簽到某些單」，不是「該看到全部單」，
+    // 兩者混為一談會讓監控變成全租戶的資料出口。
+    let visible_to = if actor.has_role("admin") {
+        None
+    } else {
+        Some(actor.user_id)
+    };
+
     let mut tx = state.db.tenant_tx(actor.tenant_id).await?;
     let items = persistence::instance::list(
         &mut tx,
@@ -226,6 +238,7 @@ async fn list(
             business_object: q.business_object,
             status: q.status,
             limit: q.limit,
+            visible_to,
         },
     )
     .await?;
@@ -241,7 +254,18 @@ async fn get_one(
 ) -> ApiResult<Json<InstanceDetail>> {
     let mut tx = state.db.tenant_tx(actor.tenant_id).await?;
     let instance = persistence::instance::find_by_id(&mut tx, id).await?;
+
+    // 清單過濾了，單筆也要濾——否則知道 id 就能繞過清單的限制，
+    // 而 id 會出現在通知連結、稽核紀錄裡，不是秘密。
+    let visible = actor.has_role("admin")
+        || instance.started_by == Some(actor.user_id)
+        || persistence::human_task::is_participant(&mut tx, id, actor.user_id).await?;
     tx.commit().await?;
+
+    if !visible {
+        // 回 404 而非 403：403 等於告訴對方「這張單存在」。
+        return Err(ApiError::not_found("workflow_instance", id));
+    }
 
     // 向 Temporal 問即時狀態。問不到不是錯誤——Temporal 可能暫時
     // 不可用，或流程已超過 retention 被清除，兩者都不影響歷史查詢。

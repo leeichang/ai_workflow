@@ -195,3 +195,24 @@ pub async fn cancel_by_instance(
 
     Ok(affected)
 }
+
+/// 這個人是否在這筆流程裡有（或曾有）待辦
+///
+/// 流程監控的可見範圍用它判定：那張單本來就在你的收件匣裡，
+/// 讓你看得到它的存在不算新增洩漏。
+pub async fn is_participant(
+    tx: &mut TenantTx<'_>,
+    instance_id: Uuid,
+    user_id: Uuid,
+) -> Result<bool> {
+    let found: Option<i32> = sqlx::query_scalar(
+        "select 1 from human_task
+         where instance_id = $1 and assignee_user_id = $2 limit 1",
+    )
+    .bind(instance_id)
+    .bind(user_id)
+    .fetch_optional(tx.executor())
+    .await?;
+
+    Ok(found.is_some())
+}

@@ -71,8 +71,17 @@ export interface Source {
   name: string
   /** 來源欄位名 → canonical 欄位名 */
   mapping_definition: Record<string, string>
-  /** 完整性閘的門檻。低於上次成功筆數 × 此值即整批中止 */
+  /** 完整性閘的比例門檻 */
   completeness_threshold: number
+  /**
+   * 完整性閘的絕對值條件（Q-02）
+   *
+   * 兩個條件**都**成立才中止：比例低於門檻，且減少人數超過此值。
+   * 只看比例的話，50 人的公司走掉 6 人就誤觸發。
+   */
+  min_drop_threshold: number
+  /** 連續消失幾次才進待停用清單（Q-03） */
+  deactivation_miss_threshold: number
   /** null 代表從未成功同步過，完整性閘不生效 */
   last_success_count: number | null
   last_synced_at: string | null
@@ -119,7 +128,12 @@ export function deleteSource(id: string): Promise<void> {
 
 export function updateSource(
   id: string,
-  patch: { mapping?: Record<string, string>; completeness_threshold?: number },
+  patch: {
+    mapping?: Record<string, string>
+    completeness_threshold?: number
+    min_drop_threshold?: number
+    deactivation_miss_threshold?: number
+  },
 ): Promise<void> {
   return request<void>(`/integration/sources/${id}`, {
     method: 'PATCH',
@@ -232,4 +246,55 @@ export interface SyncIssueRow extends SyncIssue {
 
 export function listIssues(runId: string): Promise<SyncIssueRow[]> {
   return request<SyncIssueRow[]>(`/integration/sync-runs/${runId}/issues`)
+}
+
+// ── 待停用（§7 規則 3、4）──────────────────────────────
+
+export interface PendingDeactivation {
+  id: string
+  user_id: string
+  name: string
+  employee_no: string | null
+  email: string
+  department_name: string | null
+  /** 連續幾次在來源查不到 */
+  miss_count: number
+  first_missed_at: string
+  last_missed_at: string
+  status: string
+  /** 這個來源設定的門檻。前端要標示「還差幾次」 */
+  threshold: number
+  /**
+   * 停用前置檢查的結果（§7 規則 4）
+   *
+   * 非空時不可停用。是別人主管、是部門主管、或有未完成待辦的人
+   * 停用後，流程會找不到簽核人或待辦變成孤兒。
+   */
+  blockers: string[]
+}
+
+export function listPendingDeactivations(): Promise<PendingDeactivation[]> {
+  return request<PendingDeactivation[]>('/integration/pending-deactivations')
+}
+
+/**
+ * 確認停用
+ *
+ * 未達門檻或前置檢查不過時後端會拒絕。
+ */
+export function confirmDeactivation(id: string): Promise<void> {
+  return request<void>(`/integration/pending-deactivations/${id}/confirm`, {
+    method: 'POST',
+  })
+}
+
+/**
+ * 忽略
+ *
+ * 管理員判斷這個人仍在職，只是匯出漏了。下次消失時重新累計。
+ */
+export function dismissDeactivation(id: string): Promise<void> {
+  return request<void>(`/integration/pending-deactivations/${id}/dismiss`, {
+    method: 'POST',
+  })
 }

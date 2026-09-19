@@ -249,19 +249,22 @@ test('完整性閘擋下筆數驟減的檔案', async ({ page }) => {
   await page.goto('/designer/org-import')
 
   const prefix = `G${Date.now().toString().slice(-6)}`
-  const four =
+
+  // 15 人。少到 1 人時減少 14 人，超過預設的絕對值門檻 10——
+  // Q-02 改成雙條件後，只少 3 人不再觸發（那是小公司的正常異動）
+  const many =
     '工號,姓名,信箱,部門,職稱,主管工號\n' +
-    [1, 2, 3, 4]
+    Array.from({ length: 15 }, (_, index) => index + 1)
       .map(
         (i) =>
           `${prefix}${i},閘測試${i},${prefix.toLowerCase()}${i}@demo.local,sales,工程師,\n`,
       )
       .join('')
 
-  // 第一次：4 人寫入成功
+  // 第一次：15 人寫入成功
   await page
     .getByTestId('import-file')
-    .setInputFiles(writeCsv(`${prefix}-four.csv`, four))
+    .setInputFiles(writeCsv(`${prefix}-many.csv`, many))
   await page.getByTestId('import-preview').click()
   await expect(page.getByTestId('import-preview-result')).toBeVisible()
   await page.getByTestId('import-commit').click()

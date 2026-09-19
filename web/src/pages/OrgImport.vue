@@ -456,8 +456,15 @@ onMounted(() => {
           data-testid="import-missing-hint"
         >
           有 {{ syncResult.counts.missing_in_source_count }} 人在這次的檔案裡找不到。
-          他們已標記但**未停用**——來源缺漏與離職是兩回事。
-          連續多次消失後才會進入待停用清單，由管理員確認。
+          他們已標記但尚未停用——來源缺漏與離職是兩回事。
+          連續多次消失後才會進入待停用清單，由您確認。
+          <RouterLink
+            to="/designer/sync-center"
+            class="underline"
+            data-testid="import-goto-sync-center"
+          >
+            前往同步中心
+          </RouterLink>
         </p>
 
         <div class="mt-space-md flex items-center gap-space-sm">

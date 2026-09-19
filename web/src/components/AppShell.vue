@@ -159,6 +159,12 @@ const DESIGNER_SUB_ITEMS: SubNavItem[] = [
     icon: 'upload_file',
   },
   {
+    key: 'sync-center',
+    path: '/designer/sync-center',
+    label: '同步中心',
+    icon: 'sync',
+  },
+  {
     key: 'org-health',
     path: '/designer/org-health',
     label: '組織健康檢查',

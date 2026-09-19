@@ -88,12 +88,26 @@ pub struct SyncOutcome {
 /// 分離出來是為了能單獨測試——這是整個同步最危險的一個判斷，
 /// 而要用真實資料庫重現「來源突然少一半」的情境很麻煩。
 ///
+/// ## 為什麼是「比例且絕對值」雙條件（需求 Q-02）
+///
+/// 只看比例的話，50 人的公司走掉 6 人（12%）就誤觸發 0.9 的門檻。
+/// 那不是資料缺漏，是正常的人員異動——管理員被擋下之後只能
+/// 調高門檻，而調高之後保護就變弱了。
+///
+/// 改成**兩個條件都超過才中止**：
+///   - 比例低於 `threshold`
+///   - 且減少的人數超過 `min_drop`
+///
+/// 小公司的正常異動（6 人）不會誤擋；1000 人的來源掉到 823 人
+/// （減少 177 人）兩個條件都成立，照樣擋得住。
+///
 /// `last_success` 為 None 代表從未成功同步過，首次匯入沒有比較基準，
 /// 閘不生效。
 pub fn passes_completeness_gate(
     received: i32,
     last_success: Option<i32>,
     threshold: f64,
+    min_drop: i32,
 ) -> bool {
     let Some(last) = last_success else {
         return true;
@@ -101,7 +115,14 @@ pub fn passes_completeness_gate(
     if last <= 0 {
         return true;
     }
-    f64::from(received) >= f64::from(last) * threshold
+
+    let ratio_ok = f64::from(received) >= f64::from(last) * threshold;
+    if ratio_ok {
+        return true;
+    }
+
+    // 比例不過，但減少的人數不多——視為正常異動
+    (last - received) < min_drop
 }
 
 // ── 驗證 ────────────────────────────────────────────────
@@ -223,6 +244,7 @@ pub async fn sync_employees(
     rows: &[SyncRow],
     last_success_count: Option<i32>,
     threshold: f64,
+    min_drop: i32,
     dry_run: bool,
 ) -> Result<SyncOutcome> {
     let mut counts = SyncCounts {
@@ -239,7 +261,12 @@ pub async fn sync_employees(
     // 完整性閘用**通過驗證的筆數**而非讀到的筆數：
     // 一份格式全壞的檔案讀得到 1000 列卻一筆都寫不進去，
     // 那與「來源只回 100 筆」一樣危險
-    if !passes_completeness_gate(counts.validated_count, last_success_count, threshold) {
+    if !passes_completeness_gate(
+        counts.validated_count,
+        last_success_count,
+        threshold,
+        min_drop,
+    ) {
         let last = last_success_count.unwrap_or(0);
         let validated = counts.validated_count;
         return Ok(SyncOutcome {
@@ -247,9 +274,11 @@ pub async fn sync_employees(
             counts,
             issues,
             message: Some(format!(
-                "本次只有 {validated} 筆通過驗證，低於上次成功同步的 {last} 筆 × {:.0}%。\
+                "本次只有 {validated} 筆通過驗證，比上次成功同步的 {last} 筆\
+                 少了 {} 人（低於 {:.0}% 且超過 {min_drop} 人）。\
                  整批中止，未寫入任何變更——來源資料不完整時若照寫，\
                  消失的人會被當成離職",
+                last - validated,
                 threshold * 100.0
             )),
         });
@@ -643,23 +672,242 @@ async fn record_pending_deactivation(
     Ok(())
 }
 
+// ── 待停用（§7 規則 3、4）──────────────────────────────
+
+/// 待停用清單的一筆
+#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+pub struct PendingDeactivation {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub name: String,
+    pub employee_no: Option<String>,
+    pub email: String,
+    pub department_name: Option<String>,
+    /// 連續幾次在來源查不到
+    pub miss_count: i32,
+    pub first_missed_at: chrono::DateTime<chrono::Utc>,
+    pub last_missed_at: chrono::DateTime<chrono::Utc>,
+    pub status: String,
+    /// 這個來源設定的閾值。前端要標示「還差幾次」
+    pub threshold: i32,
+    /// 停用前置檢查的結果。非空時不可停用
+    pub blockers: Vec<String>,
+}
+
+/// 列出待停用清單
+///
+/// 只回 `PENDING` 的。已確認或已忽略的留著是為了稽核，
+/// 但管理員的待辦清單不該被它們塞滿。
+///
+/// `blockers` 每一筆都即時算——組織會變動，一小時前算的結果
+/// 現在可能已經不成立。快取它會讓管理員看到過期的阻擋理由。
+pub async fn list_pending_deactivations(
+    tx: &mut TenantTx<'_>,
+) -> Result<Vec<PendingDeactivation>> {
+    let rows: Vec<(
+        Uuid,
+        Uuid,
+        String,
+        Option<String>,
+        String,
+        Option<String>,
+        i32,
+        chrono::DateTime<chrono::Utc>,
+        chrono::DateTime<chrono::Utc>,
+        String,
+        i32,
+    )> = sqlx::query_as(
+        r#"
+        select p.id, p.user_id, u.name, u.employee_no, u.email,
+               d.name as department_name,
+               p.miss_count, p.first_missed_at, p.last_missed_at, p.status,
+               s.deactivation_miss_threshold
+        from integration_pending_deactivation p
+        join app_user u on u.id = p.user_id
+        join integration_source s on s.id = p.source_id
+        left join department d on d.id = u.department_id
+        where p.status = 'PENDING'
+        order by p.miss_count desc, u.name
+        "#,
+    )
+    .fetch_all(tx.executor())
+    .await?;
+
+    let mut result = Vec::with_capacity(rows.len());
+    for row in rows {
+        let blockers = deactivation_blockers(tx, row.1).await?;
+        result.push(PendingDeactivation {
+            id: row.0,
+            user_id: row.1,
+            name: row.2,
+            employee_no: row.3,
+            email: row.4,
+            department_name: row.5,
+            miss_count: row.6,
+            first_missed_at: row.7,
+            last_missed_at: row.8,
+            status: row.9,
+            threshold: row.10,
+            blockers,
+        });
+    }
+
+    Ok(result)
+}
+
+/// 停用前置檢查（§7 規則 4）
+///
+/// 回傳阻擋的理由。空的代表可以停用。
+///
+/// > 該員工若是他人的 `manager_id`、或任何
+/// > `department.manager_user_id`、或有未完成 Human Task
+/// > → **擋下停用**，先要求轉派
+///
+/// 停用一個主管，他所有部屬的 `manager_of` 會解析到一個
+/// `status = 'DISABLED'` 的人。`participant::manager_of` 不看狀態，
+/// 所以解析仍會成功——任務照樣指派給他，而他收不到通知。
+/// 這比解析失敗更難發現。
+pub async fn deactivation_blockers(
+    tx: &mut TenantTx<'_>,
+    user_id: Uuid,
+) -> Result<Vec<String>> {
+    let mut blockers = Vec::new();
+
+    let subordinates: i64 =
+        sqlx::query_scalar("select count(*) from app_user where manager_id = $1")
+            .bind(user_id)
+            .fetch_one(tx.executor())
+            .await?;
+    if subordinates > 0 {
+        blockers.push(format!(
+            "是 {subordinates} 位員工的直屬主管。停用後他們送單會找不到簽核人"
+        ));
+    }
+
+    let departments: i64 =
+        sqlx::query_scalar("select count(*) from department where manager_user_id = $1")
+            .bind(user_id)
+            .fetch_one(tx.executor())
+            .await?;
+    if departments > 0 {
+        blockers.push(format!("是 {departments} 個部門的主管。請先改派"));
+    }
+
+    // 未完成的待辦。停用後這些任務沒有人能處理——
+    // assignee 已經凍結，不會因為他停用而自動改派
+    let tasks: i64 = sqlx::query_scalar(
+        "select count(*) from human_task
+         where assignee_user_id = $1 and status = 'PENDING'",
+    )
+    .bind(user_id)
+    .fetch_one(tx.executor())
+    .await?;
+    if tasks > 0 {
+        blockers.push(format!("有 {tasks} 件未完成的待辦。請先轉派"));
+    }
+
+    Ok(blockers)
+}
+
+/// 確認停用
+///
+/// 前置檢查不過時拒絕——讓管理員存得進去再叫他去修沒有道理。
+pub async fn confirm_deactivation(
+    tx: &mut TenantTx<'_>,
+    pending_id: Uuid,
+    actor_id: Uuid,
+) -> Result<Uuid> {
+    let row: Option<(Uuid, i32, i32)> = sqlx::query_as(
+        "select p.user_id, p.miss_count, s.deactivation_miss_threshold
+         from integration_pending_deactivation p
+         join integration_source s on s.id = p.source_id
+         where p.id = $1 and p.status = 'PENDING'",
+    )
+    .bind(pending_id)
+    .fetch_optional(tx.executor())
+    .await?;
+
+    let Some((user_id, miss_count, threshold)) = row else {
+        return Err(Error::not_found("pending_deactivation", pending_id));
+    };
+
+    // 還沒達到閾值就不該出現在清單上，但 API 可能被直接呼叫
+    if miss_count < threshold {
+        return Err(Error::Conflict(format!(
+            "此人只連續消失 {miss_count} 次，未達 {threshold} 次的門檻。\
+             來源缺漏與離職是兩回事，不該提前停用"
+        )));
+    }
+
+    let blockers = deactivation_blockers(tx, user_id).await?;
+    if !blockers.is_empty() {
+        return Err(Error::Conflict(format!(
+            "無法停用：{}。請先處理再回來",
+            blockers.join("；")
+        )));
+    }
+
+    sqlx::query("update app_user set status = 'DISABLED', updated_at = now() where id = $1")
+        .bind(user_id)
+        .execute(tx.executor())
+        .await?;
+
+    sqlx::query(
+        "update integration_pending_deactivation
+         set status = 'CONFIRMED', resolved_at = now(), resolved_by = $2
+         where id = $1",
+    )
+    .bind(pending_id)
+    .bind(actor_id)
+    .execute(tx.executor())
+    .await?;
+
+    Ok(user_id)
+}
+
+/// 忽略
+///
+/// 管理員判斷這個人仍在職，只是匯出漏了。
+///
+/// 刪除紀錄而非標記 `DISMISSED` 後留著：下次他又消失時要能
+/// 重新累計。留著的話 `on conflict do update` 會在舊紀錄上加一，
+/// 次數立刻超過閾值又跳出來。
+pub async fn dismiss_deactivation(
+    tx: &mut TenantTx<'_>,
+    pending_id: Uuid,
+) -> Result<Uuid> {
+    let user_id: Option<Uuid> = sqlx::query_scalar(
+        "delete from integration_pending_deactivation
+         where id = $1 and status = 'PENDING'
+         returning user_id",
+    )
+    .bind(pending_id)
+    .fetch_optional(tx.executor())
+    .await?;
+
+    user_id.ok_or_else(|| Error::not_found("pending_deactivation", pending_id))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    /// 預設的絕對值門檻。與 migration 0008 一致
+    const MIN_DROP: i32 = 10;
+
     /// 完整性閘：首次匯入沒有比較基準
     #[test]
     fn 首次匯入不擋() {
-        assert!(passes_completeness_gate(10, None, 0.9));
-        assert!(passes_completeness_gate(0, None, 0.9));
+        assert!(passes_completeness_gate(10, None, 0.9, MIN_DROP));
+        assert!(passes_completeness_gate(0, None, 0.9, MIN_DROP));
     }
 
     #[test]
     fn 筆數足夠時放行() {
         // 1000 → 950，超過 90%
-        assert!(passes_completeness_gate(950, Some(1000), 0.9));
+        assert!(passes_completeness_gate(950, Some(1000), 0.9, MIN_DROP));
         // 剛好在門檻上
-        assert!(passes_completeness_gate(900, Some(1000), 0.9));
+        assert!(passes_completeness_gate(900, Some(1000), 0.9, MIN_DROP));
     }
 
     /// 這是整個同步最危險的判斷
@@ -668,22 +916,60 @@ mod tests {
     /// 其中只要有一個是主管，全公司相關流程立刻卡死
     #[test]
     fn 筆數驟減時中止() {
-        assert!(!passes_completeness_gate(823, Some(1000), 0.9));
-        assert!(!passes_completeness_gate(0, Some(1000), 0.9));
-        assert!(!passes_completeness_gate(899, Some(1000), 0.9));
+        assert!(!passes_completeness_gate(823, Some(1000), 0.9, MIN_DROP));
+        assert!(!passes_completeness_gate(0, Some(1000), 0.9, MIN_DROP));
+        assert!(!passes_completeness_gate(899, Some(1000), 0.9, MIN_DROP));
+    }
+
+    /// 小公司的正常人員異動不該誤擋（需求 Q-02）
+    ///
+    /// 50 人走掉 6 人是 12%，比例上超過 0.9 的門檻，但只少 6 個人。
+    /// 只看比例的話管理員會被擋下，然後去調高門檻——
+    /// 而調高之後保護就變弱了
+    #[test]
+    fn 小公司的正常異動不誤擋() {
+        // 50 → 44，比例不過（88%）但只少 6 人
+        assert!(passes_completeness_gate(44, Some(50), 0.9, MIN_DROP));
+        // 少 9 人仍在絕對值門檻內
+        assert!(passes_completeness_gate(41, Some(50), 0.9, MIN_DROP));
+    }
+
+    /// 兩個條件都成立才擋
+    #[test]
+    fn 比例與絕對值都超過才中止() {
+        // 50 → 40，比例不過（80%）且少 10 人，達到絕對值門檻
+        assert!(!passes_completeness_gate(40, Some(50), 0.9, MIN_DROP));
+        // 1000 → 823，兩個條件都遠遠成立
+        assert!(!passes_completeness_gate(823, Some(1000), 0.9, MIN_DROP));
+    }
+
+    /// 比例過關時不看絕對值
+    ///
+    /// 10000 人少 50 人是 0.5%，雖然超過 MIN_DROP 但比例完全正常
+    #[test]
+    fn 比例過關時不看絕對值() {
+        assert!(passes_completeness_gate(9950, Some(10000), 0.9, MIN_DROP));
     }
 
     /// 上次是 0 筆時不擋——那通常代表上次也沒成功
     #[test]
     fn 上次為零時不擋() {
-        assert!(passes_completeness_gate(5, Some(0), 0.9));
+        assert!(passes_completeness_gate(5, Some(0), 0.9, MIN_DROP));
     }
 
     #[test]
     fn 門檻可調() {
         // 放寬到 50%
-        assert!(passes_completeness_gate(500, Some(1000), 0.5));
-        assert!(!passes_completeness_gate(499, Some(1000), 0.5));
+        assert!(passes_completeness_gate(500, Some(1000), 0.5, MIN_DROP));
+        assert!(!passes_completeness_gate(499, Some(1000), 0.5, MIN_DROP));
+    }
+
+    /// 絕對值門檻也可調
+    ///
+    /// 設成 1 等於回到「只看比例」的行為
+    #[test]
+    fn 絕對值門檻可調() {
+        assert!(!passes_completeness_gate(44, Some(50), 0.9, 1));
     }
 
     #[test]

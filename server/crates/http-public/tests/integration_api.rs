@@ -433,7 +433,11 @@ async fn reports_unknown_department_code() {
 /// 來源筆數驟減時整批中止
 ///
 /// 來源 3 人只回 1 人。若照寫，消失的 2 人會被當成離職，
-/// 其中只要有一個是主管，全公司相關流程立刻卡死
+/// 其中只要有一個是主管，全公司相關流程立刻卡死。
+///
+/// 測試資料只有 3 人，少 2 人低於預設的絕對值門檻 10（Q-02 的
+/// 小公司保護）。把 min_drop 調成 1 才測得到比例條件本身——
+/// 雙條件的互動另有 small_drop_is_not_blocked 等三條測試
 #[tokio::test]
 async fn aborts_when_source_shrinks() {
     let ctx = Ctx::new().await;
@@ -441,6 +445,14 @@ async fn aborts_when_source_shrinks() {
     // 第一次：3 人成功
     let (_, first) = ctx.sync(CSV_THREE).await;
     assert_eq!(first["status"], "SUCCESS");
+
+    ctx.send(
+        "PATCH",
+        &format!("/integration/sources/{}", ctx.source_id),
+        &ctx.admin_token,
+        Some(json!({ "min_drop_threshold": 1 })),
+    )
+    .await;
 
     // 第二次：只剩 1 人
     let shrunk = "工號,姓名,信箱,部門,職稱,主管工號\n\
@@ -463,6 +475,15 @@ async fn aborts_when_source_shrinks() {
 async fn aborted_sync_writes_nothing() {
     let ctx = Ctx::new().await;
     ctx.sync(CSV_THREE).await;
+
+    // 見 aborts_when_source_shrinks 的說明
+    ctx.send(
+        "PATCH",
+        &format!("/integration/sources/{}", ctx.source_id),
+        &ctx.admin_token,
+        Some(json!({ "min_drop_threshold": 1 })),
+    )
+    .await;
 
     let before = ctx.employee("E002").await.unwrap();
 
@@ -489,6 +510,15 @@ async fn aborted_sync_writes_nothing() {
 async fn aborted_sync_does_not_update_baseline() {
     let ctx = Ctx::new().await;
     ctx.sync(CSV_THREE).await;
+
+    // 見 aborts_when_source_shrinks 的說明
+    ctx.send(
+        "PATCH",
+        &format!("/integration/sources/{}", ctx.source_id),
+        &ctx.admin_token,
+        Some(json!({ "min_drop_threshold": 1 })),
+    )
+    .await;
 
     let shrunk = "工號,姓名,信箱,部門,職稱,主管工號\n\
                   E001,陳大明,a@test.local,SALES,經理,\n";
@@ -733,6 +763,479 @@ async fn platform_only_users_are_not_marked_missing() {
 
     let (_, _, _, sync_status) = ctx.employee("M999").await.unwrap();
     assert_eq!(sync_status, "PLATFORM_ONLY", "平台自建的人不該被標記");
+}
+
+// ── 待停用的確認流程（§7 規則 3、4）───────────────────
+
+impl Ctx {
+    /// 讓 E003 消失指定次數
+    async fn make_e003_missing(&self, times: usize) {
+        // 門檻放寬，讓少一個人也能通過完整性閘
+        self.send(
+            "PATCH",
+            &format!("/integration/sources/{}", self.source_id),
+            &self.admin_token,
+            Some(json!({ "completeness_threshold": 0.5 })),
+        )
+        .await;
+
+        let two = "工號,姓名,信箱,部門,職稱,主管工號\n\
+                   E001,陳大明,a@test.local,SALES,經理,\n\
+                   E002,林小華,b@test.local,SALES,工程師,E001\n";
+
+        for _ in 0..times {
+            self.sync(two).await;
+        }
+    }
+
+    async fn pending_list(&self) -> Value {
+        let (_, body) = self
+            .send(
+                "GET",
+                "/integration/pending-deactivations",
+                &self.admin_token,
+                None,
+            )
+            .await;
+        body
+    }
+}
+
+/// 消失的人出現在待停用清單，含次數與門檻
+///
+/// 未達門檻的也要列出來——管理員要看得到「這個人消失了，
+/// 但還不到該處理的程度」，而不是等它突然冒出來
+#[tokio::test]
+async fn lists_pending_with_miss_count_and_threshold() {
+    let ctx = Ctx::new().await;
+    ctx.sync(CSV_THREE).await;
+    ctx.make_e003_missing(1).await;
+
+    let body = ctx.pending_list().await;
+    let rows = body.as_array().unwrap();
+
+    assert_eq!(rows.len(), 1, "{body}");
+    assert_eq!(rows[0]["name"], "王美玲");
+    assert_eq!(rows[0]["miss_count"], 1);
+    // 預設 3 次（Q-03）
+    assert_eq!(rows[0]["threshold"], 3);
+    assert_eq!(rows[0]["status"], "PENDING");
+}
+
+/// 未達門檻不可停用
+///
+/// 來源缺漏與離職是兩回事。一次匯出疏漏就停用人，
+/// 正是 §7 規則 3 要避免的
+#[tokio::test]
+async fn refuses_to_confirm_before_threshold() {
+    let ctx = Ctx::new().await;
+    ctx.sync(CSV_THREE).await;
+    ctx.make_e003_missing(1).await;
+
+    let pending = ctx.pending_list().await;
+    let id = pending[0]["id"].as_str().unwrap();
+
+    let (status, body) = ctx
+        .send(
+            "POST",
+            &format!("/integration/pending-deactivations/{id}/confirm"),
+            &ctx.admin_token,
+            None,
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+    assert!(
+        body["message"].as_str().unwrap().contains("未達 3 次"),
+        "{body}"
+    );
+
+    // 人還是 ACTIVE
+    let mut tx = ctx.state.db.tenant_tx(ctx.tenant_id).await.unwrap();
+    let user_status: String =
+        sqlx::query_scalar("select status from app_user where employee_no = 'E003'")
+            .fetch_one(tx.executor())
+            .await
+            .unwrap();
+    assert_eq!(user_status, "ACTIVE");
+}
+
+/// 達到門檻後可以停用
+#[tokio::test]
+async fn confirms_deactivation_after_threshold() {
+    let ctx = Ctx::new().await;
+    ctx.sync(CSV_THREE).await;
+    ctx.make_e003_missing(3).await;
+
+    let pending = ctx.pending_list().await;
+    assert_eq!(pending[0]["miss_count"], 3, "{pending}");
+
+    let id = pending[0]["id"].as_str().unwrap();
+    let (status, body) = ctx
+        .send(
+            "POST",
+            &format!("/integration/pending-deactivations/{id}/confirm"),
+            &ctx.admin_token,
+            None,
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::OK, "{body}");
+
+    let mut tx = ctx.state.db.tenant_tx(ctx.tenant_id).await.unwrap();
+    let user_status: String =
+        sqlx::query_scalar("select status from app_user where employee_no = 'E003'")
+            .fetch_one(tx.executor())
+            .await
+            .unwrap();
+    assert_eq!(user_status, "DISABLED");
+
+    // 已處理的不再出現在清單上
+    let after = ctx.pending_list().await;
+    assert_eq!(after.as_array().unwrap().len(), 0, "{after}");
+}
+
+/// 是別人主管的人不可停用（§7 規則 4）
+///
+/// participant::manager_of 不看狀態，所以停用後解析仍會成功——
+/// 任務照樣指派給他，而他收不到通知。這比解析失敗更難發現
+#[tokio::test]
+async fn blocks_deactivating_a_manager() {
+    let ctx = Ctx::new().await;
+    ctx.sync(CSV_THREE).await;
+
+    // 讓 E001（是 E002、E003 的主管）消失
+    ctx.send(
+        "PATCH",
+        &format!("/integration/sources/{}", ctx.source_id),
+        &ctx.admin_token,
+        Some(json!({ "completeness_threshold": 0.5 })),
+    )
+    .await;
+
+    let without_boss = "工號,姓名,信箱,部門,職稱,主管工號\n\
+                        E002,林小華,b@test.local,SALES,工程師,\n\
+                        E003,王美玲,c@test.local,SALES,專員,\n";
+    for _ in 0..3 {
+        ctx.sync(without_boss).await;
+    }
+
+    let pending = ctx.pending_list().await;
+    let row = pending
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["name"] == "陳大明")
+        .expect("E001 應該在待停用清單");
+
+    // blockers 要在清單上就看得到，不是按了才知道
+    let blockers = row["blockers"].as_array().unwrap();
+    assert!(!blockers.is_empty(), "{row}");
+    assert!(
+        blockers[0].as_str().unwrap().contains("直屬主管"),
+        "{row}"
+    );
+
+    let id = row["id"].as_str().unwrap();
+    let (status, body) = ctx
+        .send(
+            "POST",
+            &format!("/integration/pending-deactivations/{id}/confirm"),
+            &ctx.admin_token,
+            None,
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+    assert!(
+        body["message"].as_str().unwrap().contains("直屬主管"),
+        "{body}"
+    );
+}
+
+/// 有未完成待辦的人不可停用
+#[tokio::test]
+async fn blocks_deactivating_someone_with_pending_tasks() {
+    let ctx = Ctx::new().await;
+    ctx.sync(CSV_THREE).await;
+    ctx.make_e003_missing(3).await;
+
+    // 幫 E003 建一件待辦
+    let mut tx = ctx.state.db.tenant_tx(ctx.tenant_id).await.unwrap();
+    let user_id: Uuid =
+        sqlx::query_scalar("select id from app_user where employee_no = 'E003'")
+            .fetch_one(tx.executor())
+            .await
+            .unwrap();
+
+    // human_task.instance_id 有 FK，要先有實例；
+    // 實例又要有流程定義版本。三層都得建起來
+    let definition_id: Uuid = sqlx::query_scalar(
+        "insert into workflow_definition
+            (tenant_id, workflow_key, business_object, name)
+         values ($1, 'test_flow', 'quotation', '測試流程')
+         returning id",
+    )
+    .bind(ctx.tenant_id)
+    .fetch_one(tx.executor())
+    .await
+    .expect("建立流程定義失敗");
+
+    let version_id: Uuid = sqlx::query_scalar(
+        "insert into workflow_definition_version
+            (tenant_id, workflow_id, version, content, status, published_at)
+         values ($1, $2, 1, '{}'::jsonb, 'PUBLISHED', now())
+         returning id",
+    )
+    .bind(ctx.tenant_id)
+    .bind(definition_id)
+    .fetch_one(tx.executor())
+    .await
+    .expect("建立流程版本失敗");
+
+    let instance_id: Uuid = sqlx::query_scalar(
+        "insert into workflow_instance
+            (tenant_id, workflow_version_id, business_object, business_key,
+             temporal_workflow_id, status)
+         values ($1, $2, 'quotation', 'Q-TEST', 'test-wf-1', 'RUNNING')
+         returning id",
+    )
+    .bind(ctx.tenant_id)
+    .bind(version_id)
+    .fetch_one(tx.executor())
+    .await
+    .expect("建立流程實例失敗");
+
+    sqlx::query(
+        "insert into human_task
+            (tenant_id, instance_id, node_id, node_label, participant_kind,
+             assignee_user_id, status)
+         values ($1, $2, 'approve', '待簽核', 'internal', $3, 'PENDING')",
+    )
+    .bind(ctx.tenant_id)
+    .bind(instance_id)
+    .bind(user_id)
+    .execute(tx.executor())
+    .await
+    .expect("建立待辦失敗");
+    tx.commit().await.unwrap();
+
+    let pending = ctx.pending_list().await;
+    let row = &pending.as_array().unwrap()[0];
+    let blockers = row["blockers"].as_array().unwrap();
+
+    assert!(
+        blockers.iter().any(|b| b.as_str().unwrap().contains("待辦")),
+        "{row}"
+    );
+
+    let id = row["id"].as_str().unwrap();
+    let (status, _) = ctx
+        .send(
+            "POST",
+            &format!("/integration/pending-deactivations/{id}/confirm"),
+            &ctx.admin_token,
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+}
+
+/// 忽略之後從清單移除，且下次消失重新累計
+///
+/// 留著舊紀錄的話，下次 `on conflict do update` 會在它上面加一，
+/// 次數立刻超過門檻又跳出來
+#[tokio::test]
+async fn dismissing_resets_the_counter() {
+    let ctx = Ctx::new().await;
+    ctx.sync(CSV_THREE).await;
+    ctx.make_e003_missing(2).await;
+
+    let pending = ctx.pending_list().await;
+    assert_eq!(pending[0]["miss_count"], 2);
+
+    let id = pending[0]["id"].as_str().unwrap();
+    let (status, body) = ctx
+        .send(
+            "POST",
+            &format!("/integration/pending-deactivations/{id}/dismiss"),
+            &ctx.admin_token,
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+
+    assert_eq!(ctx.pending_list().await.as_array().unwrap().len(), 0);
+
+    // 再消失一次，從 1 開始算
+    ctx.make_e003_missing(1).await;
+    let again = ctx.pending_list().await;
+    assert_eq!(again[0]["miss_count"], 1, "忽略後要重新累計：{again}");
+}
+
+/// 門檻可調
+///
+/// 每週匯出一次的客戶，3 次就是三週
+#[tokio::test]
+async fn deactivation_threshold_is_configurable() {
+    let ctx = Ctx::new().await;
+    ctx.sync(CSV_THREE).await;
+
+    ctx.send(
+        "PATCH",
+        &format!("/integration/sources/{}", ctx.source_id),
+        &ctx.admin_token,
+        Some(json!({ "deactivation_miss_threshold": 1 })),
+    )
+    .await;
+
+    ctx.make_e003_missing(1).await;
+
+    let pending = ctx.pending_list().await;
+    assert_eq!(pending[0]["threshold"], 1, "{pending}");
+
+    // 一次就可以停用
+    let id = pending[0]["id"].as_str().unwrap();
+    let (status, body) = ctx
+        .send(
+            "POST",
+            &format!("/integration/pending-deactivations/{id}/confirm"),
+            &ctx.admin_token,
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+}
+
+/// 門檻不可設為 0
+#[tokio::test]
+async fn rejects_zero_deactivation_threshold() {
+    let ctx = Ctx::new().await;
+
+    let (status, body) = ctx
+        .send(
+            "PATCH",
+            &format!("/integration/sources/{}", ctx.source_id),
+            &ctx.admin_token,
+            Some(json!({ "deactivation_miss_threshold": 0 })),
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
+}
+
+/// designer 不能碰待停用
+#[tokio::test]
+async fn designer_cannot_manage_pending_deactivations() {
+    let ctx = Ctx::new().await;
+
+    let (status, body) = ctx
+        .send(
+            "GET",
+            "/integration/pending-deactivations",
+            &ctx.designer_token,
+            None,
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+}
+
+// ── 完整性閘的雙條件（Q-02）────────────────────────────
+
+/// 小公司的正常人員異動不誤擋
+///
+/// 50 人走掉 6 人是 12%，比例上超過 0.9 的門檻，但只少 6 個人。
+/// 只看比例的話管理員會被擋下，然後去調高門檻——
+/// 而調高之後保護就變弱了
+#[tokio::test]
+async fn small_drop_is_not_blocked() {
+    let ctx = Ctx::new().await;
+
+    // 先同步 12 人
+    let mut csv = String::from("工號,姓名,信箱,部門,職稱,主管工號\n");
+    for i in 1..=12 {
+        csv.push_str(&format!(
+            "E{i:03},員工{i},e{i}@test.local,SALES,專員,\n"
+        ));
+    }
+    let (_, first) = ctx.sync(&csv).await;
+    assert_eq!(first["status"], "SUCCESS", "{first}");
+
+    // 少 3 人（75%，比例不過，但只少 3 人 < 10）
+    let mut shrunk = String::from("工號,姓名,信箱,部門,職稱,主管工號\n");
+    for i in 1..=9 {
+        shrunk.push_str(&format!(
+            "E{i:03},員工{i},e{i}@test.local,SALES,專員,\n"
+        ));
+    }
+    let (_, body) = ctx.sync(&shrunk).await;
+
+    assert_eq!(body["status"], "SUCCESS", "小公司的正常異動不該被擋：{body}");
+    assert_eq!(body["counts"]["missing_in_source_count"], 3);
+}
+
+/// 兩個條件都成立才中止
+#[tokio::test]
+async fn blocks_when_both_conditions_met() {
+    let ctx = Ctx::new().await;
+
+    let mut csv = String::from("工號,姓名,信箱,部門,職稱,主管工號\n");
+    for i in 1..=20 {
+        csv.push_str(&format!(
+            "E{i:03},員工{i},e{i}@test.local,SALES,專員,\n"
+        ));
+    }
+    ctx.sync(&csv).await;
+
+    // 只剩 5 人：比例 25% 不過，且少 15 人 >= 10
+    let mut shrunk = String::from("工號,姓名,信箱,部門,職稱,主管工號\n");
+    for i in 1..=5 {
+        shrunk.push_str(&format!(
+            "E{i:03},員工{i},e{i}@test.local,SALES,專員,\n"
+        ));
+    }
+    let (_, body) = ctx.sync(&shrunk).await;
+
+    assert_eq!(body["status"], "ABORTED_INCOMPLETE", "{body}");
+    // 訊息要說少了幾人，管理員才判斷得出是不是真的有問題
+    assert!(
+        body["message"].as_str().unwrap().contains("少了 15 人"),
+        "{body}"
+    );
+}
+
+/// 絕對值門檻可調
+#[tokio::test]
+async fn min_drop_threshold_is_configurable() {
+    let ctx = Ctx::new().await;
+
+    let mut csv = String::from("工號,姓名,信箱,部門,職稱,主管工號\n");
+    for i in 1..=12 {
+        csv.push_str(&format!(
+            "E{i:03},員工{i},e{i}@test.local,SALES,專員,\n"
+        ));
+    }
+    ctx.sync(&csv).await;
+
+    // 調成 1：回到「只看比例」的行為
+    ctx.send(
+        "PATCH",
+        &format!("/integration/sources/{}", ctx.source_id),
+        &ctx.admin_token,
+        Some(json!({ "min_drop_threshold": 1 })),
+    )
+    .await;
+
+    let mut shrunk = String::from("工號,姓名,信箱,部門,職稱,主管工號\n");
+    for i in 1..=9 {
+        shrunk.push_str(&format!(
+            "E{i:03},員工{i},e{i}@test.local,SALES,專員,\n"
+        ));
+    }
+    let (_, body) = ctx.sync(&shrunk).await;
+
+    assert_eq!(body["status"], "ABORTED_INCOMPLETE", "{body}");
 }
 
 // ── preview（§12.1「preview 是必備」）──────────────────

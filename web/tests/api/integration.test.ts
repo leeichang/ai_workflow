@@ -264,6 +264,8 @@ describe('來源設定', () => {
           name: '員工主檔',
           mapping_definition: { 工號: 'employee_no' },
           completeness_threshold: 0.9,
+          min_drop_threshold: 10,
+          deactivation_miss_threshold: 3,
           last_success_count: null,
           last_synced_at: null,
         }),
@@ -350,5 +352,116 @@ describe('同步歷史', () => {
 
     expect(issues[0].kind).toBe('SKIPPED_BY_OWNERSHIP')
     expect(issues[0].field).toBe('job_title')
+  })
+})
+
+describe('待停用', () => {
+  beforeEach(() => {
+    setTokenGetter(() => 'h.p.s')
+  })
+
+  it('清單帶回次數、門檻與阻擋理由', async () => {
+    server.use(
+      http.get(`${API}/integration/pending-deactivations`, () =>
+        HttpResponse.json([
+          {
+            id: 'p1',
+            user_id: 'u1',
+            name: '陳大明',
+            employee_no: 'E001',
+            email: 'a@demo.local',
+            department_name: '業務部',
+            miss_count: 2,
+            first_missed_at: '2026-09-17T00:00:00Z',
+            last_missed_at: '2026-09-19T00:00:00Z',
+            status: 'PENDING',
+            threshold: 3,
+            blockers: ['是 3 位員工的直屬主管。停用後他們送單會找不到簽核人'],
+          },
+        ]),
+      ),
+    )
+
+    const rows = await integration.listPendingDeactivations()
+
+    // 次數與門檻都要有，前端才顯示得出「還差幾次」
+    expect(rows[0].miss_count).toBe(2)
+    expect(rows[0].threshold).toBe(3)
+    // blockers 在清單上就看得到，不是按了才知道
+    expect(rows[0].blockers[0]).toContain('直屬主管')
+  })
+
+  it('可停用的人 blockers 為空陣列', async () => {
+    server.use(
+      http.get(`${API}/integration/pending-deactivations`, () =>
+        HttpResponse.json([
+          {
+            id: 'p1',
+            user_id: 'u1',
+            name: '王美玲',
+            employee_no: 'E003',
+            email: 'c@demo.local',
+            department_name: null,
+            miss_count: 3,
+            first_missed_at: '2026-09-16T00:00:00Z',
+            last_missed_at: '2026-09-19T00:00:00Z',
+            status: 'PENDING',
+            threshold: 3,
+            blockers: [],
+          },
+        ]),
+      ),
+    )
+
+    const rows = await integration.listPendingDeactivations()
+    expect(rows[0].blockers).toEqual([])
+  })
+
+  it('未達門檻時後端拒絕確認', async () => {
+    server.use(
+      http.post(`${API}/integration/pending-deactivations/p1/confirm`, () =>
+        HttpResponse.json(
+          {
+            code: 'CONFLICT',
+            message: '此人只連續消失 1 次，未達 3 次的門檻。來源缺漏與離職是兩回事',
+          },
+          { status: 409 },
+        ),
+      ),
+    )
+
+    await expect(integration.confirmDeactivation('p1')).rejects.toThrow(ApiError)
+  })
+
+  it('前置檢查不過時後端拒絕確認', async () => {
+    server.use(
+      http.post(`${API}/integration/pending-deactivations/p1/confirm`, () =>
+        HttpResponse.json(
+          {
+            code: 'CONFLICT',
+            message: '無法停用：是 3 位員工的直屬主管。請先處理再回來',
+          },
+          { status: 409 },
+        ),
+      ),
+    )
+
+    await expect(integration.confirmDeactivation('p1')).rejects.toThrow(ApiError)
+  })
+
+  it('忽略送 POST', async () => {
+    let method = ''
+    server.use(
+      http.post(
+        `${API}/integration/pending-deactivations/p1/dismiss`,
+        ({ request }) => {
+          method = request.method
+          return HttpResponse.json({ ok: true })
+        },
+      ),
+    )
+
+    await integration.dismissDeactivation('p1')
+    expect(method).toBe('POST')
   })
 })

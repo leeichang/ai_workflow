@@ -55,6 +55,15 @@ pub fn routes() -> Router<AppState> {
         .route("/integration/sources/{id}/sync", post(sync))
         .route("/integration/sync-runs", get(list_runs))
         .route("/integration/sync-runs/{id}/issues", get(list_issues))
+        .route("/integration/pending-deactivations", get(list_pending))
+        .route(
+            "/integration/pending-deactivations/{id}/confirm",
+            post(confirm_pending),
+        )
+        .route(
+            "/integration/pending-deactivations/{id}/dismiss",
+            post(dismiss_pending),
+        )
 }
 
 // ── 分析檔案 ────────────────────────────────────────────
@@ -192,6 +201,10 @@ pub struct Source {
     pub name: String,
     pub mapping_definition: serde_json::Value,
     pub completeness_threshold: f64,
+    /// 完整性閘的絕對值條件。減少人數低於此值時不中止（Q-02）
+    pub min_drop_threshold: i32,
+    /// 連續消失幾次才進待停用清單（Q-03）
+    pub deactivation_miss_threshold: i32,
     pub last_success_count: Option<i32>,
     pub last_synced_at: Option<chrono::DateTime<chrono::Utc>>,
 }
@@ -264,6 +277,7 @@ async fn list_sources(
     let rows = sqlx::query_as::<_, Source>(
         "select id, connection_id, dataset, name, mapping_definition,
                 completeness_threshold::float8 as completeness_threshold,
+                min_drop_threshold, deactivation_miss_threshold,
                 last_success_count, last_synced_at
          from integration_source order by name",
     )
@@ -286,6 +300,7 @@ async fn get_source(
     let row = sqlx::query_as::<_, Source>(
         "select id, connection_id, dataset, name, mapping_definition,
                 completeness_threshold::float8 as completeness_threshold,
+                min_drop_threshold, deactivation_miss_threshold,
                 last_success_count, last_synced_at
          from integration_source where id = $1",
     )
@@ -348,6 +363,10 @@ async fn delete_source(
 pub struct SourcePatch {
     pub mapping: Option<HashMap<String, String>>,
     pub completeness_threshold: Option<f64>,
+    /// 完整性閘的絕對值條件（Q-02）
+    pub min_drop_threshold: Option<i32>,
+    /// 連續消失幾次才進待停用清單（Q-03）
+    pub deactivation_miss_threshold: Option<i32>,
 }
 
 async fn update_source(
@@ -399,6 +418,45 @@ async fn update_source(
         )
         .bind(id)
         .bind(threshold)
+        .execute(tx.executor())
+        .await
+        .map_err(|e| ApiError::Internal(format!("更新門檻失敗：{e}")))?;
+    }
+
+    if let Some(value) = body.min_drop_threshold {
+        // 設成 0 等於「只要比例不過就擋」，那會讓小公司天天誤觸發。
+        // 但那是管理員的選擇，只要不是負數就放行
+        if value < 1 {
+            return Err(ApiError::ValidationFailed(
+                "絕對值門檻至少為 1".into(),
+            ));
+        }
+        sqlx::query(
+            "update integration_source set min_drop_threshold = $2, updated_at = now()
+             where id = $1",
+        )
+        .bind(id)
+        .bind(value)
+        .execute(tx.executor())
+        .await
+        .map_err(|e| ApiError::Internal(format!("更新門檻失敗：{e}")))?;
+    }
+
+    if let Some(value) = body.deactivation_miss_threshold {
+        // 設成 0 等於「消失一次就可以停用」，那會讓一次匯出疏漏
+        // 就把人停掉——§7 規則 3 的整個用意就是避免這件事
+        if value < 1 {
+            return Err(ApiError::ValidationFailed(
+                "待停用門檻至少為 1。設為 0 等於一次匯出疏漏就能停用".into(),
+            ));
+        }
+        sqlx::query(
+            "update integration_source
+             set deactivation_miss_threshold = $2, updated_at = now()
+             where id = $1",
+        )
+        .bind(id)
+        .bind(value)
         .execute(tx.executor())
         .await
         .map_err(|e| ApiError::Internal(format!("更新門檻失敗：{e}")))?;
@@ -503,9 +561,10 @@ async fn run_sync(
 
     let mut tx = state.db.tenant_tx(actor.tenant_id).await?;
 
-    let source = sqlx::query_as::<_, (String, serde_json::Value, f64, Option<i32>)>(
+    let source = sqlx::query_as::<_, (String, serde_json::Value, f64, i32, Option<i32>)>(
         "select dataset, mapping_definition,
-                completeness_threshold::float8, last_success_count
+                completeness_threshold::float8, min_drop_threshold,
+                last_success_count
          from integration_source where id = $1",
     )
     .bind(source_id)
@@ -517,7 +576,7 @@ async fn run_sync(
         id: source_id.to_string(),
     })?;
 
-    let (dataset, mapping_value, threshold, last_success_count) = source;
+    let (dataset, mapping_value, threshold, min_drop, last_success_count) = source;
 
     if dataset != "employee" {
         return Err(ApiError::ValidationFailed(
@@ -546,6 +605,7 @@ async fn run_sync(
         &rows,
         last_success_count,
         threshold,
+        min_drop,
         dry_run,
     )
     .await?;
@@ -707,6 +767,78 @@ pub struct SyncIssueRow {
     pub kind: String,
     pub message: String,
     pub field: Option<String>,
+}
+
+// ── 待停用（§7 規則 3、4）──────────────────────────────
+
+/// 待停用清單
+///
+/// 列出所有 `MISSING_IN_SOURCE` 的人，含連續消失次數與門檻。
+/// **未達門檻的也列出來**——管理員要看得到「這個人消失了，
+/// 但還不到該處理的程度」，而不是等它突然冒出來。
+///
+/// `blockers` 是停用前置檢查的結果，每次都即時算。組織會變動，
+/// 一小時前算的結果現在可能已經不成立。
+async fn list_pending(
+    State(state): State<AppState>,
+    actor: Actor,
+) -> ApiResult<Json<Vec<persistence::sync::PendingDeactivation>>> {
+    actor.require_any(&["admin"])?;
+
+    let mut tx = state.db.tenant_tx(actor.tenant_id).await?;
+    let rows = persistence::sync::list_pending_deactivations(&mut tx).await?;
+    tx.commit().await?;
+    Ok(Json(rows))
+}
+
+/// 確認停用
+///
+/// §7 規則 3 說「由管理員確認後才改 status」。前置檢查不過時拒絕——
+/// 停用一個主管會讓他所有部屬送單時找不到簽核人。
+async fn confirm_pending(
+    State(state): State<AppState>,
+    actor: Actor,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<serde_json::Value>> {
+    actor.require_any(&["admin"])?;
+
+    let mut tx = state.db.tenant_tx(actor.tenant_id).await?;
+    let user_id = persistence::sync::confirm_deactivation(&mut tx, id, actor.user_id).await?;
+
+    tx.audit(
+        persistence::AuditEvent::new("internal", "integration.deactivation.confirm", "app_user")
+            .actor(actor.user_id.to_string(), actor.name.clone())
+            .target(user_id.to_string()),
+    )
+    .await?;
+
+    tx.commit().await?;
+    Ok(Json(json!({ "ok": true })))
+}
+
+/// 忽略
+///
+/// 管理員判斷這個人仍在職，只是匯出漏了。要稽核——
+/// 日後這個人真的離職卻還在收任務時，要查得到是誰判斷他還在。
+async fn dismiss_pending(
+    State(state): State<AppState>,
+    actor: Actor,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<serde_json::Value>> {
+    actor.require_any(&["admin"])?;
+
+    let mut tx = state.db.tenant_tx(actor.tenant_id).await?;
+    let user_id = persistence::sync::dismiss_deactivation(&mut tx, id).await?;
+
+    tx.audit(
+        persistence::AuditEvent::new("internal", "integration.deactivation.dismiss", "app_user")
+            .actor(actor.user_id.to_string(), actor.name.clone())
+            .target(user_id.to_string()),
+    )
+    .await?;
+
+    tx.commit().await?;
+    Ok(Json(json!({ "ok": true })))
 }
 
 async fn list_issues(

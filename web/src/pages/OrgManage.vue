@@ -13,6 +13,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '@/components/AppShell.vue'
+import DepartmentEditDialog from '@/components/DepartmentEditDialog.vue'
 import DepartmentTree from '@/components/DepartmentTree.vue'
 import EmployeeEditDialog from '@/components/EmployeeEditDialog.vue'
 import * as orgApi from '@/api/org'
@@ -36,6 +37,16 @@ const includeInactive = ref(false)
 const editing = ref<Employee | null>(null)
 
 /**
+ * 部門編輯的狀態
+ *
+ * `null` 與 `undefined` 是不同的意思：
+ *   undefined = 對話框關著
+ *   null      = 開著，而且是「建立新部門」
+ * 用兩個 ref 表達會出現「開著但沒有目標」的無效組合。
+ */
+const editingDept = ref<Department | null | undefined>(undefined)
+
+/**
  * 組織編輯要 admin。沒有的話只能看
  *
  * 包成 computed 而非直接呼叫 hasRole：後者是一般函式，
@@ -44,6 +55,31 @@ const editing = ref<Employee | null>(null)
 const canEdit = computed(() => hasRole('admin'))
 
 const tree = computed(() => buildTree(departments.value))
+
+/**
+ * 部門主管的候選人
+ *
+ * 從現有清單濾掉離職者，不另外打一次 API。勾了「含已離職」時
+ * 清單裡會有離職的人，但指派離職者當部門主管沒有意義——
+ * department_manager_of 會解析出一個收不到信的人。
+ */
+const managerCandidates = computed(() =>
+  employees.value.filter((e) => e.left_at === null && e.status === 'ACTIVE'),
+)
+
+/**
+ * 編輯某部門時不可選為上層的部門：自己與所有下層
+ *
+ * 後端也擋成環，但讓它連選都選不到比較好
+ */
+const excludedParents = computed(() =>
+  editingDept.value ? descendantIds(tree.value, editingDept.value.id) : [],
+)
+
+/** 目前選取的部門。決定「編輯」按鈕要不要出現、編的是誰 */
+const selectedDeptData = computed(() =>
+  departments.value.find((d) => d.id === selectedDept.value) ?? null,
+)
 
 /**
  * 篩選後的員工
@@ -86,9 +122,10 @@ async function load(): Promise<void> {
 watch([keyword, includeInactive], load)
 
 /**
- * 從健康檢查頁帶 employee 參數進來時直接開編輯
+ * 從健康檢查頁帶參數進來時直接開編輯
  *
- * 報表指向的人必須點得到才修得了，不該讓使用者自己再找一次
+ * 報表指向的對象必須點得到才修得了，不該讓使用者自己再找一次。
+ * 員工與部門各有一個參數，因為兩者開的是不同的對話框。
  */
 watch([() => route.query.employee, employees], () => {
   const id = route.query.employee
@@ -98,17 +135,36 @@ watch([() => route.query.employee, employees], () => {
   if (found) editing.value = found
 })
 
+watch([() => route.query.department, departments], () => {
+  const id = route.query.department
+  if (typeof id !== 'string') return
+
+  const found = departments.value.find((d) => d.id === id)
+  if (found) editingDept.value = found
+})
+
 function closeDialog(): void {
   editing.value = null
+  editingDept.value = undefined
   // 清掉 query，否則重新整理又會跳出對話框
-  if (route.query.employee) {
+  if (route.query.employee || route.query.department) {
     router.replace({ query: {} })
   }
 }
 
 async function onSaved(): Promise<void> {
   await load()
-  // 重新載入後要用新的資料更新對話框，否則欄位鎖定標記還是舊的
+
+  // 重新載入後要用新的資料更新對話框，否則欄位鎖定標記還是舊的。
+  // 建立部門（editingDept 為 null）時直接關閉——沒有「剛建立的
+  // 那一筆」可以對應，使用者要的是回到樹上看結果
+  if (editingDept.value === null) {
+    editingDept.value = undefined
+  } else if (editingDept.value) {
+    const id = editingDept.value.id
+    editingDept.value = departments.value.find((d) => d.id === id) ?? undefined
+  }
+
   if (editing.value) {
     const refreshed = employees.value.find((e) => e.id === editing.value!.id)
     editing.value = refreshed ?? null
@@ -186,11 +242,20 @@ onMounted(load)
           class="w-[260px] shrink-0 bg-surface-container-lowest border border-outline-variant rounded-xl p-space-sm"
           data-testid="org-dept-tree"
         >
-          <p
-            class="px-space-sm py-1 font-label-header text-label-header text-secondary"
-          >
-            部門（{{ departments.length }}）
-          </p>
+          <div class="px-space-sm py-1 flex items-center justify-between gap-1">
+            <p class="font-label-header text-label-header text-secondary">
+              部門（{{ departments.length }}）
+            </p>
+            <button
+              v-if="canEdit"
+              type="button"
+              class="text-primary hover:underline font-label-caption text-label-caption whitespace-nowrap"
+              data-testid="dept-create"
+              @click="editingDept = null"
+            >
+              ＋ 新增
+            </button>
+          </div>
           <button
             type="button"
             class="w-full text-left px-space-sm py-1.5 rounded-lg font-body-dense text-body-dense transition-colors"
@@ -209,6 +274,20 @@ onMounted(load)
             :selected-id="selectedDept"
             @select="selectedDept = $event"
           />
+
+          <!--
+            編輯入口放在樹的下方而非每個節點旁：260px 寬放不下
+            每一列都有按鈕，而且「選了誰就編誰」的語意也更直接
+          -->
+          <button
+            v-if="canEdit && selectedDeptData"
+            type="button"
+            class="w-full mt-space-sm h-8 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-low font-label-header text-label-header"
+            data-testid="dept-edit"
+            @click="editingDept = selectedDeptData"
+          >
+            編輯「{{ selectedDeptData.name }}」
+          </button>
         </aside>
 
         <!-- 員工清單 -->
@@ -353,6 +432,17 @@ onMounted(load)
       :employee="editing"
       :departments="departments"
       :candidates="employees"
+      @close="closeDialog"
+      @saved="onSaved"
+    />
+
+    <!-- undefined 是關著，null 是「建立新部門」 -->
+    <DepartmentEditDialog
+      v-if="editingDept !== undefined"
+      :department="editingDept"
+      :departments="departments"
+      :employees="managerCandidates"
+      :exclude-ids="excludedParents"
       @close="closeDialog"
       @saved="onSaved"
     />

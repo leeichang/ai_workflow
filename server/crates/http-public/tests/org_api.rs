@@ -482,6 +482,171 @@ async fn rejects_department_cycle() {
     );
 }
 
+// ── 刪除部門 ────────────────────────────────────────────
+
+/// 空部門刪得掉
+///
+/// 使用者手誤建了一個部門應該收得回去，否則樹上永遠留著垃圾
+#[tokio::test]
+async fn deletes_empty_department() {
+    let ctx = Ctx::new().await;
+
+    let (_, created) = ctx
+        .send(
+            "POST",
+            "/org/departments",
+            &ctx.admin_token,
+            Some(json!({ "code": "TEMP", "name": "暫時的部門" })),
+        )
+        .await;
+    let id = created["id"].as_str().expect("沒有回傳 id");
+
+    let (status, body) = ctx
+        .send(
+            "DELETE",
+            &format!("/org/departments/{id}"),
+            &ctx.admin_token,
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+
+    let (_, list) = ctx
+        .send("GET", "/org/departments", &ctx.admin_token, None)
+        .await;
+    assert_eq!(list.as_array().unwrap().len(), 1, "{list}");
+}
+
+/// 有成員的部門刪不掉
+///
+/// 兩個 FK 都是 on delete set null。若放行，那些人的 department_id
+/// 會被**靜默清空**，依部門解析的簽核人全部失效且沒有錯誤訊息
+#[tokio::test]
+async fn refuses_to_delete_department_with_members() {
+    let ctx = Ctx::new().await;
+
+    let (status, body) = ctx
+        .send(
+            "DELETE",
+            &format!("/org/departments/{}", ctx.sales_dept),
+            &ctx.admin_token,
+            None,
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+    assert!(
+        body["message"].as_str().unwrap().contains("2 位成員"),
+        "訊息要說有幾個人，使用者才知道要處理多少：{body}"
+    );
+
+    // 擋下後部門與成員都還在
+    let (_, employees) = ctx
+        .send("GET", "/org/employees", &ctx.admin_token, None)
+        .await;
+    assert_eq!(employees.as_array().unwrap().len(), 2, "{employees}");
+}
+
+/// 有子部門的部門刪不掉
+#[tokio::test]
+async fn refuses_to_delete_department_with_children() {
+    let ctx = Ctx::new().await;
+
+    // 建一個空的父部門與它的子部門
+    let (_, parent) = ctx
+        .send(
+            "POST",
+            "/org/departments",
+            &ctx.admin_token,
+            Some(json!({ "code": "PARENT", "name": "上層" })),
+        )
+        .await;
+    let parent_id = parent["id"].as_str().unwrap();
+
+    ctx.send(
+        "POST",
+        "/org/departments",
+        &ctx.admin_token,
+        Some(json!({ "code": "CHILD", "name": "下層", "parent_id": parent_id })),
+    )
+    .await;
+
+    let (status, body) = ctx
+        .send(
+            "DELETE",
+            &format!("/org/departments/{parent_id}"),
+            &ctx.admin_token,
+            None,
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+    assert!(
+        body["message"].as_str().unwrap().contains("子部門"),
+        "{body}"
+    );
+}
+
+#[tokio::test]
+async fn deleting_missing_department_returns_not_found() {
+    let ctx = Ctx::new().await;
+
+    let (status, body) = ctx
+        .send(
+            "DELETE",
+            &format!("/org/departments/{}", Uuid::new_v4()),
+            &ctx.admin_token,
+            None,
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
+}
+
+/// 稽核要留得下名字
+///
+/// 部門已經刪掉了，光有 uuid 事後查不出刪的是誰
+#[tokio::test]
+async fn audits_deleted_department_name() {
+    let ctx = Ctx::new().await;
+
+    let (_, created) = ctx
+        .send(
+            "POST",
+            "/org/departments",
+            &ctx.admin_token,
+            Some(json!({ "code": "TEMP", "name": "暫時的部門" })),
+        )
+        .await;
+    let id = created["id"].as_str().unwrap();
+
+    ctx.send(
+        "DELETE",
+        &format!("/org/departments/{id}"),
+        &ctx.admin_token,
+        None,
+    )
+    .await;
+
+    let mut tx = ctx
+        .state
+        .db
+        .tenant_tx(ctx.tenant_id)
+        .await
+        .expect("開啟交易失敗");
+
+    let payload: Value = sqlx::query_scalar(
+        "select payload from audit_event
+         where action = 'org.department.delete' and target_id = $1",
+    )
+    .bind(id)
+    .fetch_one(tx.executor())
+    .await
+    .expect("查不到稽核紀錄");
+
+    assert_eq!(payload["name"], "暫時的部門");
+}
+
 // ── 輸入驗證 ────────────────────────────────────────────
 
 /// 不在白名單的欄位要擋下
@@ -600,6 +765,11 @@ async fn designer_cannot_edit_organization() {
             "POST",
             format!("/org/employees/{}/unlock-fields", ctx.staff),
             json!({ "fields": ["job_title"] }),
+        ),
+        (
+            "DELETE",
+            format!("/org/departments/{}", ctx.sales_dept),
+            json!({}),
         ),
     ] {
         let (status, resp) = ctx

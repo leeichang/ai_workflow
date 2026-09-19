@@ -30,7 +30,10 @@ pub fn routes() -> Router<AppState> {
             "/org/departments",
             get(list_departments).post(create_department),
         )
-        .route("/org/departments/{id}", patch(update_department))
+        .route(
+            "/org/departments/{id}",
+            patch(update_department).delete(delete_department),
+        )
         .route(
             "/org/departments/{id}/unlock-fields",
             post(unlock_department_fields),
@@ -122,6 +125,41 @@ async fn update_department(
             .actor(actor.user_id.to_string(), actor.name.clone())
             .target(id.to_string())
             .payload(json!({ "fields": body.fields })),
+    )
+    .await?;
+
+    tx.commit().await?;
+    Ok(Json(json!({ "ok": true })))
+}
+
+/// 刪除部門
+///
+/// 只刪得掉沒有成員也沒有子部門的部門，條件在 persistence 層。
+/// 有成員的部門應該改成停用而非刪除——見需求 §7。
+async fn delete_department(
+    State(state): State<AppState>,
+    actor: Actor,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<serde_json::Value>> {
+    actor.require_any(&["admin"])?;
+
+    let mut tx = state.db.tenant_tx(actor.tenant_id).await?;
+
+    // 先把名字查出來再刪。稽核紀錄要能讀，光有 uuid 事後查不出是誰
+    let name: Option<String> =
+        sqlx::query_scalar("select name from department where id = $1")
+            .bind(id)
+            .fetch_optional(tx.executor())
+            .await
+            .map_err(|e| ApiError::Internal(format!("查詢部門失敗：{e}")))?;
+
+    persistence::organization::delete_department(&mut tx, id).await?;
+
+    tx.audit(
+        persistence::AuditEvent::new("internal", "org.department.delete", "department")
+            .actor(actor.user_id.to_string(), actor.name.clone())
+            .target(id.to_string())
+            .payload(json!({ "name": name })),
     )
     .await?;
 

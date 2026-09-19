@@ -42,14 +42,15 @@ const isHealthy = computed(
 /**
  * 「前往修正」的目的地
  *
- * 報表要修得掉才有用。員工的問題直接帶 id 開該員工的編輯；
- * 部門的問題只跳到組織管理——部門編輯還沒做，但至少讓使用者
- * 看得到那個部門在樹的哪裡。
+ * 報表要修得掉才有用，不該讓使用者自己再去找那個人或那個部門。
+ * 員工與部門各用一個參數，因為兩者開的是不同的對話框。
  */
 function fixLink(issue: OrgIssue) {
-  return issue.subject_type === 'employee'
-    ? { path: '/designer/organization', query: { employee: issue.subject_id } }
-    : { path: '/designer/organization' }
+  const key = issue.subject_type === 'department' ? 'department' : 'employee'
+  return {
+    path: '/designer/organization',
+    query: { [key]: issue.subject_id },
+  }
 }
 
 async function load(): Promise<void> {

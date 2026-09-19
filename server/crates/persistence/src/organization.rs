@@ -174,6 +174,57 @@ pub async fn update_department(
     Ok(())
 }
 
+/// 刪除部門
+///
+/// **只刪得掉沒有成員、也沒有子部門的部門。**
+///
+/// 需求 §7 說「來源系統查不到的人不刪除，改標記 status」，那是針對
+/// **同步**的規則——硬刪會讓進行中流程的 assignee 變成孤兒。
+/// 但使用者手誤建了一個空部門時應該刪得掉，否則樹上會永遠留著垃圾。
+///
+/// 兩個 FK（`department.parent_id`、`app_user.department_id`）都是
+/// `on delete set null`。若允許刪除有成員的部門，那些人的
+/// `department_id` 會被**靜默清空**——依部門解析的簽核人全部失效，
+/// 而且沒有任何錯誤訊息。擋在前面而不是靠 FK 的預設行為。
+pub async fn delete_department(tx: &mut TenantTx<'_>, id: Uuid) -> Result<()> {
+    let members: i64 =
+        sqlx::query_scalar("select count(*) from app_user where department_id = $1")
+            .bind(id)
+            .fetch_one(tx.executor())
+            .await?;
+
+    if members > 0 {
+        return Err(Error::Conflict(format!(
+            "這個部門還有 {members} 位成員。請先把他們移到其他部門，\
+             或將部門改為停用"
+        )));
+    }
+
+    let children: i64 =
+        sqlx::query_scalar("select count(*) from department where parent_id = $1")
+            .bind(id)
+            .fetch_one(tx.executor())
+            .await?;
+
+    if children > 0 {
+        return Err(Error::Conflict(format!(
+            "這個部門底下還有 {children} 個子部門"
+        )));
+    }
+
+    let affected = sqlx::query("delete from department where id = $1")
+        .bind(id)
+        .execute(tx.executor())
+        .await?
+        .rows_affected();
+
+    if affected == 0 {
+        return Err(Error::not_found("department", id));
+    }
+
+    Ok(())
+}
+
 /// 部門不可成為自己的祖先
 ///
 /// 只在改 `parent_id` 時檢查。往上爬而非往下找子孫：

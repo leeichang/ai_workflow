@@ -125,6 +125,17 @@ export function updateDepartment(
   })
 }
 
+/**
+ * 刪除部門
+ *
+ * 只刪得掉沒有成員也沒有子部門的部門——有成員的部門刪掉會讓那些人的
+ * department_id 被靜默清空，依部門解析的簽核人全部失效。
+ * 那種情況應該改成停用（`status: 'INACTIVE'`）。
+ */
+export function deleteDepartment(id: string): Promise<void> {
+  return request<void>(`/org/departments/${id}`, { method: 'DELETE' })
+}
+
 // ── 員工 ────────────────────────────────────────────────
 
 export interface Employee {

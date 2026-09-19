@@ -175,6 +175,36 @@ describe('部門', () => {
     ).rejects.toThrow(ApiError)
   })
 
+  it('刪除空部門', async () => {
+    let method = ''
+    server.use(
+      http.delete(`${API}/org/departments/d1`, ({ request }) => {
+        method = request.method
+        return HttpResponse.json({ ok: true })
+      }),
+    )
+
+    await org.deleteDepartment('d1')
+    expect(method).toBe('DELETE')
+  })
+
+  it('有成員的部門刪不掉，錯誤訊息說有幾個人', async () => {
+    server.use(
+      http.delete(`${API}/org/departments/d1`, () =>
+        HttpResponse.json(
+          {
+            code: 'CONFLICT',
+            message: '這個部門還有 3 位成員。請先把他們移到其他部門，或將部門改為停用',
+          },
+          { status: 409 },
+        ),
+      ),
+    )
+
+    // 放行的話那些人的 department_id 會被靜默清空
+    await expect(org.deleteDepartment('d1')).rejects.toThrow(ApiError)
+  })
+
   it('編輯帶上 fields 清單', async () => {
     let captured: unknown = null
     server.use(

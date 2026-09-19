@@ -1,0 +1,214 @@
+{
+  "workflow_key": "quotation_parallel_approval",
+  "version": 1,
+  "business_object": "quotation",
+  "name": "報價單會簽流程（含平行分支）",
+  "description": "大額報價單：主管簽核後，財務與法務同時會簽（兩邊都通過才放行），再送客戶簽核。用來驗證平行分支的模擬簽核。",
+  "trigger": {
+    "type": "form_submit"
+  },
+  "nodes": [
+    {
+      "id": "start",
+      "type": "trigger",
+      "label": "業務送出報價單"
+    },
+    {
+      "id": "manager_approval",
+      "type": "human_approval",
+      "label": "主管簽核",
+      "participant": "internal",
+      "resolver": {
+        "type": "manager_of",
+        "of": "initiator"
+      },
+      "timeout": {
+        "after": "P2D",
+        "policy": "ESCALATE",
+        "to": {
+          "type": "role",
+          "value": "sales_director"
+        }
+      },
+      "on_reject": {
+        "action": "goto",
+        "node": "revise"
+      }
+    },
+    {
+      "id": "cosign",
+      "type": "parallel",
+      "label": "財務與法務會簽"
+    },
+    {
+      "id": "finance_approval",
+      "type": "human_approval",
+      "label": "財務簽核",
+      "participant": "internal",
+      "resolver": {
+        "type": "role",
+        "value": "finance_manager"
+      },
+      "timeout": {
+        "after": "P2D",
+        "policy": "WAIT"
+      }
+    },
+    {
+      "id": "legal_approval",
+      "type": "human_approval",
+      "label": "法務簽核",
+      "participant": "internal",
+      "resolver": {
+        "type": "role",
+        "value": "cfo"
+      },
+      "timeout": {
+        "after": "P2D",
+        "policy": "WAIT"
+      }
+    },
+    {
+      "id": "cosign_join",
+      "type": "join",
+      "label": "會簽完成",
+      "join": {
+        "completion": "ALL",
+        "result": "ALL_SUCCESS"
+      },
+      "on_reject": {
+        "action": "goto",
+        "node": "revise"
+      }
+    },
+    {
+      "id": "publish_to_customer",
+      "type": "action",
+      "label": "產生 PDF 並寄給客戶",
+      "action": "quotation.publish",
+      "idempotency_key": "{{instance.id}}:{{node.id}}:{{quotation.current_version}}",
+      "retry": {
+        "max_attempts": 3,
+        "backoff": "exponential"
+      }
+    },
+    {
+      "id": "customer_review",
+      "type": "human_approval",
+      "label": "客戶簽核",
+      "participant": "external",
+      "resolver": {
+        "type": "external_contacts",
+        "path": "quotation.customer_contact_ids"
+      },
+      "join": {
+        "completion": "ALL",
+        "result": "ALL_SUCCESS"
+      },
+      "timeout": {
+        "after": "P7D",
+        "policy": "ESCALATE",
+        "to": {
+          "type": "initiator"
+        }
+      },
+      "on_reject": {
+        "action": "goto",
+        "node": "revise"
+      }
+    },
+    {
+      "id": "revise",
+      "type": "human_task",
+      "label": "業務修改報價",
+      "participant": "internal",
+      "assignee": {
+        "type": "initiator"
+      }
+    },
+    {
+      "id": "create_order",
+      "type": "action",
+      "label": "Odoo 建立訂單",
+      "action": "odoo.create_sale_order",
+      "idempotency_key": "{{instance.id}}:{{node.id}}",
+      "retry": {
+        "max_attempts": 5,
+        "backoff": "exponential"
+      },
+      "on_failure": {
+        "action": "goto",
+        "node": "revise"
+      }
+    },
+    {
+      "id": "notify_done",
+      "type": "notification",
+      "label": "通知雙方完成",
+      "channel": [
+        "email"
+      ],
+      "to": [
+        "initiator",
+        "quotation.customer_contact_ids"
+      ],
+      "template_key": "quotation_ordered"
+    },
+    {
+      "id": "end",
+      "type": "end",
+      "label": "完成",
+      "result": "completed"
+    }
+  ],
+  "edges": [
+    [
+      "start",
+      "manager_approval"
+    ],
+    [
+      "manager_approval",
+      "cosign"
+    ],
+    [
+      "cosign",
+      "finance_approval"
+    ],
+    [
+      "cosign",
+      "legal_approval"
+    ],
+    [
+      "finance_approval",
+      "cosign_join"
+    ],
+    [
+      "legal_approval",
+      "cosign_join"
+    ],
+    [
+      "cosign_join",
+      "publish_to_customer"
+    ],
+    [
+      "publish_to_customer",
+      "customer_review"
+    ],
+    [
+      "customer_review",
+      "create_order"
+    ],
+    [
+      "revise",
+      "manager_approval"
+    ],
+    [
+      "create_order",
+      "notify_done"
+    ],
+    [
+      "notify_done",
+      "end"
+    ]
+  ]
+}

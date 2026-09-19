@@ -441,6 +441,11 @@ PY
 echo "── 建立流程 ──"
 create_workflow "quotation_approval" "報價單簽核流程" "quotation" \
     "$(dirname "$0")/../schemas/fixtures/quotation_approval_v1.json"
+# 含平行分支的報價單流程。交辦的驗收標準是
+# 「一個測試者從頭走完含平行分支的報價單流程」——
+# 沒有一條穩定的平行流程可走，那條標準就無從驗證。
+create_workflow "quotation_parallel_approval" "報價單會簽流程（含平行分支）" "quotation" \
+    "$(dirname "$0")/../schemas/fixtures/quotation_parallel_approval_v1.json"
 create_workflow "purchase_approval" "採購申請簽核流程" "purchase_request" \
     "$(dirname "$0")/../schemas/fixtures/purchase_approval_v1.json"
 

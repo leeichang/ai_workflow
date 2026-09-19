@@ -59,6 +59,10 @@ MAX_STEPS = 500
 class DslInterpreter:
     def __init__(self) -> None:
         self._input: InstanceInput | None = None
+        # 被要求快轉的節點。時間快轉不假造決策——
+        # 它把等待視為已到期，走真正的逾時處理，
+        # 這樣模擬看到的結果與正式環境逾時後一模一樣。
+        self._skip_time: set[str] = set()
         self._nodes: dict[str, dict[str, Any]] = {}
         self._edges: list[list[Any]] = []
 
@@ -350,13 +354,30 @@ class DslInterpreter:
         # 提醒的時間點。由晚到早排序後逐一消化。
         pending_reminders = self._reminder_points(node, wait.deadline)
 
+        node_id = node["id"]
+
+        def woken() -> bool:
+            """該醒來了：有人簽了，或被要求快轉"""
+            return decided() is not Verdict.WAIT or node_id in self._skip_time
+
         while True:
             verdict = decided()
             if verdict is not Verdict.WAIT:
                 return verdict
 
+            # 快轉：直接走逾時處理，不假造任何決策。
+            # ESCALATE/WAIT 不離開節點（deadline 被清掉），
+            # 其餘交給呼叫端路由——與真的等到逾時完全同一條路。
+            if node_id in self._skip_time:
+                self._skip_time.discard(node_id)
+                handled = await self._handle_timeout_inline(node, wait)
+                if not handled:
+                    return Verdict.TIMEOUT
+                pending_reminders = []
+                continue
+
             if wait.deadline is None:
-                await workflow.wait_condition(lambda: decided() is not Verdict.WAIT)
+                await workflow.wait_condition(woken)
                 continue
 
             # 下一個要醒來的時間點：提醒或到期，看哪個先到
@@ -371,11 +392,8 @@ class DslInterpreter:
             remaining = next_at - workflow.now()
             if remaining.total_seconds() > 0:
                 try:
-                    await workflow.wait_condition(
-                        lambda: decided() is not Verdict.WAIT,
-                        timeout=remaining,
-                    )
-                    # 有人簽了，下一輪由 decided() 判斷
+                    await workflow.wait_condition(woken, timeout=remaining)
+                    # 有人簽了或被要求快轉，下一輪由迴圈頭判斷
                     continue
                 except asyncio.TimeoutError:
                     pass
@@ -971,6 +989,40 @@ class DslInterpreter:
                 decided_at=workflow.now().isoformat(),
             )
         )
+
+    @workflow.signal(name="skip_time")
+    async def skip_time(self, node_id: str = "") -> None:
+        """時間快轉（只限沙箱）
+
+        把某個節點的等待視為已到期，讓真正的逾時處理立刻執行。
+        含 P2D、P7D 的流程在模擬時原本要等兩天、七天才看得到
+        逾時行為，等於無法驗證。
+
+        **不假造決策**：跑的是 `_handle_timeout_inline`，
+        與真的等到逾時走同一條路。假造一個 APPROVE 會讓模擬
+        顯示「通過了」，而正式環境的 AUTO_REJECT 其實是退回——
+        那比不給快轉更糟。
+
+        正式租戶一律拒絕。授權在 HTTP 端已經擋過一層，
+        這裡再擋一層：Signal 是能繞過 HTTP 的介面，
+        而快轉會讓單據在沒人簽的情況下前進。
+        """
+        if self._input is None or not self._input.is_sandbox:
+            workflow.logger.warning(
+                "拒絕非沙箱實例的時間快轉：tenant=%s node=%s",
+                self._input.tenant_id if self._input else "?",
+                node_id,
+            )
+            return
+
+        if node_id and node_id not in self._waits:
+            workflow.logger.info(
+                "忽略非活躍節點的快轉：node=%s active=%s", node_id, list(self._waits)
+            )
+            return
+
+        # 沒指定節點就快轉全部等待中的節點（平行分支時方便）
+        self._skip_time |= {node_id} if node_id else set(self._waits)
 
     @workflow.signal(name="cancel_instance")
     async def cancel_instance(self, reason: str = "") -> None:

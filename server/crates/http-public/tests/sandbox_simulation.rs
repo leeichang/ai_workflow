@@ -426,3 +426,130 @@ async fn retired_sandbox_blocks_simulation() {
         "退役後不可再模擬簽核"
     );
 }
+
+// ═══════════════════════════════════════════════════════════
+// 權限過濾畫面：角色來源
+//
+// 使用者原話的第三件事：
+//   「系統依據權限設定顯示每個簽核人員的畫面」
+//
+// `resolve_form` 依角色判定可見性（domain 已有
+// `role_not_in_readable_list_gets_hidden` 蓋住這件事）。
+// 這裡要測的是本端點獨有的風險：**角色從哪裡來**。
+//
+// 傳測試者的角色，畫面會是「測試者眼中的表單」——
+// 流程照樣會動、測試照樣全綠，但模擬出來的畫面
+// 與那個人真正簽核時看到的不同，整個功能就失去意義。
+// ═══════════════════════════════════════════════════════════
+
+/// 重現 `task_form()` 取角色的查詢
+///
+/// 同樣刻意複寫：查詢若被改成以 actor 為準，這裡會分歧而爆出來。
+async fn roles_of(db: &Db, tenant_id: Uuid, user_id: Uuid) -> Vec<String> {
+    let mut tx = db.tenant_tx(tenant_id).await.unwrap();
+    let roles = sqlx::query_scalar(
+        "select r.code from user_role ur join role r on r.id = ur.role_id
+         where ur.user_id = $1",
+    )
+    .bind(user_id)
+    .fetch_all(tx.executor())
+    .await
+    .unwrap();
+    tx.commit().await.ok();
+    roles
+}
+
+#[tokio::test]
+async fn acting_as_roles_come_from_the_impersonated_person() {
+    // 沙箱裡兩個角色不同的人，查出來的角色必須不同。
+    // 相同就代表查詢沒有以被扮演者為準。
+    let (db, parent, tester) = new_parent_tenant().await;
+    let (sandbox_id, _) = persistence::sandbox::create(&db, parent, tester)
+        .await
+        .expect("建立沙箱失敗");
+
+    let creator = creator_in_sandbox(&db, sandbox_id).await;
+
+    // 造一個角色明顯不同的人
+    let other = Uuid::new_v4();
+    let mut tx = db.tenant_tx(sandbox_id).await.unwrap();
+    sqlx::query(
+        "insert into app_user (id, tenant_id, email, name, password_hash, status)
+         values ($1, $2, 'other@sbx.local', '另一個人', 'x', 'ACTIVE')",
+    )
+    .bind(other)
+    .bind(sandbox_id)
+    .execute(tx.executor())
+    .await
+    .unwrap();
+
+    let role_id: Uuid = sqlx::query_scalar(
+        "insert into role (id, tenant_id, code, name)
+         values ($1, $2, 'finance_only', '只有財務') returning id",
+    )
+    .bind(Uuid::new_v4())
+    .bind(sandbox_id)
+    .fetch_one(tx.executor())
+    .await
+    .unwrap();
+
+    // user_role 自己帶 tenant_id，RLS 靠它——漏掉會被 policy 擋下
+    sqlx::query("insert into user_role (user_id, role_id, tenant_id) values ($1, $2, $3)")
+        .bind(other)
+        .bind(role_id)
+        .bind(sandbox_id)
+        .execute(tx.executor())
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+
+    let creator_roles = roles_of(&db, sandbox_id, creator).await;
+    let other_roles = roles_of(&db, sandbox_id, other).await;
+
+    assert_eq!(
+        other_roles,
+        vec!["finance_only".to_string()],
+        "被扮演者的角色要是他自己的"
+    );
+    assert!(
+        !creator_roles.contains(&"finance_only".to_string()),
+        "測試者不該拿到被扮演者的角色"
+    );
+    assert_ne!(
+        creator_roles, other_roles,
+        "兩個人的角色必須不同，否則證明不了畫面是依被扮演者重算的"
+    );
+
+    persistence::sandbox::retire(&db, sandbox_id).await.ok();
+}
+
+#[tokio::test]
+async fn user_with_no_roles_yields_empty_not_error() {
+    // 沒掛角色是合法狀態（例如剛建好的帳號）。
+    // 這時 resolve_form 會把限制角色的欄位判成 HIDDEN，
+    // 畫面應該照實呈現，而不是查詢爆掉或退回「不限制」。
+    let (db, parent, tester) = new_parent_tenant().await;
+    let (sandbox_id, _) = persistence::sandbox::create(&db, parent, tester)
+        .await
+        .expect("建立沙箱失敗");
+
+    let naked = Uuid::new_v4();
+    let mut tx = db.tenant_tx(sandbox_id).await.unwrap();
+    sqlx::query(
+        "insert into app_user (id, tenant_id, email, name, password_hash, status)
+         values ($1, $2, 'naked@sbx.local', '沒有角色的人', 'x', 'ACTIVE')",
+    )
+    .bind(naked)
+    .bind(sandbox_id)
+    .execute(tx.executor())
+    .await
+    .unwrap();
+    tx.commit().await.unwrap();
+
+    assert!(
+        roles_of(&db, sandbox_id, naked).await.is_empty(),
+        "沒有角色要回空陣列，不是錯誤"
+    );
+
+    persistence::sandbox::retire(&db, sandbox_id).await.ok();
+}

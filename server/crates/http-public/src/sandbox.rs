@@ -11,6 +11,8 @@ use axum::extract::{Path, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
+
 use serde_json::Value;
 use uuid::Uuid;
 
@@ -25,7 +27,12 @@ pub fn routes() -> Router<AppState> {
         .route("/sandboxes/{id}/participants/{node_id}", get(participants))
         .route("/sandboxes/{id}/tasks", get(pending_tasks))
         .route("/sandboxes/{id}/instances", post(start_instance))
+        .route("/sandboxes/{id}/tasks/{task_id}/form", get(task_form))
         .route("/sandboxes/{id}/tasks/{task_id}/simulate", post(simulate))
+        .route(
+            "/sandboxes/{id}/tasks/{task_id}/skip-time",
+            post(skip_time),
+        )
 }
 
 #[derive(Serialize)]
@@ -258,6 +265,10 @@ async fn start_instance(
                 "workflow_version_id": published.id,
                 "dsl": published.content,
                 "business_object": body.input,
+                // 只有標記為沙箱的實例可以時間快轉。
+                // 正式路徑（instances.rs）不帶這個欄位，Python 端
+                // 預設 False，因此既有的執行中實例也一併受保護。
+                "is_sandbox": true,
             })],
         })
         .await
@@ -296,6 +307,31 @@ pub struct PendingTaskView {
     assignee_user_id: Option<Uuid>,
     assignee_name: Option<String>,
     assignee_role: Option<String>,
+    /// 這張待辦所屬的會簽組。不在平行結構裡就是 `None`
+    branch: Option<BranchProgress>,
+    /// 這個節點設的逾時。沒設就是 `None`——
+    /// 前端據此決定要不要給「時間快轉」，並說清楚快轉後會發生什麼
+    timeout: Option<NodeTimeout>,
+}
+
+#[derive(Serialize)]
+pub struct NodeTimeout {
+    /// ISO 8601 duration，例如 P2D
+    after: String,
+    /// WAIT / AUTO_APPROVE / AUTO_REJECT / ESCALATE
+    policy: String,
+}
+
+/// 會簽進度
+///
+/// 執行期不存這個（Temporal 自己持久化分支進度），所以是從 DSL
+/// 推出結構、再用同實例的待辦狀態算出進度。
+#[derive(Serialize)]
+pub struct BranchProgress {
+    #[serde(flatten)]
+    info: domain::parallel::BranchInfo,
+    /// 已完成的分支數。使用者要看的是「還在等誰」
+    done: usize,
 }
 
 /// 沙箱裡所有待簽的項目
@@ -327,12 +363,51 @@ async fn pending_tasks(
         .await
         .map_err(|e| ApiError::Internal(e.to_string()))?;
 
+    // 會簽進度要靠 DSL 推（執行期沒有 parallel_group 表），
+    // 所以要拿到每個實例鎖定的流程版本內容。
+    let instance_ids: Vec<Uuid> = {
+        let mut ids: Vec<Uuid> = rows.iter().map(|r| r.1).collect();
+        ids.sort();
+        ids.dedup();
+        ids
+    };
+
+    let dsls: Vec<(Uuid, Value)> = sqlx::query_as(
+        "select i.id, v.content
+         from workflow_instance i
+         join workflow_definition_version v on v.id = i.workflow_version_id
+         where i.id = any($1)",
+    )
+    .bind(&instance_ids)
+    .fetch_all(tx.executor())
+    .await
+    .map_err(|e| ApiError::Internal(e.to_string()))?;
+
+    // 同實例的所有待辦（不只 PENDING）——分支算不算完成要看它
+    let all_tasks: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "select instance_id, node_id, status from human_task where instance_id = any($1)",
+    )
+    .bind(&instance_ids)
+    .fetch_all(tx.executor())
+    .await
+    .map_err(|e| ApiError::Internal(e.to_string()))?;
+
     tx.commit().await?;
+
+    let dsl_of: HashMap<Uuid, &Value> = dsls.iter().map(|(id, c)| (*id, c)).collect();
 
     Ok(Json(
         rows.into_iter()
             .map(
                 |(task_id, instance_id, business_key, node_id, node_label, aid, aname, arole)| {
+                    let dsl = dsl_of.get(&instance_id);
+                    let branch = dsl.and_then(|dsl| {
+                        let info = domain::parallel::branch_of(dsl, &node_id)?;
+                        let done = branches_done(dsl, &info, instance_id, &all_tasks);
+                        Some(BranchProgress { info, done })
+                    });
+                    let timeout = dsl.and_then(|dsl| node_timeout(dsl, &node_id));
+
                     PendingTaskView {
                         task_id,
                         instance_id,
@@ -342,11 +417,167 @@ async fn pending_tasks(
                         assignee_user_id: aid,
                         assignee_name: aname,
                         assignee_role: arole,
+                        branch,
+                        timeout,
                     }
                 },
             )
             .collect(),
     ))
+}
+
+/// 節點設的逾時
+///
+/// 拿來決定要不要顯示「時間快轉」。沒設逾時的節點沒有等待可以快轉，
+/// 給了按鈕卻什麼都不會發生，比不給更讓人困惑。
+fn node_timeout(dsl: &Value, node_id: &str) -> Option<NodeTimeout> {
+    let t = dsl
+        .get("nodes")?
+        .as_array()?
+        .iter()
+        .find(|n| n.get("id").and_then(Value::as_str) == Some(node_id))?
+        .get("timeout")?;
+
+    Some(NodeTimeout {
+        after: t.get("after").and_then(Value::as_str)?.to_string(),
+        policy: t
+            .get("policy")
+            .and_then(Value::as_str)
+            .unwrap_or("WAIT")
+            .to_string(),
+    })
+}
+
+/// 這組會簽已經完成幾條分支
+///
+/// 一條分支算完成的條件是「沒有待處理的待辦，且至少處理過一張」。
+/// 只看「沒有 PENDING」會把還沒開始的分支也算成完成——
+/// 那會讓畫面顯示「2/2 完成」而流程其實還卡著。
+fn branches_done(
+    dsl: &Value,
+    info: &domain::parallel::BranchInfo,
+    instance_id: Uuid,
+    all_tasks: &[(Uuid, String, String)],
+) -> usize {
+    let mut pending: HashSet<String> = HashSet::new();
+    let mut touched: HashSet<String> = HashSet::new();
+
+    for (iid, node_id, status) in all_tasks {
+        if *iid != instance_id {
+            continue;
+        }
+        // 同一組會簽的分支才算——別組的待辦不影響這組的進度
+        let Some(b) = domain::parallel::branch_of(dsl, node_id) else {
+            continue;
+        };
+        if b.parallel_id != info.parallel_id {
+            continue;
+        }
+        if status == "PENDING" {
+            pending.insert(b.branch_id.clone());
+        }
+        touched.insert(b.branch_id);
+    }
+
+    touched.difference(&pending).count()
+}
+
+#[derive(Serialize)]
+pub struct SimulatedFormView {
+    form_key: String,
+    /// 被扮演者的角色。讓使用者看得出「為什麼這些欄位是這樣」
+    acting_as_roles: Vec<String>,
+    acting_as_name: Option<String>,
+    fields: Vec<domain::permission::FieldPermission>,
+}
+
+/// 以被扮演者的身分看這張單的欄位權限
+///
+/// **這是使用者要的第三件事：「系統依據權限設定顯示每個簽核人員的畫面」。**
+///
+/// 三個關鍵：
+///
+/// 1. **用被扮演者的角色**，不是測試者的。測試者是 designer，
+///    看到的會與 cfo 完全不同——而沙箱的價值就是看到後者會看到的。
+///
+/// 2. **帶實例的真實資料**。`visibility.when` 會用欄位值求值
+///    （`permission.rs` 的 `eval_bool`），傳空物件的話凡是條件顯示的欄位
+///    全部判錯。這正是 P2 擴充預覽 API 的理由。
+///
+/// 3. **判定複用 `domain::permission::resolve_form()`**，不在這裡重寫一份。
+///    兩份必然漂移，而漂移的症狀是「畫面說可編輯、實際送出被擋」，極難追查。
+///
+/// 表單取自實例鎖定的版本（P3 的 `form_version_id`），不是當前發布版——
+/// 模擬要看的是這張單當初送簽時的樣子。
+async fn task_form(
+    State(state): State<AppState>,
+    actor: Actor,
+    Path((sandbox_id, task_id)): Path<(Uuid, Uuid)>,
+) -> ApiResult<Json<SimulatedFormView>> {
+    require_simulation_owner(&state, &actor, sandbox_id).await?;
+
+    let mut tx = state.db.tenant_tx(sandbox_id).await?;
+
+    let task = persistence::human_task::find_by_id(&mut tx, task_id).await?;
+    let instance = persistence::instance::find_by_id(&mut tx, task.instance_id).await?;
+
+    let assignee = task
+        .assignee_user_id
+        .ok_or_else(|| ApiError::Conflict("這張待辦還沒有解析出簽核人".into()))?;
+
+    // 被扮演者的角色。resolve_form 依這些角色判定可見性與可編輯性。
+    let roles: Vec<String> = sqlx::query_scalar(
+        "select r.code from user_role ur join role r on r.id = ur.role_id
+         where ur.user_id = $1",
+    )
+    .bind(assignee)
+    .fetch_all(tx.executor())
+    .await
+    .map_err(|e| ApiError::Internal(e.to_string()))?;
+
+    let assignee_name: Option<String> =
+        sqlx::query_scalar("select name from app_user where id = $1")
+            .bind(assignee)
+            .fetch_optional(tx.executor())
+            .await
+            .map_err(|e| ApiError::Internal(e.to_string()))?;
+
+    // 用實例鎖定的表單版本，不是當前發布版
+    let version_id = instance.form_version_id.ok_or_else(|| {
+        ApiError::Conflict("這張單沒有鎖定表單版本，無法顯示欄位權限".into())
+    })?;
+
+    let version: (Uuid, Value) = sqlx::query_as(
+        "select form_id, content from form_definition_version where id = $1",
+    )
+    .bind(version_id)
+    .fetch_one(tx.executor())
+    .await
+    .map_err(|e| ApiError::Internal(e.to_string()))?;
+
+    let form_key: String =
+        sqlx::query_scalar("select form_key from form_definition where id = $1")
+            .bind(version.0)
+            .fetch_one(tx.executor())
+            .await
+            .map_err(|e| ApiError::Internal(e.to_string()))?;
+
+    tx.commit().await?;
+
+    let ctx = domain::permission::Context {
+        node_id: Some(&task.node_id),
+        roles: &roles,
+        participant_kind: &task.participant_kind,
+        // 真實單據資料——條件顯示的欄位靠它求值
+        data: &instance.input,
+    };
+
+    Ok(Json(SimulatedFormView {
+        form_key,
+        acting_as_roles: roles.clone(),
+        acting_as_name: assignee_name,
+        fields: domain::permission::resolve_form(&version.1, &ctx),
+    }))
 }
 
 #[derive(Deserialize)]
@@ -498,4 +729,108 @@ async fn require_simulation_owner(
     }
 
     Ok(())
+}
+
+#[derive(Serialize)]
+pub struct SkipTimeResult {
+    task_id: Uuid,
+    node_id: String,
+    /// 這個節點設的逾時策略。使用者要知道快轉後會發生什麼
+    policy: String,
+    after: String,
+}
+
+/// 時間快轉
+///
+/// 含 `timeout: {after: P2D}` 的流程在模擬時原本要等兩天才看得到
+/// 逾時行為，等於無法驗證。快轉讓等待立刻視為到期。
+///
+/// **不假造決策**——Workflow 端跑的是真正的逾時處理，
+/// 與真的等到逾時走同一條路。假造一個 APPROVE 會讓模擬顯示
+/// 「通過了」，而正式環境設的 AUTO_REJECT 其實是退回。
+///
+/// 授權與模擬簽核同一條線（`require_simulation_owner`）。
+/// Workflow 端另有一道 `is_sandbox` 檢查——快轉會讓單據在
+/// 沒人簽的情況下前進，值得擋兩層。
+async fn skip_time(
+    State(state): State<AppState>,
+    actor: Actor,
+    Path((sandbox_id, task_id)): Path<(Uuid, Uuid)>,
+) -> ApiResult<Json<SkipTimeResult>> {
+    require_simulation_owner(&state, &actor, sandbox_id).await?;
+
+    let mut tx = state.db.tenant_tx(sandbox_id).await?;
+    let task = persistence::human_task::find_by_id(&mut tx, task_id).await?;
+    let instance = persistence::instance::find_by_id(&mut tx, task.instance_id).await?;
+
+    let dsl: Value = sqlx::query_scalar(
+        "select content from workflow_definition_version where id = $1",
+    )
+    .bind(instance.workflow_version_id)
+    .fetch_one(tx.executor())
+    .await
+    .map_err(|e| ApiError::Internal(e.to_string()))?;
+
+    tx.commit().await?;
+
+    // 沒設逾時的節點快轉沒有意義——Workflow 端會直接忽略，
+    // 使用者卻會以為做了什麼。明講比靜默無效好。
+    let timeout = dsl
+        .get("nodes")
+        .and_then(Value::as_array)
+        .and_then(|nodes| {
+            nodes
+                .iter()
+                .find(|n| n.get("id").and_then(Value::as_str) == Some(task.node_id.as_str()))
+        })
+        .and_then(|n| n.get("timeout"))
+        .ok_or_else(|| {
+            ApiError::Conflict(format!(
+                "節點「{}」沒有設定逾時，沒有可以快轉的等待",
+                task.node_label.clone().unwrap_or_else(|| task.node_id.clone())
+            ))
+        })?;
+
+    let handle = state.temporal.as_ref().ok_or_else(|| {
+        ApiError::ServiceUnavailable("流程引擎未連線，暫時無法快轉".into())
+    })?;
+
+    handle
+        .client
+        .signal(
+            &instance.temporal_workflow_id,
+            "skip_time",
+            Value::String(task.node_id.clone()),
+        )
+        .await
+        .map_err(|e| ApiError::ServiceUnavailable(format!("快轉失敗：{e}")))?;
+
+    let mut tx = state.db.tenant_tx(sandbox_id).await?;
+    tx.audit(
+        persistence::AuditEvent::new("internal", "task.skip_time", "human_task")
+            .actor(actor.user_id.to_string(), actor.name.clone())
+            .target(task_id.to_string())
+            .payload(serde_json::json!({
+                "node_id": task.node_id,
+                "timeout": timeout,
+                "is_simulation": true,
+            })),
+    )
+    .await?;
+    tx.commit().await?;
+
+    Ok(Json(SkipTimeResult {
+        task_id,
+        node_id: task.node_id,
+        policy: timeout
+            .get("policy")
+            .and_then(Value::as_str)
+            .unwrap_or("WAIT")
+            .to_string(),
+        after: timeout
+            .get("after")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string(),
+    }))
 }

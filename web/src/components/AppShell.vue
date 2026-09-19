@@ -153,6 +153,12 @@ const DESIGNER_SUB_ITEMS: SubNavItem[] = [
     icon: 'account_circle',
   },
   {
+    key: 'org-import',
+    path: '/designer/org-import',
+    label: '組織資料匯入',
+    icon: 'upload_file',
+  },
+  {
     key: 'org-health',
     path: '/designer/org-health',
     label: '組織健康檢查',

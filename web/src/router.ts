@@ -98,6 +98,11 @@ export const router = createRouter({
       component: () => import('./pages/OrgManage.vue'),
     },
     {
+      path: '/designer/org-import',
+      name: 'org-import',
+      component: () => import('./pages/OrgImport.vue'),
+    },
+    {
       path: '/designer/org-health',
       name: 'org-health',
       component: () => import('./pages/OrgHealth.vue'),

@@ -6,6 +6,7 @@ pub mod auth;
 pub mod error;
 pub mod forms;
 pub mod instances;
+pub mod integration;
 pub mod internal;
 pub mod lookup;
 pub mod mailer;
@@ -72,6 +73,7 @@ pub fn router(state: AppState) -> Router {
         .merge(tasks::routes())
         .merge(lookup::routes())
         .merge(org::routes())
+        .merge(integration::routes())
         .merge(internal::routes())
         .with_state(state)
 }

@@ -340,6 +340,77 @@ pub async fn list_employees(
     Ok(rows)
 }
 
+/// 刪除員工
+///
+/// **只刪得掉從未參與任何流程、也沒有被任何東西指向的人。**
+///
+/// 需求 §7 說「永不硬刪」，那是針對**同步**的規則——來源系統查不到
+/// 不代表這個人離職了。但誤建的人、或匯入測試留下的資料應該收得回去，
+/// 否則組織清單會越來越髒。
+///
+/// `app_user` 有 19 個外鍵指向它，多數是 `on delete set null` 的稽核
+/// 欄位（`created_by`、`published_by`）。真正會出事的是這幾個：
+///
+///   - `human_task.assignee_user_id`：待辦變成沒有人能處理的孤兒
+///   - `workflow_instance.started_by`：誰送的單查不到
+///   - `app_user.manager_id` / `department.manager_user_id`：
+///     簽核人解析會突然變成空
+///   - `approval_delegation`：是 cascade，代理設定會被連帶刪掉
+///
+/// 這些全部擋在前面，而不是靠 FK 的預設行為——`set null` 是靜默的，
+/// 出事時沒有任何訊息。
+pub async fn delete_employee(tx: &mut TenantTx<'_>, id: Uuid) -> Result<()> {
+    // (檢查用的 SQL, 擋下時的說明)
+    let blockers: [(&str, &str); 5] = [
+        (
+            "select count(*) from human_task where assignee_user_id = $1",
+            "此人有待辦任務。刪除會讓這些任務變成沒有人能處理",
+        ),
+        (
+            "select count(*) from workflow_instance where started_by = $1",
+            "此人送過單。刪除會讓那些流程查不到申請人",
+        ),
+        (
+            "select count(*) from app_user where manager_id = $1",
+            "此人是其他員工的直屬主管。請先改派他們的主管",
+        ),
+        (
+            "select count(*) from department where manager_user_id = $1",
+            "此人是某個部門的主管。請先改派該部門的主管",
+        ),
+        (
+            "select count(*) from approval_delegation
+             where delegator_id = $1 or delegate_id = $1",
+            "此人有簽核代理設定。請先移除",
+        ),
+    ];
+
+    for (sql, message) in blockers {
+        let count: i64 = sqlx::query_scalar(sql)
+            .bind(id)
+            .fetch_one(tx.executor())
+            .await?;
+
+        if count > 0 {
+            return Err(Error::Conflict(format!("{message}（{count} 筆）")));
+        }
+    }
+
+    // 角色指派是 cascade，跟著刪掉沒有問題——它只是這個人的權限
+    let affected = sqlx::query("delete from app_user where id = $1")
+        .bind(id)
+        .execute(tx.executor())
+        .await
+        .map_err(Error::from_db)?
+        .rows_affected();
+
+    if affected == 0 {
+        return Err(Error::not_found("app_user", id));
+    }
+
+    Ok(())
+}
+
 /// 員工的編輯
 #[derive(Debug, Default, Deserialize)]
 pub struct EmployeePatch {

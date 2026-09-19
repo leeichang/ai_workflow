@@ -39,7 +39,10 @@ pub fn routes() -> Router<AppState> {
             post(unlock_department_fields),
         )
         .route("/org/employees", get(list_employees))
-        .route("/org/employees/{id}", patch(update_employee))
+        .route(
+            "/org/employees/{id}",
+            patch(update_employee).delete(delete_employee),
+        )
         .route(
             "/org/employees/{id}/unlock-fields",
             post(unlock_employee_fields),
@@ -229,6 +232,45 @@ async fn update_employee(
             .actor(actor.user_id.to_string(), actor.name.clone())
             .target(id.to_string())
             .payload(json!({ "fields": body.fields })),
+    )
+    .await?;
+
+    tx.commit().await?;
+    Ok(Json(json!({ "ok": true })))
+}
+
+/// 刪除員工
+///
+/// 只刪得掉從未參與任何流程、也沒有被任何東西指向的人，
+/// 條件在 persistence 層。有牽連的人應該改成停用——見需求 §7。
+async fn delete_employee(
+    State(state): State<AppState>,
+    actor: Actor,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<serde_json::Value>> {
+    actor.require_any(&["admin"])?;
+
+    // 刪自己會讓當下這個請求的 actor 消失，後續的稽核寫入也會失敗
+    if id == actor.user_id {
+        return Err(ApiError::Conflict("不能刪除自己的帳號".into()));
+    }
+
+    let mut tx = state.db.tenant_tx(actor.tenant_id).await?;
+
+    // 先把名字查出來再刪。稽核紀錄要能讀，光有 uuid 事後查不出是誰
+    let name: Option<String> = sqlx::query_scalar("select name from app_user where id = $1")
+        .bind(id)
+        .fetch_optional(tx.executor())
+        .await
+        .map_err(|e| ApiError::Internal(format!("查詢員工失敗：{e}")))?;
+
+    persistence::organization::delete_employee(&mut tx, id).await?;
+
+    tx.audit(
+        persistence::AuditEvent::new("internal", "org.employee.delete", "app_user")
+            .actor(actor.user_id.to_string(), actor.name.clone())
+            .target(id.to_string())
+            .payload(json!({ "name": name })),
     )
     .await?;
 

@@ -647,6 +647,157 @@ async fn audits_deleted_department_name() {
     assert_eq!(payload["name"], "暫時的部門");
 }
 
+// ── 刪除員工 ────────────────────────────────────────────
+
+/// 沒有牽連的人刪得掉
+///
+/// 誤建的人、或匯入測試留下的資料應該收得回去，
+/// 否則組織清單會越來越髒
+#[tokio::test]
+async fn deletes_unreferenced_employee() {
+    let ctx = Ctx::new().await;
+
+    // 交易要 commit。未 commit 即 drop 會自動 rollback——
+    // 那時 DELETE 會回 404 而不是測到想測的東西
+    let orphan: Uuid = {
+        let mut tx = ctx.state.db.tenant_tx(ctx.tenant_id).await.unwrap();
+        let id = sqlx::query_scalar(
+            "insert into app_user (tenant_id, email, name, password_hash)
+             values ($1, 'orphan@test.local', '無牽連的人', 'x') returning id",
+        )
+        .bind(ctx.tenant_id)
+        .fetch_one(tx.executor())
+        .await
+        .unwrap();
+        tx.commit().await.unwrap();
+        id
+    };
+
+    let (status, body) = ctx
+        .send(
+            "DELETE",
+            &format!("/org/employees/{orphan}"),
+            &ctx.admin_token,
+            None,
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::OK, "{body}");
+
+    let (_, list) = ctx
+        .send("GET", "/org/employees", &ctx.admin_token, None)
+        .await;
+    assert_eq!(list.as_array().unwrap().len(), 2, "{list}");
+}
+
+/// 是別人主管的人刪不掉
+///
+/// app_user.manager_id 是 on delete set null。放行的話那些人的
+/// 主管會被靜默清空，manager_of 解析突然變成空
+#[tokio::test]
+async fn refuses_to_delete_someone_elses_manager() {
+    let ctx = Ctx::new().await;
+
+    // 另外建一個人，主管指向 staff。
+    // 不直接用 ctx.manager 當目標——admin_token 是以他的身分簽發的，
+    // 會先撞上「不能刪自己」而測不到這一條
+    let mut tx = ctx.state.db.tenant_tx(ctx.tenant_id).await.unwrap();
+    sqlx::query(
+        "insert into app_user (tenant_id, email, name, password_hash, manager_id)
+         values ($1, 'sub@test.local', '部屬', 'x', $2)",
+    )
+    .bind(ctx.tenant_id)
+    .bind(ctx.staff)
+    .execute(tx.executor())
+    .await
+    .unwrap();
+    tx.commit().await.unwrap();
+
+    let (status, body) = ctx
+        .send(
+            "DELETE",
+            &format!("/org/employees/{}", ctx.staff),
+            &ctx.admin_token,
+            None,
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+    assert!(
+        body["message"].as_str().unwrap().contains("直屬主管"),
+        "{body}"
+    );
+}
+
+/// 是部門主管的人刪不掉
+#[tokio::test]
+async fn refuses_to_delete_department_manager() {
+    let ctx = Ctx::new().await;
+
+    // 把 staff 設成部門主管
+    let mut tx = ctx.state.db.tenant_tx(ctx.tenant_id).await.unwrap();
+    sqlx::query("update department set manager_user_id = $2 where id = $1")
+        .bind(ctx.sales_dept)
+        .bind(ctx.staff)
+        .execute(tx.executor())
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+
+    let (status, body) = ctx
+        .send(
+            "DELETE",
+            &format!("/org/employees/{}", ctx.staff),
+            &ctx.admin_token,
+            None,
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+    assert!(
+        body["message"].as_str().unwrap().contains("部門的主管"),
+        "{body}"
+    );
+}
+
+/// 不能刪自己
+///
+/// 刪掉之後這個請求的稽核寫入會失敗
+#[tokio::test]
+async fn refuses_to_delete_self() {
+    let ctx = Ctx::new().await;
+
+    // admin_token 是以 ctx.manager 的身分簽發的，所以這就是「自己」。
+    // 這一條要排在主管檢查之前——否則使用者會看到「此人是其他員工的
+    // 直屬主管」，而真正的原因是他在刪自己
+    let (status, body) = ctx
+        .send(
+            "DELETE",
+            &format!("/org/employees/{}", ctx.manager),
+            &ctx.admin_token,
+            None,
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+}
+
+#[tokio::test]
+async fn deleting_missing_employee_returns_not_found() {
+    let ctx = Ctx::new().await;
+
+    let (status, body) = ctx
+        .send(
+            "DELETE",
+            &format!("/org/employees/{}", Uuid::new_v4()),
+            &ctx.admin_token,
+            None,
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
+}
+
 // ── 輸入驗證 ────────────────────────────────────────────
 
 /// 不在白名單的欄位要擋下
@@ -769,6 +920,11 @@ async fn designer_cannot_edit_organization() {
         (
             "DELETE",
             format!("/org/departments/{}", ctx.sales_dept),
+            json!({}),
+        ),
+        (
+            "DELETE",
+            format!("/org/employees/{}", ctx.staff),
             json!({}),
         ),
     ] {

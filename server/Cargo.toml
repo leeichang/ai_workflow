@@ -58,3 +58,6 @@ anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 jsonschema = "0.26"
+# 組織資料匯入。自己解析 CSV 看似簡單，但引號內的換行與雙引號跳脫
+# 很容易寫錯，而寫錯的後果是整批人員資料錯位
+csv = "1"

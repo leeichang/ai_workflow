@@ -13,6 +13,7 @@ pub mod instance;
 pub mod org_health;
 pub mod organization;
 pub mod participant;
+pub mod sync;
 pub mod workflow;
 
 use sqlx::postgres::{PgPoolOptions, PgQueryResult};

@@ -200,6 +200,17 @@ export function updateEmployee(id: string, patch: EmployeePatch): Promise<void> 
   })
 }
 
+/**
+ * 刪除員工
+ *
+ * 只刪得掉從未參與任何流程、也沒有被任何東西指向的人。
+ * 有待辦、送過單、是別人主管或部門主管的人刪不掉——
+ * 那些情況應該改成停用（`status: 'DISABLED'`）。
+ */
+export function deleteEmployee(id: string): Promise<void> {
+  return request<void>(`/org/employees/${id}`, { method: 'DELETE' })
+}
+
 // ── 欄位鎖定 ────────────────────────────────────────────
 
 /**
